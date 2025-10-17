@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    env_file: 
+      - .env  
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # backend:
+  #   build: .
+  #   env_file: .env
+  #   ports:
+  #     - "4000:4000"
+  #   depends_on:
+  #     - postgres
+  #   volumes:
+  #     - .:/usr/src/app
+  #   command: npm run start:dev
+
+volumes:
+  postgres_data:
