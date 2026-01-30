@@ -4,6 +4,11 @@ import {
   Column,
 } from 'typeorm';
 
+export enum AccountType {
+  TEACHER = 'teacher',
+  STUDENT = 'student',
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -24,8 +29,14 @@ export class User {
   @Column({ default: false })
   mustChangePassword: boolean;
 
-  @Column({type: 'enum', enum: ['admin', 'teacher', 'student'], default: 'student'})
-  globalRole: 'admin' | 'teacher' | 'student';
+  @Column({
+    type: 'enum',
+    enum: AccountType,
+  })
+  accountType: AccountType;
+
+  @Column({ default: false })
+  isSuperAdmin: boolean;
 
   @Column({ default: true })
   isActive: boolean;

@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { AppController } from './app.controller';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { WorkspacesModule } from './workspaces/workspaces.module';
+import { RbacModule } from './rbac/rbac.module';
 import appConfig from './config/app.config';
 import jwtConfig from './config/jwt.config';
 
@@ -33,6 +35,8 @@ import jwtConfig from './config/jwt.config';
 
     UsersModule,
     AuthModule,
+    WorkspacesModule,
+    RbacModule,
   ],
   controllers: [AppController],
   providers: [AppService],

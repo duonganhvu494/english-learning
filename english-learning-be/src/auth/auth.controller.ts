@@ -8,7 +8,6 @@ import type { Response } from 'express';
 import type { AuthRequest } from './interfaces/auth-request.interface';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { Roles, RolesGuard } from './guards/roles.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -66,8 +65,7 @@ export class AuthController {
     return ApiResponse.success(null, 'Logged out');
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('teacher')
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Req() req: AuthRequest) {
     const email = req.user.email;
