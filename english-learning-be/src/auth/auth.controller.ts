@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { ApiResponse } from 'src/common/dto/api-response.dto';
 import type { Response } from 'express';
+import type { StringValue } from 'ms';
 import type { AuthRequest } from './interfaces/auth-request.interface';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -18,7 +19,7 @@ export class AuthController {
   ) {}
 
   private get isProd(): boolean {
-    return this.config.get<string>('nodeEnv') === 'production';
+    return this.config.get<string>('app.nodeEnv') === 'production';
   }
 
   private setCookie(res: Response, name: string, value: string, minute = 60) {
@@ -53,7 +54,10 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response
   ) {
     const payload = req.user;
-    const accessToken = await this.jwtService.signAsync(payload);
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: this.config.get<string>('jwt.secret', 'localhost'),
+      expiresIn: this.config.get<string>('jwt.expiresIn', '15m') as StringValue,
+    });
     this.setCookie(res, 'accessToken', accessToken, 60);
     return ApiResponse.success(null, 'Access token refreshed');
   }

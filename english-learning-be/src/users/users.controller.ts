@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiResponse } from 'src/common/dto/api-response.dto';
 
@@ -16,7 +17,7 @@ export class UsersController {
     }
 
     @Post("create-student")
-    async createStudent(@Body() dto: CreateUserDto) {
+    async createStudent(@Body() dto: CreateStudentDto) {
         const result = await this.usersService.createStudent(dto);
         return ApiResponse.success(result, 'Student created');
     }

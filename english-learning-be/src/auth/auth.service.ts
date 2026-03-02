@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserProfileResponse } from 'src/users/dto/user-profile-response.dto';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
+import type { StringValue } from 'ms';
 
 @Injectable()
 export class AuthService {
@@ -29,8 +30,14 @@ export class AuthService {
             email: user.email,
         };
 
-        const accessToken = await this.jwtService.signAsync(payload);
-        const refreshToken = await this.jwtService.signAsync(payload);
+        const accessToken = await this.jwtService.signAsync(payload, {
+            secret: this.config.get<string>('jwt.secret', 'localhost'),
+            expiresIn: this.config.get<string>('jwt.expiresIn', '15m') as StringValue,
+        });
+        const refreshToken = await this.jwtService.signAsync(payload, {
+            secret: this.config.get<string>('jwt.refreshSecret', 'localhost'),
+            expiresIn: this.config.get<string>('jwt.refreshExpiresIn', '7d') as StringValue,
+        });
 
         return {
             accessToken,
