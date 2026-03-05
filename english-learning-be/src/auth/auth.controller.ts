@@ -4,7 +4,7 @@ import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { ApiResponse } from 'src/common/dto/api-response.dto';
-import type { Response } from 'express';
+import type { CookieOptions, Response } from 'express';
 import type { StringValue } from 'ms';
 import type { AuthRequest } from './interfaces/auth-request.interface';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
@@ -18,15 +18,33 @@ export class AuthController {
     private jwtService: JwtService,
   ) {}
 
-  private get isProd(): boolean {
-    return this.config.get<string>('app.nodeEnv') === 'production';
+  private get cookieSecure(): boolean {
+    return this.config.get<boolean>('cookie.secure', false);
+  }
+
+  private get cookieSameSite(): CookieOptions['sameSite'] {
+    const sameSite = this.config
+      .get<string>('cookie.sameSite', 'lax')
+      .toLowerCase();
+
+    if (sameSite === 'none' || sameSite === 'strict' || sameSite === 'lax') {
+      return sameSite;
+    }
+
+    return 'lax';
+  }
+
+  private get baseCookieOptions(): CookieOptions {
+    return {
+      httpOnly: true,
+      sameSite: this.cookieSameSite,
+      secure: this.cookieSecure,
+    };
   }
 
   private setCookie(res: Response, name: string, value: string, minute = 60) {
     res.cookie(name, value, {
-      httpOnly: true,
-      sameSite: this.isProd ? 'none' : 'lax',
-      secure: this.isProd,
+      ...this.baseCookieOptions,
       maxAge: minute * 60 * 1000,
     });
   }
@@ -38,6 +56,11 @@ export class AuthController {
   ) {
     this.setCookie(res, 'accessToken', accessToken, 60);
     this.setCookie(res, 'refreshToken', refreshToken, 7 * 24 * 60);
+  }
+
+  private clearAuthCookies(res: Response) {
+    res.clearCookie('accessToken', this.baseCookieOptions);
+    res.clearCookie('refreshToken', this.baseCookieOptions);
   }
 
   @Post('login')
@@ -64,8 +87,7 @@ export class AuthController {
 
   @Post('logout')
   logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+    this.clearAuthCookies(res);
     return ApiResponse.success(null, 'Logged out');
   }
 

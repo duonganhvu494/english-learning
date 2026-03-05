@@ -5,7 +5,7 @@ import {
   Injectable,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { Workspace } from "./entities/workspace.entity";
 import {
   WorkspaceMember,
@@ -64,7 +64,11 @@ export class WorkspacesService {
     const savedWorkspace = await this.workspaceRepo.save(workspace);
     
     const ownerRole = await this.roleRepo.findOne({
-      where: { name: "owner", isSystem: true },
+      where: {
+        name: "owner",
+        isSystem: true,
+        workspaceId: IsNull(),
+      },
     });
     if (!ownerRole) {
       throw new BadRequestException("Owner role not found");
@@ -82,7 +86,10 @@ export class WorkspacesService {
   }
 
   // ================= ADD MEMBER =================
-  async addMember(workspaceId: string, dto: AddWorkspaceMemberDto) {
+  async addMember(
+    workspaceId: string,
+    dto: AddWorkspaceMemberDto,
+  ) {
     const workspace = await this.workspaceRepo.findOne({
       where: { id: workspaceId },
     });
@@ -93,9 +100,19 @@ export class WorkspacesService {
     });
     if (!user) throw new BadRequestException("User not found");
 
-    const role = await this.roleRepo.findOne({
-      where: { name: dto.roleName },
-    });
+    const role = await this.roleRepo
+      .createQueryBuilder('role')
+      .where('role.name = :roleName', { roleName: dto.roleName })
+      .andWhere(
+        `(
+          (role."isSystem" = true AND role."workspaceId" IS NULL)
+          OR
+          (role."isSystem" = false AND role."workspaceId" = :workspaceId)
+        )`,
+        { workspaceId },
+      )
+      .orderBy('role.isSystem', 'ASC')
+      .getOne();
     if (!role) throw new BadRequestException("Role not found");
 
     const exist = await this.memberRepo.findOne({

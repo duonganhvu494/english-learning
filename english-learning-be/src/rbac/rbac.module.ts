@@ -5,6 +5,9 @@ import { Role } from './entities/role.entity';
 import { Permission } from './entities/permission.entity';
 import { RolePermission } from './entities/role-permission.entity';
 import { RbacService } from './rbac.service';
+import { WorkspaceMember } from 'src/workspaces/entities/workspace-member.entity';
+import { User } from 'src/users/entities/user.entity';
+import { RbacPermissionGuard } from './guards/rbac-permission.guard';
 
 @Module({
   imports: [
@@ -12,9 +15,11 @@ import { RbacService } from './rbac.service';
       Role,
       Permission,
       RolePermission,
+      WorkspaceMember,
+      User,
     ]),
   ],
-  providers: [RbacService],
-  exports: [TypeOrmModule, RbacService],
+  providers: [RbacService, RbacPermissionGuard],
+  exports: [TypeOrmModule, RbacService, RbacPermissionGuard],
 })
 export class RbacModule {}

@@ -4,10 +4,12 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
+  Unique,
 } from 'typeorm';
 import { RolePermission } from './role-permission.entity';
 
 @Entity('permissions')
+@Unique(['action', 'resource'])
 export class Permission {
   @PrimaryGeneratedColumn('uuid')
   id: string;

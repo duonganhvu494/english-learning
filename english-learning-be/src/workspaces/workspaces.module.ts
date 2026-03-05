@@ -7,9 +7,11 @@ import { Workspace } from './entities/workspace.entity';
 import { WorkspaceMember } from './entities/workspace-member.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Role } from 'src/rbac/entities/role.entity';
+import { RbacModule } from 'src/rbac/rbac.module';
 
 @Module({
   imports: [
+    RbacModule,
     TypeOrmModule.forFeature([
       Workspace,
       WorkspaceMember,

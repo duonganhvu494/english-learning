@@ -1,12 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { AccountType, User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcryptjs';
 import { UserProfileResponse } from './dto/user-profile-response.dto';
+import { UserResponseDto } from './dto/user-response.dto';
 
 @Injectable()
 export class UsersService {
@@ -48,7 +49,8 @@ export class UsersService {
       isSuperAdmin: false, 
     });
 
-    return this.usersRepo.save(user);
+    const savedUser = await this.usersRepo.save(user);
+    return UserResponseDto.fromEntity(savedUser);
   }
 
   // ================== CREATE STUDENT ACCOUNT ==================
@@ -88,8 +90,10 @@ export class UsersService {
   }
 
   // ================== QUERIES ==================
-  findAll() {
-    return this.usersRepo.find();
+  async findAll() {
+    const users = await this.usersRepo.find();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    return users.map(UserResponseDto.fromEntity);
   }
 
   findByEmail(email: string) {
@@ -97,7 +101,11 @@ export class UsersService {
   }
 
   findByUserName(userName: string) {
-    return this.usersRepo.findOne({ where: { userName } });
+    return this.usersRepo
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.userName = :userName', { userName })
+      .getOne();
   }
 
   async getUserById(id: string) {
@@ -145,7 +153,17 @@ export class UsersService {
       throw new BadRequestException('User not found');
     }
 
-    await this.usersRepo.delete(id);
+    try {
+      await this.usersRepo.delete(id);
+    } catch (error) {
+      if (error instanceof QueryFailedError) {
+        throw new BadRequestException(
+          'Cannot delete user while still assigned in workspace',
+        );
+      }
+      throw error;
+    }
+
     return { deleted: true };
   }
 }

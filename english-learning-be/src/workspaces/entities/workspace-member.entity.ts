@@ -6,6 +6,7 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { Workspace } from './workspace.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -18,6 +19,7 @@ export enum WorkspaceMemberStatus {
 }
 
 @Entity('workspace_members')
+@Unique(['workspace', 'user'])
 export class WorkspaceMember {
   @PrimaryGeneratedColumn('uuid')
   id: string;

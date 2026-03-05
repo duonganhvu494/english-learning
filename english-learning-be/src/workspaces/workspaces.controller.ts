@@ -14,6 +14,8 @@ import { AddWorkspaceMemberDto } from './dto/add-workspace-member.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import type { AuthRequest } from 'src/auth/interfaces/auth-request.interface';
 import { ApiResponse } from 'src/common/dto/api-response.dto';
+import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
+import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Controller('workspaces')
@@ -33,6 +35,8 @@ export class WorkspacesController {
   }
 
   @Post(':id/members')
+  @UseGuards(RbacPermissionGuard)
+  @RequireRoles(['owner'], { workspaceIdParam: 'id' })
   async addMember(
     @Param('id') workspaceId: string,
     @Body() dto: AddWorkspaceMemberDto,

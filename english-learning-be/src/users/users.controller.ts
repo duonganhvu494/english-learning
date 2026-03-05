@@ -12,7 +12,6 @@ export class UsersController {
     @Post("register")
     async register(@Body() dto: CreateUserDto) {
         const result = await this.usersService.register(dto);
-        console.log(result);
         return ApiResponse.success(result, 'User created');
     }
 
@@ -35,8 +34,8 @@ export class UsersController {
     }
 
     @Patch(':id')
-    update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-        const result = this.usersService.update(id, dto);
+    async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+        const result = await this.usersService.update(id, dto);
         return ApiResponse.success(result, 'User updated', 200);
     }
 

@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import { AllExceptionsFilter } from './common/filters/handle-exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -13,6 +14,7 @@ async function bootstrap() {
 
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   
   console.log("Application is running on: http://localhost:" + (process.env.PORT ?? 3000));
