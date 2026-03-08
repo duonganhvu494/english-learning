@@ -1,31 +1,21 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { AccountType, User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
-import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcryptjs';
 import { UserProfileResponse } from './dto/user-profile-response.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    private readonly authSessionsService: AuthSessionsService,
   ) {}
-
-  // ================== UTILS ==================
-  private generateRandomPassword(length = 10): string {
-    const chars =
-      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+[]{}|;:,.<>?';
-    let password = '';
-    for (let i = 0; i < length; i++) {
-      password += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return password;
-  }
 
   // ================== REGISTER USER ==================
   async register(dto: CreateUserDto) {
@@ -53,42 +43,6 @@ export class UsersService {
     return UserResponseDto.fromEntity(savedUser);
   }
 
-  // ================== CREATE STUDENT ACCOUNT ==================
-  /**
-   * Tạo user cho student
-   * KHÔNG gán role
-   * Role sẽ được gán khi add vào workspace
-   */
-  async createStudent(dto: CreateStudentDto) {
-    const exist = await this.usersRepo.findOne({
-      where: [{ email: dto.email }, { userName: dto.userName }],
-    });
-    if (exist) {
-      throw new BadRequestException('Email or username already exists');
-    }
-
-    const randomPassword = this.generateRandomPassword();
-    const hashedPassword = await bcrypt.hash(randomPassword, 10);
-
-    const user = this.usersRepo.create({
-      fullName: dto.fullName,
-      email: dto.email,
-      userName: dto.userName,
-      password: hashedPassword,
-      mustChangePassword: true,
-      accountType: AccountType.STUDENT,
-      isActive: true,
-      isSuperAdmin: false,
-    });
-
-    const savedUser = await this.usersRepo.save(user);
-
-    return {
-      user: UserProfileResponse.fromEntity(savedUser),
-      plainPassword: randomPassword,
-    };
-  }
-
   // ================== QUERIES ==================
   async findAll() {
     const users = await this.usersRepo.find();
@@ -98,6 +52,10 @@ export class UsersService {
 
   findByEmail(email: string) {
     return this.usersRepo.findOne({ where: { email } });
+  }
+
+  findById(id: string) {
+    return this.usersRepo.findOne({ where: { id } });
   }
 
   findByUserName(userName: string) {
@@ -118,7 +76,7 @@ export class UsersService {
   }
 
   // ================== UPDATE ==================
-  async update(id: string, dto: UpdateUserDto) {
+  async updateProfile(id: string, dto: UpdateUserDto) {
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) {
       throw new BadRequestException('User not found');
@@ -153,16 +111,13 @@ export class UsersService {
       throw new BadRequestException('User not found');
     }
 
-    try {
-      await this.usersRepo.delete(id);
-    } catch (error) {
-      if (error instanceof QueryFailedError) {
-        throw new BadRequestException(
-          'Cannot delete user while still assigned in workspace',
-        );
-      }
-      throw error;
+    if (!user.isActive) {
+      await this.authSessionsService.revokeAllUserSessions(id);
+      return { deleted: true };
     }
+
+    await this.usersRepo.update(id, { isActive: false });
+    await this.authSessionsService.revokeAllUserSessions(id);
 
     return { deleted: true };
   }

@@ -10,19 +10,30 @@ import {
 } from 'typeorm';
 import { RolePermission } from "./role-permission.entity";
 import { WorkspaceMember } from 'src/workspaces/entities/workspace-member.entity';
+import { ClassStudent } from 'src/classes/entities/class-student.entity';
 
 @Entity("roles")
 @Index('UQ_roles_system_name', ['name'], {
   unique: true,
-  where: `"isSystem" = true`,
+  where: `"isSystem" = true AND "workspaceId" IS NULL AND "classId" IS NULL`,
 })
 @Index('UQ_roles_workspace_name', ['workspaceId', 'name'], {
   unique: true,
-  where: `"isSystem" = false`,
+  where: `"isSystem" = false AND "workspaceId" IS NOT NULL AND "classId" IS NULL`,
+})
+@Index('UQ_roles_class_name', ['classId', 'name'], {
+  unique: true,
+  where: `"isSystem" = false AND "classId" IS NOT NULL AND "workspaceId" IS NULL`,
 })
 @Check(
-  'CHK_roles_system_workspace_scope',
-  `(("isSystem" = true AND "workspaceId" IS NULL) OR ("isSystem" = false AND "workspaceId" IS NOT NULL))`,
+  'CHK_roles_scope',
+  `(
+    ("isSystem" = true AND "workspaceId" IS NULL AND "classId" IS NULL)
+    OR
+    ("isSystem" = false AND "workspaceId" IS NOT NULL AND "classId" IS NULL)
+    OR
+    ("isSystem" = false AND "workspaceId" IS NULL AND "classId" IS NOT NULL)
+  )`,
 )
 export class Role {
   @PrimaryGeneratedColumn("uuid")
@@ -32,10 +43,13 @@ export class Role {
   name: string; // owner | admin | teacher | student
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
 
   @Column({ type: 'uuid', nullable: true })
   workspaceId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  classId: string | null;
 
   @Column({ default: true })
   isSystem: boolean;
@@ -45,4 +59,7 @@ export class Role {
 
   @OneToMany(() => WorkspaceMember, (member: WorkspaceMember) => member.role)
   workspaceMembers: WorkspaceMember[];
+
+  @OneToMany(() => ClassStudent, (classStudent: ClassStudent) => classStudent.role)
+  classStudents: ClassStudent[];
 }

@@ -1,6 +1,7 @@
 // src/workspaces/workspaces.controller.ts
 import {
   Controller,
+  Delete,
   Post,
   Body,
   UseGuards,
@@ -10,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { WorkspacesService } from './workspaces.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
-import { AddWorkspaceMemberDto } from './dto/add-workspace-member.dto';
+import { CreateStudentDto } from 'src/users/dto/create-student.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import type { AuthRequest } from 'src/auth/interfaces/auth-request.interface';
 import { ApiResponse } from 'src/common/dto/api-response.dto';
@@ -34,15 +35,54 @@ export class WorkspacesController {
     return ApiResponse.success(workspace, 'Workspace created');
   }
 
-  @Post(':id/members')
+  @Post(':id/students')
   @UseGuards(RbacPermissionGuard)
-  @RequireRoles(['owner'], { workspaceIdParam: 'id' })
-  async addMember(
+  @RequireRoles(['owner'], { scopeType: 'workspace', scopeIdParam: 'id' })
+  async createStudent(
     @Param('id') workspaceId: string,
-    @Body() dto: AddWorkspaceMemberDto,
+    @Body() dto: CreateStudentDto,
+    @Req() req: AuthRequest,
   ) {
-    const member = await this.service.addMember(workspaceId, dto);
-    return ApiResponse.success(member, 'Member added');
+    const student = await this.service.createStudentInWorkspace(
+      workspaceId,
+      dto,
+      req.user.userId,
+    );
+    return ApiResponse.success(
+      student,
+      'Student created and added to workspace',
+      201,
+    );
+  }
+
+  @Get(':id/students')
+  @UseGuards(RbacPermissionGuard)
+  @RequireRoles(['owner'], { scopeType: 'workspace', scopeIdParam: 'id' })
+  async listStudents(
+    @Param('id') workspaceId: string,
+    @Req() req: AuthRequest,
+  ) {
+    const students = await this.service.listWorkspaceStudents(
+      workspaceId,
+      req.user.userId,
+    );
+    return ApiResponse.success(students, 'Workspace students retrieved');
+  }
+
+  @Delete(':id/students/:studentId')
+  @UseGuards(RbacPermissionGuard)
+  @RequireRoles(['owner'], { scopeType: 'workspace', scopeIdParam: 'id' })
+  async removeStudent(
+    @Param('id') workspaceId: string,
+    @Param('studentId') studentId: string,
+    @Req() req: AuthRequest,
+  ) {
+    const result = await this.service.removeStudentFromWorkspace(
+      workspaceId,
+      studentId,
+      req.user.userId,
+    );
+    return ApiResponse.success(result, 'Student removed from workspace');
   }
 
   @Get('me')

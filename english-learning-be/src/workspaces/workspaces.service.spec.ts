@@ -5,6 +5,7 @@ import { Workspace } from './entities/workspace.entity';
 import { WorkspaceMember } from './entities/workspace-member.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Role } from 'src/rbac/entities/role.entity';
+import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
 
 describe('WorkspacesService', () => {
   let service: WorkspacesService;
@@ -27,6 +28,10 @@ describe('WorkspacesService', () => {
         },
         {
           provide: getRepositoryToken(Role),
+          useValue: {},
+        },
+        {
+          provide: WorkspaceAccessService,
           useValue: {},
         },
       ],

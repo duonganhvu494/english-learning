@@ -8,6 +8,8 @@ import { WorkspaceMember } from './entities/workspace-member.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Role } from 'src/rbac/entities/role.entity';
 import { RbacModule } from 'src/rbac/rbac.module';
+import { ClassEntity } from 'src/classes/entities/class.entity';
+import { ClassStudent } from 'src/classes/entities/class-student.entity';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { RbacModule } from 'src/rbac/rbac.module';
       WorkspaceMember,
       User,
       Role,
+      ClassEntity,
+      ClassStudent,
     ]),
   ],
   controllers: [WorkspacesController],

@@ -8,11 +8,17 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RbacService } from '../rbac.service';
+import {
+  REQUIRED_ANY_ACCESS_KEY,
+} from '../decorators/require-any-access.decorator';
 import { REQUIRED_PERMISSION_KEY } from '../decorators/require-permission.decorator';
 import { RequiredPermission } from '../interfaces/required-permission.interface';
 import { AuthRequest } from 'src/auth/interfaces/auth-request.interface';
 import { REQUIRED_ROLES_KEY } from '../decorators/require-roles.decorator';
 import { RequiredRoles } from '../interfaces/required-roles.interface';
+import { ScopeOptions } from '../interfaces/scope-options.interface';
+import { WorkspaceAccessService } from '../workspace-access.service';
+import { AccessRequirement } from '../interfaces/access-requirement.interface';
 
 type RequestWithParamsAndBody = AuthRequest & {
   params: Record<string, string | undefined>;
@@ -24,9 +30,15 @@ export class RbacPermissionGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly rbacService: RbacService,
+    private readonly workspaceAccessService: WorkspaceAccessService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const requiredAnyAccess =
+      this.reflector.getAllAndOverride<AccessRequirement[]>(
+        REQUIRED_ANY_ACCESS_KEY,
+        [context.getHandler(), context.getClass()],
+      );
     const requiredPermission =
       this.reflector.getAllAndOverride<RequiredPermission>(
       REQUIRED_PERMISSION_KEY,
@@ -37,7 +49,7 @@ export class RbacPermissionGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredPermission && !requiredRoles) {
+    if (!requiredAnyAccess?.length && !requiredPermission && !requiredRoles) {
       return true;
     }
 
@@ -49,17 +61,21 @@ export class RbacPermissionGuard implements CanActivate {
       throw new UnauthorizedException('Unauthorized');
     }
 
-    if (requiredRoles) {
-      const workspaceId = this.resolveWorkspaceId(requiredRoles, req);
-      if (!workspaceId) {
-        throw new BadRequestException('workspaceId is required for role check');
-      }
-
-      const hasRole = await this.rbacService.hasAnyRole({
+    if (requiredAnyAccess?.length) {
+      const hasAnyAccess = await this.hasAnyAccessRequirement(
+        requiredAnyAccess,
+        req,
         userId,
-        workspaceId,
-        roleNames: requiredRoles.roleNames,
-      });
+      );
+      if (!hasAnyAccess) {
+        throw new ForbiddenException(
+          'Access denied: requires one of the configured RBAC rules',
+        );
+      }
+    }
+
+    if (requiredRoles) {
+      const hasRole = await this.hasRoleRequirement(requiredRoles, req, userId);
       if (!hasRole) {
         throw new ForbiddenException(
           `Role denied: requires one of [${requiredRoles.roleNames.join(', ')}]`,
@@ -68,19 +84,11 @@ export class RbacPermissionGuard implements CanActivate {
     }
 
     if (requiredPermission) {
-      const workspaceId = this.resolveWorkspaceId(requiredPermission, req);
-      if (!workspaceId) {
-        throw new BadRequestException(
-          'workspaceId is required for permission check',
-        );
-      }
-
-      const hasPermission = await this.rbacService.hasPermission({
+      const hasPermission = await this.hasPermissionRequirement(
+        requiredPermission,
+        req,
         userId,
-        workspaceId,
-        action: requiredPermission.action,
-        resource: requiredPermission.resource,
-      });
+      );
 
       if (!hasPermission) {
         throw new ForbiddenException(
@@ -92,20 +100,101 @@ export class RbacPermissionGuard implements CanActivate {
     return true;
   }
 
-  private resolveWorkspaceId(
-    required: Pick<
-      RequiredPermission | RequiredRoles,
-      'workspaceIdParam' | 'workspaceIdBodyField'
-    >,
+  private async hasAnyAccessRequirement(
+    requirements: AccessRequirement[],
     req: RequestWithParamsAndBody,
-  ): string | null {
-    if (required.workspaceIdParam) {
-      return req.params?.[required.workspaceIdParam] ?? null;
+    userId: string,
+  ): Promise<boolean> {
+    for (const requirement of requirements) {
+      if (requirement.type === 'role') {
+        const hasRole = await this.hasRoleRequirement(requirement, req, userId);
+        if (hasRole) {
+          return true;
+        }
+        continue;
+      }
+
+      const hasPermission = await this.hasPermissionRequirement(
+        requirement,
+        req,
+        userId,
+      );
+      if (hasPermission) {
+        return true;
+      }
     }
 
-    if (required.workspaceIdBodyField) {
-      const value = req.body?.[required.workspaceIdBodyField];
+    return false;
+  }
+
+  private async hasRoleRequirement(
+    requiredRoles: RequiredRoles,
+    req: RequestWithParamsAndBody,
+    userId: string,
+  ): Promise<boolean> {
+    const scopeId = await this.resolveScopeId(requiredRoles, req);
+    if (!scopeId) {
+      throw new BadRequestException(
+        `${requiredRoles.scopeType} scope id is required for role check`,
+      );
+    }
+
+    return this.rbacService.hasAnyRole({
+      userId,
+      scopeType: requiredRoles.scopeType,
+      scopeId,
+      roleNames: requiredRoles.roleNames,
+    });
+  }
+
+  private async hasPermissionRequirement(
+    requiredPermission: RequiredPermission,
+    req: RequestWithParamsAndBody,
+    userId: string,
+  ): Promise<boolean> {
+    const scopeId = await this.resolveScopeId(requiredPermission, req);
+    if (!scopeId) {
+      throw new BadRequestException(
+        `${requiredPermission.scopeType} scope id is required for permission check`,
+      );
+    }
+
+    return this.rbacService.hasPermission({
+      userId,
+      scopeType: requiredPermission.scopeType,
+      scopeId,
+      action: requiredPermission.action,
+      resource: requiredPermission.resource,
+    });
+  }
+
+  private async resolveScopeId(
+    required: ScopeOptions,
+    req: RequestWithParamsAndBody,
+  ): Promise<string | null> {
+    if (required.scopeIdParam) {
+      return req.params?.[required.scopeIdParam] ?? null;
+    }
+
+    if (required.scopeIdBodyField) {
+      const value = req.body?.[required.scopeIdBodyField];
       return typeof value === 'string' ? value : null;
+    }
+
+    if (required.scopeResourceType && required.scopeResourceIdParam) {
+      const resourceId = req.params?.[required.scopeResourceIdParam];
+      if (!resourceId) {
+        return null;
+      }
+
+      const scopeId: string =
+        await this.workspaceAccessService.resolveScopeIdByResource(
+        required.scopeType,
+        required.scopeResourceType,
+        resourceId,
+        );
+
+      return scopeId;
     }
 
     return null;

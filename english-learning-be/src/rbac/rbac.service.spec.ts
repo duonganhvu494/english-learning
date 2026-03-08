@@ -1,11 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ClassEntity } from 'src/classes/entities/class.entity';
 import { RbacService } from './rbac.service';
 import { Role } from './entities/role.entity';
 import { Permission } from './entities/permission.entity';
 import { RolePermission } from './entities/role-permission.entity';
 import { WorkspaceMember } from 'src/workspaces/entities/workspace-member.entity';
 import { User } from 'src/users/entities/user.entity';
+import { WorkspaceAccessService } from './workspace-access.service';
+import { ClassStudent } from 'src/classes/entities/class-student.entity';
 
 describe('RbacService', () => {
   let service: RbacService;
@@ -31,7 +34,19 @@ describe('RbacService', () => {
           useValue: {},
         },
         {
+          provide: getRepositoryToken(ClassStudent),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(ClassEntity),
+          useValue: {},
+        },
+        {
           provide: getRepositoryToken(User),
+          useValue: {},
+        },
+        {
+          provide: WorkspaceAccessService,
           useValue: {},
         },
       ],

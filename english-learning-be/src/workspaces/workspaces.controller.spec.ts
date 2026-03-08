@@ -4,6 +4,7 @@ import { WorkspacesController } from './workspaces.controller';
 import { WorkspacesService } from './workspaces.service';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
 import { RbacService } from 'src/rbac/rbac.service';
+import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
 
 describe('WorkspacesController', () => {
   let controller: WorkspacesController;
@@ -26,6 +27,10 @@ describe('WorkspacesController', () => {
         },
         {
           provide: Reflector,
+          useValue: {},
+        },
+        {
+          provide: WorkspaceAccessService,
           useValue: {},
         },
       ],

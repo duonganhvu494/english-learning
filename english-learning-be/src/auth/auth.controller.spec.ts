@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
@@ -17,10 +16,6 @@ describe('AuthController', () => {
         },
         {
           provide: ConfigService,
-          useValue: {},
-        },
-        {
-          provide: JwtService,
           useValue: {},
         },
       ],

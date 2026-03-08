@@ -6,12 +6,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-// import { JwtStrategy } from './strategies/jwt.strategy';
-// import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
+import { AuthSessionsModule } from 'src/auth-sessions/auth-sessions.module';
 
 @Module({
   imports: [
     UsersModule,
+    AuthSessionsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -2,20 +2,19 @@ import { Controller, Post, Body, Res, UseGuards, Req, Get } from '@nestjs/common
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { ApiResponse } from 'src/common/dto/api-response.dto';
-import type { CookieOptions, Response } from 'express';
-import type { StringValue } from 'ms';
+import type { CookieOptions, Request, Response } from 'express';
 import type { AuthRequest } from './interfaces/auth-request.interface';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { parseDurationToMs } from 'src/common/utils/duration.util';
+import type { RequestWithCookies } from './interfaces/request-cookie.interface';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
-    private jwtService: JwtService,
   ) {}
 
   private get cookieSecure(): boolean {
@@ -42,20 +41,39 @@ export class AuthController {
     };
   }
 
-  private setCookie(res: Response, name: string, value: string, minute = 60) {
+  private get accessTokenMaxAgeMs(): number {
+    return parseDurationToMs(
+      this.config.get<string>('jwt.expiresIn', '15m'),
+      15 * 60 * 1000,
+    );
+  }
+
+  private get refreshTokenMaxAgeMs(): number {
+    return parseDurationToMs(
+      this.config.get<string>('jwt.refreshExpiresIn', '7d'),
+      7 * 24 * 60 * 60 * 1000,
+    );
+  }
+
+  private setCookie(res: Response, name: string, value: string, maxAgeMs: number) {
     res.cookie(name, value, {
       ...this.baseCookieOptions,
-      maxAge: minute * 60 * 1000,
+      maxAge: maxAgeMs,
     });
   }
 
   private setAuthCookies(
     res: Response,
     accessToken: string,
-    refreshToken: string
+    refreshToken: string,
   ) {
-    this.setCookie(res, 'accessToken', accessToken, 60);
-    this.setCookie(res, 'refreshToken', refreshToken, 7 * 24 * 60);
+    this.setCookie(res, 'accessToken', accessToken, this.accessTokenMaxAgeMs);
+    this.setCookie(
+      res,
+      'refreshToken',
+      refreshToken,
+      this.refreshTokenMaxAgeMs,
+    );
   }
 
   private clearAuthCookies(res: Response) {
@@ -64,8 +82,16 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() body: LoginDto, @Res({ passthrough : true}) res: Response) {
-    const { accessToken, refreshToken, user } = await this.authService.signIn(body.userName, body.password);
+  async login(
+    @Body() body: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough : true}) res: Response,
+  ) {
+    const { accessToken, refreshToken, user } = await this.authService.signIn(
+      body.userName,
+      body.password,
+      req.ip,
+    );
     this.setAuthCookies(res, accessToken, refreshToken);
     return ApiResponse.success(user, 'Login successful');
   }
@@ -74,19 +100,25 @@ export class AuthController {
   @UseGuards(JwtRefreshGuard)
   async refresh_token(
     @Req() req: AuthRequest,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
   ) {
-    const payload = req.user;
-    const accessToken = await this.jwtService.signAsync(payload, {
-      secret: this.config.get<string>('jwt.secret', 'localhost'),
-      expiresIn: this.config.get<string>('jwt.expiresIn', '15m') as StringValue,
-    });
-    this.setCookie(res, 'accessToken', accessToken, 60);
-    return ApiResponse.success(null, 'Access token refreshed');
+    const { accessToken, refreshToken } = await this.authService.refreshSession(
+      req.user,
+    );
+
+    this.setAuthCookies(res, accessToken, refreshToken);
+    return ApiResponse.success(null, 'Session refreshed');
   }
 
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(
+    @Req() req: RequestWithCookies,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.logout(
+      req.cookies?.accessToken,
+      req.cookies?.refreshToken,
+    );
     this.clearAuthCookies(res);
     return ApiResponse.success(null, 'Logged out');
   }

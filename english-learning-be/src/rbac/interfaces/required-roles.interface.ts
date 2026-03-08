@@ -1,5 +1,5 @@
-export interface RequiredRoles {
+import { ScopeOptions } from './scope-options.interface';
+
+export interface RequiredRoles extends ScopeOptions {
   roleNames: string[];
-  workspaceIdParam?: string;
-  workspaceIdBodyField?: string;
 }

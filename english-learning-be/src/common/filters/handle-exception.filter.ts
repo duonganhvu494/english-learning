@@ -4,41 +4,66 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { ApiResponse } from '../dto/api-response.dto';
 import { Request, Response } from 'express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
-    console.error(`[${request.method}] ${request.url}`);
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal server error';
+    const status = this.getStatus(exception);
+    const message = this.getMessage(exception);
+    const requestLabel = `[${request.method}] ${request.url}`;
 
+    if (status >= 500) {
+      this.logger.error(
+        `${requestLabel} ${status} - ${message}`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+    } else {
+      this.logger.warn(`${requestLabel} ${status} - ${message}`);
+    }
+
+    response.status(status).json(new ApiResponse<null>(status, message, null));
+  }
+
+  private getStatus(exception: unknown): number {
     if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const res = exception.getResponse();
-      if (typeof res === 'string') {
-        message = res;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      } else if (typeof res === 'object' && (res as any).message) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        message = (res as any).message;
+      return exception.getStatus();
+    }
+
+    return HttpStatus.INTERNAL_SERVER_ERROR;
+  }
+
+  private getMessage(exception: unknown): string {
+    if (!(exception instanceof HttpException)) {
+      return 'Internal server error';
+    }
+
+    const response = exception.getResponse();
+    if (typeof response === 'string') {
+      return response;
+    }
+
+    if (typeof response === 'object' && response !== null) {
+      const message = (response as { message?: unknown }).message;
+
+      if (typeof message === 'string') {
+        return message;
+      }
+
+      if (Array.isArray(message)) {
+        return message.join(', ');
       }
     }
 
-    console.error('Exception caught by AllExceptionsFilter:');
-    console.error({
-      status,
-      message,
-      error: exception instanceof Error ? exception.stack : exception,
-    });
-    console.error('detail error:', exception);
-
-    response.status(status).json(new ApiResponse<null>(status, message, null));
+    return exception.message || 'Internal server error';
   }
 }

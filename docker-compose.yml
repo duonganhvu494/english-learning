@@ -9,16 +9,27 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+
   # backend:
-  #   build: .
-  #   env_file: .env
+  #   build: ./english-learning-be
+  #   env_file:
+  #     - ./english-learning-be/.env
   #   ports:
-  #     - "4000:4000"
+  #     - "3000:3000"
   #   depends_on:
   #     - postgres
+  #     - redis
   #   volumes:
-  #     - .:/usr/src/app
+  #     - ./english-learning-be:/usr/src/app
   #   command: npm run start:dev
 
 volumes:
   postgres_data:
+  redis_data:
