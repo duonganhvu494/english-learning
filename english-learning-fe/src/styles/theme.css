@@ -1,0 +1,33 @@
+@theme {
+  --color-brand: var(--color-primary);
+  --color-brand-hover: var(--color-primary-hover);
+  --color-ui-secondary: var(--color-secondary);
+  --color-ui-accent: var(--color-accent);
+
+  --color-app-bg: var(--color-bg);
+  --color-app-surface: var(--color-surface);
+  --color-app-surface-2: var(--color-surface-2);
+  --color-app-border: var(--color-border);
+  --color-app-border-strong: var(--color-border-strong);
+
+  --color-app-text: var(--color-text);
+  --color-app-text-muted: var(--color-text-muted);
+  --color-app-text-soft: var(--color-text-soft);
+
+  --color-state-success: var(--color-success);
+  --color-state-warning: var(--color-warning);
+  --color-state-error: var(--color-error);
+  --color-state-info: var(--color-info);
+
+  --radius-card: var(--radius-lg);
+  --radius-button: var(--radius-md);
+  --radius-input: var(--radius-md);
+
+  --text-xs: var(--font-size-xs);
+  --text-sm: var(--font-size-sm);
+  --text-base: var(--font-size-md);
+  --text-lg: var(--font-size-lg);
+  --text-xl: var(--font-size-xl);
+  --text-2xl: var(--font-size-2xl);
+  --text-3xl: var(--font-size-3xl);
+}

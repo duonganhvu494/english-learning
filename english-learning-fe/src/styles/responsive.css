@@ -1,0 +1,65 @@
+@media (min-width: 640px) {
+  .grid-auto-fit-sm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .container-app {
+    padding-inline: var(--content-gutter-tablet);
+  }
+
+  .section-app {
+    padding-block: var(--section-py-tablet);
+  }
+
+  .stack-app {
+    gap: var(--space-6);
+  }
+
+  .hide-mobile {
+    display: initial;
+  }
+
+  .tablet-2col {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+
+  .tablet-3col {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+}
+
+@media (min-width: 1024px) {
+  .desktop-2col {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-8);
+  }
+
+  .desktop-3col {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-8);
+  }
+
+  .desktop-4col {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-8);
+  }
+}
+
+@media (min-width: 1280px) {
+  .container-app {
+    padding-inline: var(--content-gutter-desktop);
+  }
+
+  .section-app {
+    padding-block: var(--section-py-desktop);
+  }
+}
