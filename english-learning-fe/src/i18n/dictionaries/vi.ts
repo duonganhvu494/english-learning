@@ -104,6 +104,30 @@ export const VI_DICTIONARY: Dictionary = {
       },
     },
   },
+  signUp: {
+    brandBadge: "Học trực tuyến - Bước khởi đầu",
+    welcomeTitle: "Đăng ký để bắt đầu hành trình học tiếng Nhật của bạn.",
+    welcomeDescription:
+      "Tạo tài khoản để truy cập khoá học, tiến độ và quản lý hồ sơ cá nhân dễ dàng.",
+    formTitle: "Đăng ký",
+    formDescription:
+      "Điền tên, email và mật khẩu để tạo tài khoản mới và bắt đầu học ngay.",
+    fullNameLabel: "Họ và tên",
+    fullNamePlaceholder: "Nhập họ và tên của bạn",
+    emailLabel: "Email",
+    emailPlaceholder: "Nhập email của bạn",
+    passwordLabel: "Mật khẩu",
+    passwordPlaceholder: "Nhập mật khẩu",
+    confirmPasswordLabel: "Xác nhận mật khẩu",
+    confirmPasswordPlaceholder: "Nhập lại mật khẩu",
+    alreadyAccount: "Đã có tài khoản?",
+    signInNow: "Đăng nhập ngay",
+    submit: "Đăng ký",
+    submitLoading: "Đang xử lý...",
+    defaultSuccessMessage: "Đăng ký thành công!",
+    defaultErrorMessage: "Có lỗi xảy ra. Vui lòng thử lại.",
+    passwordMismatch: "Mật khẩu và xác nhận mật khẩu không khớp.",
+  },
   options: {
     locales: {
       vi: "Tiếng Việt",

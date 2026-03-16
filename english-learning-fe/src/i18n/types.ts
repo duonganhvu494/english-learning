@@ -39,6 +39,28 @@ export type Dictionary = {
       passwordInvalid: string;
     };
   };
+  signUp: {
+    brandBadge: string;
+    welcomeTitle: string;
+    welcomeDescription: string;
+    formTitle: string;
+    formDescription: string;
+    fullNameLabel: string;
+    fullNamePlaceholder: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    passwordLabel: string;
+    passwordPlaceholder: string;
+    confirmPasswordLabel: string;
+    confirmPasswordPlaceholder: string;
+    alreadyAccount: string;
+    signInNow: string;
+    submit: string;
+    submitLoading: string;
+    defaultSuccessMessage: string;
+    defaultErrorMessage: string;
+    passwordMismatch: string;
+  };
   myCourse: {
     topbar: {
       collapseAllCourses: string;

@@ -104,9 +104,33 @@ export const EN_DICTIONARY: Dictionary = {
       },
     },
   },
+  signUp: {
+    brandBadge: "Online learning - Your first step",
+    welcomeTitle: "Sign up to start your Japanese learning journey.",
+    welcomeDescription:
+      "Create an account to access courses, track progress, and manage your profile.",
+    formTitle: "Sign up",
+    formDescription:
+      "Enter your name, email, and password to create a new account and start learning.",
+    fullNameLabel: "Full name",
+    fullNamePlaceholder: "Enter your full name",
+    emailLabel: "Email",
+    emailPlaceholder: "Enter your email",
+    passwordLabel: "Password",
+    passwordPlaceholder: "Enter your password",
+    confirmPasswordLabel: "Confirm password",
+    confirmPasswordPlaceholder: "Re-enter your password",
+    alreadyAccount: "Already have an account?",
+    signInNow: "Sign in now",
+    submit: "Sign up",
+    submitLoading: "Processing...",
+    defaultSuccessMessage: "Sign-up successful!",
+    defaultErrorMessage: "Something went wrong. Please try again.",
+    passwordMismatch: "Password and confirm password do not match.",
+  },
   options: {
     locales: {
-      vi: "Vietnamese",
+      vi: "Tiếng Việt",
       en: "English",
     },
     themes: {
