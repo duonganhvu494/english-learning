@@ -43,7 +43,11 @@ interface RoleCheckInput {
 @Injectable()
 export class RbacService implements OnModuleInit {
   private readonly defaultClassStudentRoleName = 'student';
-  private readonly defaultClassStudentPermissionKeys = ['read:session'];
+  private readonly defaultClassStudentPermissionKeys = [
+    'read:session',
+    'read:lecture',
+    'read:assignment',
+  ];
   private readonly workspaceManagementPermissions = [
     'read:workspace',
     'create:session',

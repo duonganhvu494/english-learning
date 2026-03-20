@@ -19,6 +19,7 @@ import { RequiredRoles } from '../interfaces/required-roles.interface';
 import { ScopeOptions } from '../interfaces/scope-options.interface';
 import { WorkspaceAccessService } from '../workspace-access.service';
 import { AccessRequirement } from '../interfaces/access-requirement.interface';
+import { errorPayload } from 'src/common/utils/error-payload.util';
 
 type RequestWithParamsAndBody = AuthRequest & {
   params: Record<string, string | undefined>;
@@ -58,7 +59,9 @@ export class RbacPermissionGuard implements CanActivate {
       .getRequest<RequestWithParamsAndBody>();
     const userId = req.user?.userId;
     if (!userId) {
-      throw new UnauthorizedException('Unauthorized');
+      throw new UnauthorizedException(
+        errorPayload('Unauthorized', 'AUTH_UNAUTHORIZED'),
+      );
     }
 
     if (requiredAnyAccess?.length) {
@@ -69,7 +72,10 @@ export class RbacPermissionGuard implements CanActivate {
       );
       if (!hasAnyAccess) {
         throw new ForbiddenException(
-          'Access denied: requires one of the configured RBAC rules',
+          errorPayload(
+            'Access denied: requires one of the configured RBAC rules',
+            'RBAC_ACCESS_DENIED',
+          ),
         );
       }
     }
@@ -78,7 +84,10 @@ export class RbacPermissionGuard implements CanActivate {
       const hasRole = await this.hasRoleRequirement(requiredRoles, req, userId);
       if (!hasRole) {
         throw new ForbiddenException(
-          `Role denied: requires one of [${requiredRoles.roleNames.join(', ')}]`,
+          errorPayload(
+            `Role denied: requires one of [${requiredRoles.roleNames.join(', ')}]`,
+            'RBAC_ROLE_DENIED',
+          ),
         );
       }
     }
@@ -92,7 +101,10 @@ export class RbacPermissionGuard implements CanActivate {
 
       if (!hasPermission) {
         throw new ForbiddenException(
-          `Permission denied: ${requiredPermission.action}:${requiredPermission.resource}`,
+          errorPayload(
+            `Permission denied: ${requiredPermission.action}:${requiredPermission.resource}`,
+            'RBAC_PERMISSION_DENIED',
+          ),
         );
       }
     }
@@ -135,7 +147,10 @@ export class RbacPermissionGuard implements CanActivate {
     const scopeId = await this.resolveScopeId(requiredRoles, req);
     if (!scopeId) {
       throw new BadRequestException(
-        `${requiredRoles.scopeType} scope id is required for role check`,
+        errorPayload(
+          `${requiredRoles.scopeType} scope id is required for role check`,
+          'RBAC_SCOPE_ID_REQUIRED_FOR_ROLE_CHECK',
+        ),
       );
     }
 
@@ -155,7 +170,10 @@ export class RbacPermissionGuard implements CanActivate {
     const scopeId = await this.resolveScopeId(requiredPermission, req);
     if (!scopeId) {
       throw new BadRequestException(
-        `${requiredPermission.scopeType} scope id is required for permission check`,
+        errorPayload(
+          `${requiredPermission.scopeType} scope id is required for permission check`,
+          'RBAC_SCOPE_ID_REQUIRED_FOR_PERMISSION_CHECK',
+        ),
       );
     }
 

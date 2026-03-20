@@ -7,17 +7,24 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AccountType } from 'src/users/entities/user.entity';
 import { ClassEntity } from 'src/classes/entities/class.entity';
+import { AssignmentEntity } from 'src/assignments/entities/assignment.entity';
+import { LectureEntity } from 'src/lectures/entities/lecture.entity';
+import { Material } from 'src/materials/entities/material.entity';
 import { SessionEntity } from 'src/sessions/entities/session.entity';
 import { Workspace } from 'src/workspaces/entities/workspace.entity';
 import {
   RbacScopeType,
   ScopeResourceType,
 } from './interfaces/scope-options.interface';
+import { errorPayload } from 'src/common/utils/error-payload.util';
 
 interface TeacherWorkspaceOwnerAssertionOptions {
   notFoundMessage?: string;
+  notFoundCode?: string;
   ownerForbiddenMessage?: string;
+  ownerForbiddenCode?: string;
   teacherForbiddenMessage?: string;
+  teacherForbiddenCode?: string;
 }
 
 @Injectable()
@@ -31,6 +38,15 @@ export class WorkspaceAccessService {
 
     @InjectRepository(SessionEntity)
     private readonly sessionRepo: Repository<SessionEntity>,
+
+    @InjectRepository(LectureEntity)
+    private readonly lectureRepo: Repository<LectureEntity>,
+
+    @InjectRepository(AssignmentEntity)
+    private readonly assignmentRepo: Repository<AssignmentEntity>,
+
+    @InjectRepository(Material)
+    private readonly materialRepo: Repository<Material>,
   ) {}
 
   async assertTeacherWorkspaceOwner(
@@ -46,7 +62,10 @@ export class WorkspaceAccessService {
     });
     if (!workspace) {
       throw new BadRequestException(
-        options?.notFoundMessage ?? 'Workspace not found',
+        errorPayload(
+          options?.notFoundMessage ?? 'Workspace not found',
+          options?.notFoundCode ?? 'WORKSPACE_NOT_FOUND',
+        ),
       );
     }
 
@@ -68,7 +87,12 @@ export class WorkspaceAccessService {
       },
     });
     if (!classEntity) {
-      throw new BadRequestException(options?.notFoundMessage ?? 'Class not found');
+      throw new BadRequestException(
+        errorPayload(
+          options?.notFoundMessage ?? 'Class not found',
+          options?.notFoundCode ?? 'CLASS_NOT_FOUND',
+        ),
+      );
     }
 
     this.ensureTeacherWorkspaceOwner(
@@ -96,7 +120,10 @@ export class WorkspaceAccessService {
     });
     if (!session) {
       throw new BadRequestException(
-        options?.notFoundMessage ?? 'Session not found',
+        errorPayload(
+          options?.notFoundMessage ?? 'Session not found',
+          options?.notFoundCode ?? 'SESSION_NOT_FOUND',
+        ),
       );
     }
 
@@ -122,7 +149,9 @@ export class WorkspaceAccessService {
           },
         });
         if (!classEntity?.workspace?.id) {
-          throw new BadRequestException('Class not found');
+          throw new BadRequestException(
+            errorPayload('Class not found', 'CLASS_NOT_FOUND'),
+          );
         }
 
         if (scopeType === 'workspace') {
@@ -145,7 +174,9 @@ export class WorkspaceAccessService {
           },
         });
         if (!session?.classEntity?.id || !session.classEntity.workspace?.id) {
-          throw new BadRequestException('Session not found');
+          throw new BadRequestException(
+            errorPayload('Session not found', 'SESSION_NOT_FOUND'),
+          );
         }
 
         if (scopeType === 'workspace') {
@@ -154,6 +185,90 @@ export class WorkspaceAccessService {
 
         if (scopeType === 'class') {
           return session.classEntity.id;
+        }
+
+        return this.throwUnsupportedScopeType(scopeType);
+      }
+      case 'lecture': {
+        const lecture = await this.lectureRepo.findOne({
+          where: { id: resourceId },
+          relations: {
+            session: {
+              classEntity: {
+                workspace: true,
+              },
+            },
+          },
+        });
+        if (
+          !lecture?.session?.classEntity?.id ||
+          !lecture.session.classEntity.workspace?.id
+        ) {
+          throw new BadRequestException(
+            errorPayload('Lecture not found', 'LECTURE_NOT_FOUND'),
+          );
+        }
+
+        if (scopeType === 'workspace') {
+          return lecture.session.classEntity.workspace.id;
+        }
+
+        if (scopeType === 'class') {
+          return lecture.session.classEntity.id;
+        }
+
+        return this.throwUnsupportedScopeType(scopeType);
+      }
+      case 'material': {
+        const material = await this.materialRepo.findOne({
+          where: { id: resourceId },
+          relations: {
+            workspace: true,
+          },
+        });
+        if (!material?.workspace?.id) {
+          throw new BadRequestException(
+            errorPayload('Material not found', 'MATERIAL_NOT_FOUND'),
+          );
+        }
+
+        if (scopeType === 'workspace') {
+          return material.workspace.id;
+        }
+
+        throw new BadRequestException(
+          errorPayload(
+            `RBAC scope ${scopeType} is not supported for material resource`,
+            'RBAC_SCOPE_TYPE_UNSUPPORTED_FOR_MATERIAL',
+          ),
+        );
+      }
+      case 'assignment': {
+        const assignment = await this.assignmentRepo.findOne({
+          where: { id: resourceId },
+          relations: {
+            session: {
+              classEntity: {
+                workspace: true,
+              },
+            },
+          },
+        });
+        if (
+          !assignment?.session?.classEntity?.id ||
+          !assignment.session.classEntity.workspace?.id
+        ) {
+          throw new BadRequestException(
+            errorPayload('Assignment not found', 'ASSIGNMENT_NOT_FOUND'),
+          );
+        }
+
+        if (scopeType === 'workspace') {
+          return assignment.session.classEntity.workspace.id;
+        }
+
+        if (scopeType === 'class') {
+          return assignment.session.classEntity.id;
         }
 
         return this.throwUnsupportedScopeType(scopeType);
@@ -170,28 +285,42 @@ export class WorkspaceAccessService {
   ) {
     if (workspace.owner.id !== actorUserId) {
       throw new ForbiddenException(
-        options?.ownerForbiddenMessage ??
-          'Only workspace owner can access this resource',
+        errorPayload(
+          options?.ownerForbiddenMessage ??
+            'Only workspace owner can access this resource',
+          options?.ownerForbiddenCode ?? 'WORKSPACE_OWNER_REQUIRED',
+        ),
       );
     }
 
     if (workspace.owner.accountType !== AccountType.TEACHER) {
       throw new ForbiddenException(
-        options?.teacherForbiddenMessage ??
-          'Only teacher workspace owner can access this resource',
+        errorPayload(
+          options?.teacherForbiddenMessage ??
+            'Only teacher workspace owner can access this resource',
+          options?.teacherForbiddenCode ?? 'WORKSPACE_TEACHER_OWNER_REQUIRED',
+        ),
       );
     }
   }
 
   private throwUnsupportedScopeType(scopeType: never): never {
-    throw new BadRequestException(`Unsupported RBAC scope type: ${String(scopeType)}`);
+    throw new BadRequestException(
+      errorPayload(
+        `Unsupported RBAC scope type: ${String(scopeType)}`,
+        'RBAC_SCOPE_TYPE_UNSUPPORTED',
+      ),
+    );
   }
 
   private throwUnsupportedScopeResource(
     resourceType: never,
   ): never {
     throw new BadRequestException(
-      `Unsupported RBAC scope resource: ${String(resourceType)}`,
+      errorPayload(
+        `Unsupported RBAC scope resource: ${String(resourceType)}`,
+        'RBAC_SCOPE_RESOURCE_UNSUPPORTED',
+      ),
     );
   }
 }

@@ -8,6 +8,8 @@ import {
 } from 'typeorm';
 import { ClassEntity } from 'src/classes/entities/class.entity';
 import { AttendanceEntity } from 'src/attendances/entities/attendance.entity';
+import { AssignmentEntity } from 'src/assignments/entities/assignment.entity';
+import { LectureEntity } from 'src/lectures/entities/lecture.entity';
 
 @Entity('sessions')
 export class SessionEntity {
@@ -29,4 +31,13 @@ export class SessionEntity {
 
   @OneToMany(() => AttendanceEntity, (attendance) => attendance.session)
   attendances: AttendanceEntity[];
+
+  @OneToMany(() => LectureEntity, (lecture: LectureEntity) => lecture.session)
+  lectures: LectureEntity[];
+
+  @OneToMany(
+    () => AssignmentEntity,
+    (assignment: AssignmentEntity) => assignment.session,
+  )
+  assignments: AssignmentEntity[];
 }

@@ -7,6 +7,7 @@ import { SessionDeleteResponseDto } from './dto/session-delete-response.dto';
 import { SessionResponseDto } from './dto/session-response.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { SessionEntity } from './entities/session.entity';
+import { errorPayload } from 'src/common/utils/error-payload.util';
 
 @Injectable()
 export class SessionsService {
@@ -29,7 +30,9 @@ export class SessionsService {
       },
     });
     if (!classEntity) {
-      throw new BadRequestException('Class not found');
+      throw new BadRequestException(
+        errorPayload('Class not found', 'SESSION_CLASS_NOT_FOUND'),
+      );
     }
 
     const { timeStart, timeEnd } = this.parseSessionWindow(
@@ -38,7 +41,9 @@ export class SessionsService {
     );
     const normalizedTopic = dto.topic.trim();
     if (!normalizedTopic) {
-      throw new BadRequestException('topic can not be empty');
+      throw new BadRequestException(
+        errorPayload('topic can not be empty', 'SESSION_TOPIC_REQUIRED'),
+      );
     }
 
     const session = this.sessionRepo.create({
@@ -57,7 +62,9 @@ export class SessionsService {
       where: { id: classId },
     });
     if (!classEntity) {
-      throw new BadRequestException('Class not found');
+      throw new BadRequestException(
+        errorPayload('Class not found', 'SESSION_CLASS_NOT_FOUND'),
+      );
     }
 
     const sessions = await this.sessionRepo.find({
@@ -87,7 +94,9 @@ export class SessionsService {
       },
     });
     if (!session) {
-      throw new BadRequestException('Session not found');
+      throw new BadRequestException(
+        errorPayload('Session not found', 'SESSION_NOT_FOUND'),
+      );
     }
 
     return SessionResponseDto.fromEntity(session);
@@ -106,7 +115,9 @@ export class SessionsService {
       },
     });
     if (!session) {
-      throw new BadRequestException('Session not found');
+      throw new BadRequestException(
+        errorPayload('Session not found', 'SESSION_NOT_FOUND'),
+      );
     }
 
     const nextTimeStart = dto.timeStart ?? session.timeStart.toISOString();
@@ -122,7 +133,9 @@ export class SessionsService {
     if (dto.topic !== undefined) {
       const normalizedTopic = dto.topic.trim();
       if (!normalizedTopic) {
-        throw new BadRequestException('topic can not be empty');
+        throw new BadRequestException(
+          errorPayload('topic can not be empty', 'SESSION_TOPIC_REQUIRED'),
+        );
       }
 
       session.topic = normalizedTopic;
@@ -140,7 +153,9 @@ export class SessionsService {
       },
     });
     if (!session) {
-      throw new BadRequestException('Session not found');
+      throw new BadRequestException(
+        errorPayload('Session not found', 'SESSION_NOT_FOUND'),
+      );
     }
 
     await this.sessionRepo.delete(sessionId);
@@ -155,11 +170,18 @@ export class SessionsService {
     const timeEnd = new Date(timeEndInput);
 
     if (Number.isNaN(timeStart.getTime()) || Number.isNaN(timeEnd.getTime())) {
-      throw new BadRequestException('Session time is invalid');
+      throw new BadRequestException(
+        errorPayload('Session time is invalid', 'SESSION_TIME_INVALID'),
+      );
     }
 
     if (timeEnd <= timeStart) {
-      throw new BadRequestException('timeEnd must be greater than timeStart');
+      throw new BadRequestException(
+        errorPayload(
+          'timeEnd must be greater than timeStart',
+          'SESSION_TIME_END_BEFORE_START',
+        ),
+      );
     }
 
     return { timeStart, timeEnd };

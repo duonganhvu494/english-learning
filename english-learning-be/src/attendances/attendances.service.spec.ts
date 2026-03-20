@@ -185,4 +185,26 @@ describe('AttendancesService', () => {
 
     jest.useRealTimers();
   });
+
+  it('returns my attendance status and allows null when not checked in yet', async () => {
+    sessionRepo.findOne.mockResolvedValue({
+      id: 'session-1',
+      classEntity: { id: 'class-1' },
+    });
+    classStudentRepo.findOne.mockResolvedValue({
+      student: {
+        id: 'student-1',
+        accountType: AccountType.STUDENT,
+      },
+    });
+    attendanceRepo.findOne.mockResolvedValue(null);
+
+    const result = await service.getMyAttendance('session-1', 'student-1');
+
+    expect(result).toEqual({
+      sessionId: 'session-1',
+      studentId: 'student-1',
+      status: null,
+    });
+  });
 });

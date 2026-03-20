@@ -24,6 +24,7 @@ import { UpdateClassDto } from './dto/update-class.dto';
 import { ClassEntity } from './entities/class.entity';
 import { ClassStudent } from './entities/class-student.entity';
 import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
+import { errorPayload } from 'src/common/utils/error-payload.util';
 
 @Injectable()
 export class ClassesService {
@@ -53,10 +54,13 @@ export class ClassesService {
       workspaceId,
       actorUserId,
       {
+        notFoundCode: 'WORKSPACE_NOT_FOUND',
         ownerForbiddenMessage:
           'Only workspace owner can manage workspace classes',
+        ownerForbiddenCode: 'CLASS_MANAGEMENT_OWNER_REQUIRED',
         teacherForbiddenMessage:
           'Only teacher workspace owner can manage workspace classes',
+        teacherForbiddenCode: 'CLASS_MANAGEMENT_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -72,7 +76,10 @@ export class ClassesService {
     });
     if (existedClass) {
       throw new BadRequestException(
-        'You already have a class with this name in this workspace',
+        errorPayload(
+          'You already have a class with this name in this workspace',
+          'CLASS_NAME_ALREADY_EXISTS',
+        ),
       );
     }
 
@@ -95,10 +102,13 @@ export class ClassesService {
       workspaceId,
       actorUserId,
       {
+        notFoundCode: 'WORKSPACE_NOT_FOUND',
         ownerForbiddenMessage:
           'Only workspace owner can manage workspace classes',
+        ownerForbiddenCode: 'CLASS_MANAGEMENT_OWNER_REQUIRED',
         teacherForbiddenMessage:
           'Only teacher workspace owner can manage workspace classes',
+        teacherForbiddenCode: 'CLASS_MANAGEMENT_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -121,9 +131,12 @@ export class ClassesService {
       classId,
       actorUserId,
       {
+        notFoundCode: 'CLASS_NOT_FOUND',
         ownerForbiddenMessage: 'Only workspace owner can access class detail',
+        ownerForbiddenCode: 'CLASS_DETAIL_OWNER_REQUIRED',
         teacherForbiddenMessage:
           'Only teacher workspace owner can access class detail',
+        teacherForbiddenCode: 'CLASS_DETAIL_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -134,7 +147,9 @@ export class ClassesService {
       .loadRelationCountAndMap('class.studentCount', 'class.classStudents')
       .getOne();
     if (!classEntity) {
-      throw new BadRequestException('Class not found');
+      throw new BadRequestException(
+        errorPayload('Class not found', 'CLASS_NOT_FOUND'),
+      );
     }
 
     return ClassResponseDto.fromEntity(classEntity);
@@ -148,9 +163,12 @@ export class ClassesService {
       classId,
       actorUserId,
       {
+        notFoundCode: 'CLASS_NOT_FOUND',
         ownerForbiddenMessage: 'Only workspace owner can access class students',
+        ownerForbiddenCode: 'CLASS_STUDENT_ACCESS_OWNER_REQUIRED',
         teacherForbiddenMessage:
           'Only teacher workspace owner can access class students',
+        teacherForbiddenCode: 'CLASS_STUDENT_ACCESS_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -186,9 +204,12 @@ export class ClassesService {
       classId,
       actorUserId,
       {
+        notFoundCode: 'CLASS_NOT_FOUND',
         ownerForbiddenMessage: 'Only workspace owner can manage workspace classes',
+        ownerForbiddenCode: 'CLASS_MANAGEMENT_OWNER_REQUIRED',
         teacherForbiddenMessage:
           'Only teacher workspace owner can manage workspace classes',
+        teacherForbiddenCode: 'CLASS_MANAGEMENT_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -199,7 +220,9 @@ export class ClassesService {
       },
     });
     if (!classEntity) {
-      throw new BadRequestException('Class not found');
+      throw new BadRequestException(
+        errorPayload('Class not found', 'CLASS_NOT_FOUND'),
+      );
     }
 
     if (dto.className !== undefined) {
@@ -216,7 +239,10 @@ export class ClassesService {
 
       if (existedClass && existedClass.id !== classEntity.id) {
         throw new BadRequestException(
-          'You already have a class with this name in this workspace',
+          errorPayload(
+            'You already have a class with this name in this workspace',
+            'CLASS_NAME_ALREADY_EXISTS',
+          ),
         );
       }
 
@@ -240,9 +266,12 @@ export class ClassesService {
       classId,
       actorUserId,
       {
+        notFoundCode: 'CLASS_NOT_FOUND',
         ownerForbiddenMessage: 'Only workspace owner can manage class students',
+        ownerForbiddenCode: 'CLASS_STUDENT_MANAGEMENT_OWNER_REQUIRED',
         teacherForbiddenMessage:
           'Only teacher workspace owner can manage class students',
+        teacherForbiddenCode: 'CLASS_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
       },
     );
     const normalizedStudentIds = [...new Set(dto.studentIds)];
@@ -314,9 +343,12 @@ export class ClassesService {
       classId,
       actorUserId,
       {
+        notFoundCode: 'CLASS_NOT_FOUND',
         ownerForbiddenMessage: 'Only workspace owner can manage class students',
+        ownerForbiddenCode: 'CLASS_STUDENT_MANAGEMENT_OWNER_REQUIRED',
         teacherForbiddenMessage:
           'Only teacher workspace owner can manage class students',
+        teacherForbiddenCode: 'CLASS_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -330,7 +362,12 @@ export class ClassesService {
       },
     });
     if (!assignment) {
-      throw new BadRequestException('Student is not assigned to class');
+      throw new BadRequestException(
+        errorPayload(
+          'Student is not assigned to class',
+          'CLASS_STUDENT_NOT_ASSIGNED',
+        ),
+      );
     }
 
     await this.classStudentRepo.remove(assignment);
@@ -356,9 +393,12 @@ export class ClassesService {
       classId,
       actorUserId,
       {
+        notFoundCode: 'CLASS_NOT_FOUND',
         ownerForbiddenMessage: 'Only workspace owner can delete class',
+        ownerForbiddenCode: 'CLASS_DELETE_OWNER_REQUIRED',
         teacherForbiddenMessage:
           'Only teacher workspace owner can delete class',
+        teacherForbiddenCode: 'CLASS_DELETE_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -408,9 +448,12 @@ export class ClassesService {
       classId,
       actorUserId,
       {
+        notFoundCode: 'CLASS_NOT_FOUND',
         ownerForbiddenMessage: 'Only workspace owner can manage class roles',
+        ownerForbiddenCode: 'CLASS_ROLE_MANAGEMENT_OWNER_REQUIRED',
         teacherForbiddenMessage:
           'Only teacher workspace owner can manage class roles',
+        teacherForbiddenCode: 'CLASS_ROLE_MANAGEMENT_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -424,7 +467,12 @@ export class ClassesService {
       },
     });
     if (!assignment) {
-      throw new BadRequestException('Student is not assigned to class');
+      throw new BadRequestException(
+        errorPayload(
+          'Student is not assigned to class',
+          'CLASS_STUDENT_NOT_ASSIGNED',
+        ),
+      );
     }
 
     const nextRole = await this.findClassRoleForAssignment(classId, dto.roleId);
@@ -461,7 +509,10 @@ export class ClassesService {
     const missingStudentIds = studentIds.filter((id) => !foundStudentIds.has(id));
     if (missingStudentIds.length > 0) {
       throw new BadRequestException(
-        `Students do not belong to workspace: ${missingStudentIds.join(', ')}`,
+        errorPayload(
+          `Students do not belong to workspace: ${missingStudentIds.join(', ')}`,
+          'CLASS_STUDENTS_OUTSIDE_WORKSPACE',
+        ),
       );
     }
 
@@ -484,7 +535,9 @@ export class ClassesService {
       },
     });
     if (!role) {
-      throw new BadRequestException('Class role not found');
+      throw new BadRequestException(
+        errorPayload('Class role not found', 'CLASS_ROLE_NOT_FOUND'),
+      );
     }
 
     return role;

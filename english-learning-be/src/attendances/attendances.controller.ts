@@ -47,6 +47,19 @@ export class AttendancesController {
     return ApiResponse.success(result, 'Session attendances fetched');
   }
 
+  @Get('sessions/:sessionId/attendances/me')
+  async getMyAttendance(
+    @Param('sessionId') sessionId: string,
+    @Req() req: AuthRequest,
+  ) {
+    const result = await this.attendancesService.getMyAttendance(
+      sessionId,
+      req.user.userId,
+    );
+
+    return ApiResponse.success(result, 'My attendance fetched');
+  }
+
   @Patch('sessions/:sessionId/attendances/:studentId')
   @UseGuards(RbacPermissionGuard)
   @RequireAnyAccess([

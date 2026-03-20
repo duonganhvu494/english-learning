@@ -14,8 +14,10 @@ import {
 } from "./entities/workspace-member.entity";
 import { CreateWorkspaceDto } from "./dto/create-workspace.dto";
 import { CreateStudentDto } from "src/users/dto/create-student.dto";
+import { UpdateWorkspaceStudentDto } from "./dto/update-workspace-student.dto";
 import { User, AccountType } from "src/users/entities/user.entity";
 import { UserProfileResponse } from "src/users/dto/user-profile-response.dto";
+import { WorkspaceDetailResponseDto } from "./dto/workspace-detail-response.dto";
 import { WorkspaceResponseDto } from "./dto/workspace-response.dto";
 import { WorkspaceStudentListItemDto } from "./dto/workspace-student-list-item.dto";
 import { WorkspaceStudentResponseDto } from "./dto/workspace-student-response.dto";
@@ -24,6 +26,7 @@ import { Role } from "src/rbac/entities/role.entity";
 import { WorkspaceAccessService } from "src/rbac/workspace-access.service";
 import { ClassEntity } from "src/classes/entities/class.entity";
 import { ClassStudent } from "src/classes/entities/class-student.entity";
+import { errorPayload } from 'src/common/utils/error-payload.util';
 
 @Injectable()
 export class WorkspacesService {
@@ -39,6 +42,9 @@ export class WorkspacesService {
 
     @InjectRepository(Role)
     private readonly roleRepo: Repository<Role>,
+
+    @InjectRepository(ClassEntity)
+    private readonly classRepo: Repository<ClassEntity>,
 
     private readonly workspaceAccessService: WorkspaceAccessService,
   ) {}
@@ -56,10 +62,19 @@ export class WorkspacesService {
   // ================= CREATE WORKSPACE =================
   async createWorkspace(dto: CreateWorkspaceDto, userId: string) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new BadRequestException("User not found");
+    if (!user) {
+      throw new BadRequestException(
+        errorPayload('User not found', 'WORKSPACE_OWNER_NOT_FOUND'),
+      );
+    }
 
     if (user.accountType !== AccountType.TEACHER) {
-      throw new ForbiddenException("Only teacher account can create workspace");
+      throw new ForbiddenException(
+        errorPayload(
+          'Only teacher account can create workspace',
+          'WORKSPACE_CREATE_TEACHER_ONLY',
+        ),
+      );
     }
 
     const existedWorkspace = await this.workspaceRepo.findOne({
@@ -71,7 +86,10 @@ export class WorkspacesService {
 
     if (existedWorkspace) {
       throw new BadRequestException(
-        "You already have a workspace with this name",
+        errorPayload(
+          'You already have a workspace with this name',
+          'WORKSPACE_NAME_ALREADY_EXISTS',
+        ),
       );
     }
 
@@ -91,7 +109,9 @@ export class WorkspacesService {
       },
     });
     if (!ownerRole) {
-      throw new BadRequestException("Owner role not found");
+      throw new BadRequestException(
+        errorPayload('Owner role not found', 'WORKSPACE_OWNER_ROLE_NOT_FOUND'),
+      );
     }
 
     const member = this.memberRepo.create({
@@ -105,6 +125,70 @@ export class WorkspacesService {
     return WorkspaceResponseDto.fromEntity(savedWorkspace);
   }
 
+  async getWorkspaceDetail(
+    workspaceId: string,
+    actorUserId: string,
+  ): Promise<WorkspaceDetailResponseDto> {
+    const [workspace, viewerMembership, studentCount, classCount] =
+      await Promise.all([
+        this.workspaceRepo.findOne({
+          where: { id: workspaceId },
+          relations: {
+            owner: true,
+          },
+        }),
+        this.memberRepo.findOne({
+          where: {
+            workspace: { id: workspaceId },
+            user: { id: actorUserId },
+            status: WorkspaceMemberStatus.ACTIVE,
+          },
+          relations: {
+            role: true,
+          },
+        }),
+        this.memberRepo
+          .createQueryBuilder('member')
+          .innerJoin('member.user', 'user')
+          .innerJoin('member.workspace', 'workspace')
+          .where('workspace.id = :workspaceId', { workspaceId })
+          .andWhere('member.status = :status', {
+            status: WorkspaceMemberStatus.ACTIVE,
+          })
+          .andWhere('user.accountType = :accountType', {
+            accountType: AccountType.STUDENT,
+          })
+          .getCount(),
+        this.classRepo.count({
+          where: {
+            workspace: { id: workspaceId },
+          },
+        }),
+      ]);
+
+    if (!workspace) {
+      throw new BadRequestException(
+        errorPayload('Workspace not found', 'WORKSPACE_NOT_FOUND'),
+      );
+    }
+
+    if (!viewerMembership) {
+      throw new ForbiddenException(
+        errorPayload(
+          'You are not a member of this workspace',
+          'WORKSPACE_MEMBER_REQUIRED',
+        ),
+      );
+    }
+
+    return WorkspaceDetailResponseDto.fromData({
+      workspace,
+      currentUserRole: viewerMembership.role.name,
+      studentCount,
+      classCount,
+    });
+  }
+
   async createStudentInWorkspace(
     workspaceId: string,
     dto: CreateStudentDto,
@@ -114,10 +198,14 @@ export class WorkspacesService {
       workspaceId,
       actorUserId,
       {
+        notFoundCode: 'WORKSPACE_NOT_FOUND',
         ownerForbiddenMessage:
           "Only workspace owner can manage workspace students",
+        ownerForbiddenCode: 'WORKSPACE_STUDENT_MANAGEMENT_OWNER_REQUIRED',
         teacherForbiddenMessage:
           "Only teacher workspace owner can manage workspace students",
+        teacherForbiddenCode:
+          'WORKSPACE_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -129,7 +217,12 @@ export class WorkspacesService {
       },
     });
     if (!studentRole) {
-      throw new BadRequestException("Student role not found");
+      throw new BadRequestException(
+        errorPayload(
+          'Student role not found',
+          'WORKSPACE_STUDENT_ROLE_NOT_FOUND',
+        ),
+      );
     }
 
     return this.workspaceRepo.manager.transaction(async (manager) => {
@@ -140,7 +233,12 @@ export class WorkspacesService {
         where: [{ email: dto.email }, { userName: dto.userName }],
       });
       if (exist) {
-        throw new BadRequestException("Email or username already exists");
+        throw new BadRequestException(
+          errorPayload(
+            'Email or username already exists',
+            'WORKSPACE_STUDENT_CREDENTIALS_ALREADY_EXIST',
+          ),
+        );
       }
 
       const plainPassword = this.generateRandomPassword();
@@ -182,10 +280,14 @@ export class WorkspacesService {
       workspaceId,
       actorUserId,
       {
+        notFoundCode: 'WORKSPACE_NOT_FOUND',
         ownerForbiddenMessage:
           "Only workspace owner can manage workspace students",
+        ownerForbiddenCode: 'WORKSPACE_STUDENT_MANAGEMENT_OWNER_REQUIRED',
         teacherForbiddenMessage:
           "Only teacher workspace owner can manage workspace students",
+        teacherForbiddenCode:
+          'WORKSPACE_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -207,6 +309,83 @@ export class WorkspacesService {
     return members.map((member) => WorkspaceStudentListItemDto.fromEntity(member));
   }
 
+  async updateWorkspaceStudent(
+    workspaceId: string,
+    studentId: string,
+    dto: UpdateWorkspaceStudentDto,
+    actorUserId: string,
+  ): Promise<WorkspaceStudentListItemDto> {
+    await this.workspaceAccessService.assertTeacherWorkspaceOwner(
+      workspaceId,
+      actorUserId,
+      {
+        notFoundCode: 'WORKSPACE_NOT_FOUND',
+        ownerForbiddenMessage:
+          'Only workspace owner can manage workspace students',
+        ownerForbiddenCode: 'WORKSPACE_STUDENT_MANAGEMENT_OWNER_REQUIRED',
+        teacherForbiddenMessage:
+          'Only teacher workspace owner can manage workspace students',
+        teacherForbiddenCode:
+          'WORKSPACE_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
+      },
+    );
+
+    const member = await this.memberRepo.findOne({
+      where: {
+        workspace: { id: workspaceId },
+        user: { id: studentId, accountType: AccountType.STUDENT },
+        status: WorkspaceMemberStatus.ACTIVE,
+      },
+      relations: {
+        user: true,
+        role: true,
+      },
+    });
+    if (!member) {
+      throw new BadRequestException(
+        errorPayload(
+          'Student is not assigned to workspace',
+          'WORKSPACE_STUDENT_NOT_ASSIGNED',
+        ),
+      );
+    }
+
+    const user = member.user;
+
+    if (dto.email && dto.email !== user.email) {
+      const emailExist = await this.userRepo.findOne({
+        where: { email: dto.email },
+      });
+      if (emailExist) {
+        throw new BadRequestException(
+          errorPayload(
+            'Email already exists',
+            'WORKSPACE_STUDENT_EMAIL_ALREADY_EXISTS',
+          ),
+        );
+      }
+    }
+
+    if (dto.userName && dto.userName !== user.userName) {
+      const userNameExist = await this.userRepo.findOne({
+        where: { userName: dto.userName },
+      });
+      if (userNameExist) {
+        throw new BadRequestException(
+          errorPayload(
+            'Username already exists',
+            'WORKSPACE_STUDENT_USERNAME_ALREADY_EXISTS',
+          ),
+        );
+      }
+    }
+
+    Object.assign(user, dto);
+    member.user = await this.userRepo.save(user);
+
+    return WorkspaceStudentListItemDto.fromEntity(member);
+  }
+
   async removeStudentFromWorkspace(
     workspaceId: string,
     studentId: string,
@@ -216,10 +395,14 @@ export class WorkspacesService {
       workspaceId,
       actorUserId,
       {
+        notFoundCode: 'WORKSPACE_NOT_FOUND',
         ownerForbiddenMessage:
           "Only workspace owner can manage workspace students",
+        ownerForbiddenCode: 'WORKSPACE_STUDENT_MANAGEMENT_OWNER_REQUIRED',
         teacherForbiddenMessage:
           "Only teacher workspace owner can manage workspace students",
+        teacherForbiddenCode:
+          'WORKSPACE_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
       },
     );
 
@@ -233,7 +416,12 @@ export class WorkspacesService {
       },
     });
     if (!member) {
-      throw new BadRequestException('Student is not assigned to workspace');
+      throw new BadRequestException(
+        errorPayload(
+          'Student is not assigned to workspace',
+          'WORKSPACE_STUDENT_NOT_ASSIGNED',
+        ),
+      );
     }
 
     return this.workspaceRepo.manager.transaction(async (manager) => {
