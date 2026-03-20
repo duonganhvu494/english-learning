@@ -37,6 +37,19 @@ function readMessage(payload: unknown, fallback: string) {
   return fallback;
 }
 
+function readCode(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return undefined;
+  }
+
+  const maybeCode = (payload as { code?: unknown }).code;
+  if (typeof maybeCode === "string") {
+    return maybeCode;
+  }
+
+  return undefined;
+}
+
 async function request<T>(path: string, options: RequestOptions = {}) {
   const { body, headers, ...restOptions } = options;
   const response = await fetch(buildUrl(path), {
@@ -53,7 +66,8 @@ async function request<T>(path: string, options: RequestOptions = {}) {
 
   if (!response.ok) {
     const message = readMessage(payload, response.statusText);
-    throw new ApiError(response.status, message);
+    const code = readCode(payload);
+    throw new ApiError(response.status, message, code);
   }
 
   if (!payload) {

@@ -14,8 +14,8 @@ export type Dictionary = {
     brandBadge: string;
     welcomeTitle: string;
     formTitle: string;
-    emailLabel: string;
-    emailPlaceholder: string;
+    userNameLabel: string;
+    userNamePlaceholder: string;
     passwordLabel: string;
     passwordPlaceholder: string;
     rememberMe: string;
@@ -37,6 +37,7 @@ export type Dictionary = {
       passwordIncorrect: string;
       usernameInvalid: string;
       passwordInvalid: string;
+      accountDisabled: string;
     };
   };
   signUp: {
@@ -47,6 +48,8 @@ export type Dictionary = {
     formDescription: string;
     fullNameLabel: string;
     fullNamePlaceholder: string;
+    userNameLabel: string;
+    userNamePlaceholder: string;
     emailLabel: string;
     emailPlaceholder: string;
     passwordLabel: string;
@@ -60,6 +63,14 @@ export type Dictionary = {
     defaultSuccessMessage: string;
     defaultErrorMessage: string;
     passwordMismatch: string;
+    errors: {
+      credentialsAlreadyExist: string;
+      fullNameRequired: string;
+      userNameRequired: string;
+      passwordTooShort: string;
+      passwordRequired: string;
+      emailInvalid: string;
+    };
   };
   myCourse: {
     topbar: {
@@ -96,6 +107,21 @@ export type Dictionary = {
       badges: {
         newLabel: string;
       };
+    };
+    overview: {
+      title: string;
+      description: string;
+      profileTitle: string;
+      profileFullName: string;
+      profileUserName: string;
+      profileEmail: string;
+      statsTitle: string;
+      statsClasses: string;
+      statsStudents: string;
+      statsAssignments: string;
+      statsTests: string;
+      loading: string;
+      loadError: string;
     };
     emptyBanner: {
       title: string;

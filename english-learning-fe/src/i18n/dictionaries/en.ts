@@ -20,9 +20,9 @@ export const EN_DICTIONARY: Dictionary = {
     formBadge: "Welcome back",
     formTitle: "Sign in",
     formDescription:
-      "Enter your email and password to continue learning, track progress, and manage your account.",
-    emailLabel: "Email",
-    emailPlaceholder: "Enter your email",
+      "Enter your username and password to continue learning, track progress, and manage your account.",
+    userNameLabel: "Username",
+    userNamePlaceholder: "Enter your username",
     passwordLabel: "Password",
     passwordPlaceholder: "Enter your password",
     rememberMe: "Remember me",
@@ -41,6 +41,7 @@ export const EN_DICTIONARY: Dictionary = {
       passwordIncorrect: "Password is incorrect.",
       usernameInvalid: "Username is not valid.",
       passwordInvalid: "Password is not valid.",
+      accountDisabled: "Account is disabled.",
     },
   },
   myCourse: {
@@ -53,6 +54,21 @@ export const EN_DICTIONARY: Dictionary = {
     breadcrumb: {
       home: "Home",
       current: "My courses",
+    },
+    overview: {
+      title: "Teaching Overview",
+      description: "Quickly see your profile and classroom performance at a glance.",
+      profileTitle: "Teacher profile",
+      profileFullName: "Full name",
+      profileUserName: "Username",
+      profileEmail: "Email",
+      statsTitle: "Quick stats",
+      statsClasses: "Active classes",
+      statsStudents: "Students",
+      statsAssignments: "Assignments",
+      statsTests: "Tests",
+      loading: "Loading...",
+      loadError: "Unable to load profile. Please log in again.",
     },
     sidebar: {
       brandName: "Riki Nihongo",
@@ -111,9 +127,11 @@ export const EN_DICTIONARY: Dictionary = {
       "Create an account to access courses, track progress, and manage your profile.",
     formTitle: "Sign up",
     formDescription:
-      "Enter your name, email, and password to create a new account and start learning.",
+      "Enter your name, username, email, and password to create a new account and start learning.",
     fullNameLabel: "Full name",
     fullNamePlaceholder: "Enter your full name",
+    userNameLabel: "Username",
+    userNamePlaceholder: "Enter your username",
     emailLabel: "Email",
     emailPlaceholder: "Enter your email",
     passwordLabel: "Password",
@@ -127,6 +145,14 @@ export const EN_DICTIONARY: Dictionary = {
     defaultSuccessMessage: "Sign-up successful!",
     defaultErrorMessage: "Something went wrong. Please try again.",
     passwordMismatch: "Password and confirm password do not match.",
+    errors: {
+      credentialsAlreadyExist: "Email or username already exists.",
+      fullNameRequired: "Full name cannot be empty.",
+      userNameRequired: "Username cannot be empty.",
+      passwordTooShort: "Password must be at least 6 characters.",
+      passwordRequired: "Password cannot be empty.",
+      emailInvalid: "Email is invalid.",
+    },
   },
   options: {
     locales: {

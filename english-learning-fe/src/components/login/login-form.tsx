@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ApiError, authApi } from "@/api";
 import { translateApiMessage } from "@/api/core/api-message-translator";
@@ -11,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 export function LoginForm() {
+  const router = useRouter();
   const { dictionary } = useAppSettings();
   const { success: notifySuccess, error: notifyError } = useNotification();
   const [userName, setUserName] = useState("");
@@ -33,16 +35,19 @@ export function LoginForm() {
       notifySuccess(
         translateApiMessage(
           typeof response.message === "string" ? response.message : undefined,
+          undefined,
           dictionary,
           dictionary.login.defaultSuccessMessage,
         ),
       );
       setPassword("");
+      router.push("/");
     } catch (apiError) {
       if (apiError instanceof ApiError) {
         notifyError(
           translateApiMessage(
             apiError.details,
+            apiError.code,
             dictionary,
             dictionary.login.defaultErrorMessage,
           ),
@@ -63,22 +68,18 @@ export function LoginForm() {
       >
         <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
           <Input
-            label={dictionary.login.emailLabel}
+            label={dictionary.login.userNameLabel}
             icon={
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                <rect
-                  x="3"
-                  y="5"
-                  width="18"
-                  height="14"
-                  rx="4"
+                <path
+                  d="M12 2a5 5 0 110 10 5 5 0 010-10z"
                   stroke="currentColor"
                 />
-                <path d="M4 7l8 6 8-6" stroke="currentColor" />
+                <path d="M4 22c0-4 4-7 8-7s8 3 8 7" stroke="currentColor" />
               </svg>
             }
             type="text"
-            placeholder={dictionary.login.emailPlaceholder}
+            placeholder={dictionary.login.userNamePlaceholder}
             value={userName}
             onChange={(event) => setUserName(event.target.value)}
             autoComplete="username"

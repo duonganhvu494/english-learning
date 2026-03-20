@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ApiError, authApi } from "@/api";
+import { translateApiMessage } from "@/api/core/api-message-translator";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { useNotification } from "@/providers/notification-provider";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ export function SignUpForm() {
   const { success: notifySuccess, error: notifyError } = useNotification();
 
   const [fullName, setFullName] = useState("");
+  const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -23,6 +25,7 @@ export function SignUpForm() {
 
   const isFormValid =
     fullName.trim() &&
+    userName.trim() &&
     email.trim() &&
     password.trim() &&
     password === confirmPassword;
@@ -40,7 +43,7 @@ export function SignUpForm() {
     try {
       await authApi.register({
         fullName: fullName.trim(),
-        userName: fullName.trim().toLowerCase().replace(/\s+/g, "_"),
+        userName: userName.trim(),
         email: email.trim(),
         password,
       });
@@ -48,12 +51,21 @@ export function SignUpForm() {
       notifySuccess(dictionary.signUp.defaultSuccessMessage);
 
       setFullName("");
+      setUserName("");
       setEmail("");
       setPassword("");
       setConfirmPassword("");
+      // chuyển hướng qua login
     } catch (apiError) {
       if (apiError instanceof ApiError) {
-        notifyError(dictionary.signUp.defaultErrorMessage);
+        notifyError(
+          translateApiMessage(
+            apiError.details,
+            apiError.code,
+            dictionary,
+            dictionary.signUp.defaultErrorMessage,
+          ),
+        );
       } else {
         notifyError(dictionary.signUp.defaultErrorMessage);
       }
@@ -85,6 +97,24 @@ export function SignUpForm() {
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             autoComplete="name"
+          />
+
+          <Input
+            label={dictionary.signUp.userNameLabel}
+            icon={
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                <path
+                  d="M12 2a5 5 0 110 10 5 5 0 010-10z"
+                  stroke="currentColor"
+                />
+                <path d="M4 22c0-4 4-7 8-7s8 3 8 7" stroke="currentColor" />
+              </svg>
+            }
+            type="text"
+            placeholder={dictionary.signUp.userNamePlaceholder}
+            value={userName}
+            onChange={(event) => setUserName(event.target.value)}
+            autoComplete="username"
           />
 
           <Input

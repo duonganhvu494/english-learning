@@ -20,9 +20,9 @@ export const VI_DICTIONARY: Dictionary = {
     formBadge: "Chào mừng quay lại",
     formTitle: "Đăng nhập",
     formDescription:
-      "Nhập email và mật khẩu để tiếp tục học, theo dõi tiến độ và quản lý tài khoản của bạn.",
-    emailLabel: "Email",
-    emailPlaceholder: "Nhập email của bạn",
+      "Nhập username và mật khẩu để tiếp tục học, theo dõi tiến độ và quản lý tài khoản của bạn.",
+    userNameLabel: "Username",
+    userNamePlaceholder: "Nhập username của bạn",
     passwordLabel: "Mật khẩu",
     passwordPlaceholder: "Nhập mật khẩu",
     rememberMe: "Ghi nhớ đăng nhập",
@@ -41,6 +41,7 @@ export const VI_DICTIONARY: Dictionary = {
       passwordIncorrect: "Mật khẩu không đúng.",
       usernameInvalid: "Tên đăng nhập không hợp lệ.",
       passwordInvalid: "Mật khẩu không hợp lệ.",
+      accountDisabled: "Tài khoản đã bị khoá.",
     },
   },
   myCourse: {
@@ -53,6 +54,21 @@ export const VI_DICTIONARY: Dictionary = {
     breadcrumb: {
       home: "Trang chủ",
       current: "Khóa học của tôi",
+    },
+    overview: {
+      title: "Tổng quan giảng dạy",
+      description: "Nắm rõ thông tin cá nhân và hiệu suất lớp học của bạn.",
+      profileTitle: "Hồ sơ giáo viên",
+      profileFullName: "Họ và tên",
+      profileUserName: "Tên đăng nhập",
+      profileEmail: "Email",
+      statsTitle: "Thông số nhanh",
+      statsClasses: "Lớp đang có",
+      statsStudents: "Học viên",
+      statsAssignments: "Bài tập",
+      statsTests: "Bài kiểm tra",
+      loading: "Đang tải...",
+      loadError: "Không tải được thông tin. Vui lòng đăng nhập lại.",
     },
     sidebar: {
       brandName: "Riki Nihongo",
@@ -111,9 +127,11 @@ export const VI_DICTIONARY: Dictionary = {
       "Tạo tài khoản để truy cập khoá học, tiến độ và quản lý hồ sơ cá nhân dễ dàng.",
     formTitle: "Đăng ký",
     formDescription:
-      "Điền tên, email và mật khẩu để tạo tài khoản mới và bắt đầu học ngay.",
+      "Điền tên, tên đăng nhập, email và mật khẩu để tạo tài khoản mới và bắt đầu học ngay.",
     fullNameLabel: "Họ và tên",
     fullNamePlaceholder: "Nhập họ và tên của bạn",
+    userNameLabel: "Tên đăng nhập",
+    userNamePlaceholder: "Nhập tên đăng nhập",
     emailLabel: "Email",
     emailPlaceholder: "Nhập email của bạn",
     passwordLabel: "Mật khẩu",
@@ -127,6 +145,14 @@ export const VI_DICTIONARY: Dictionary = {
     defaultSuccessMessage: "Đăng ký thành công!",
     defaultErrorMessage: "Có lỗi xảy ra. Vui lòng thử lại.",
     passwordMismatch: "Mật khẩu và xác nhận mật khẩu không khớp.",
+    errors: {
+      credentialsAlreadyExist: "Email hoặc tên đăng nhập đã tồn tại.",
+      fullNameRequired: "Họ và tên không được để trống.",
+      userNameRequired: "Tên đăng nhập không được để trống.",
+      passwordTooShort: "Mật khẩu phải có ít nhất 6 ký tự.",
+      passwordRequired: "Mật khẩu không được để trống.",
+      emailInvalid: "Email không hợp lệ.",
+    },
   },
   options: {
     locales: {
