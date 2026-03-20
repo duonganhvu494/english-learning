@@ -16,6 +16,9 @@ describe('AuthService', () => {
   const compareMock = bcrypt.compare as jest.MockedFunction<typeof bcrypt.compare>;
   const usersService = {
     findByUserName: jest.fn(),
+    findByIdWithPassword: jest.fn(),
+    updatePassword: jest.fn(),
+    findByEmail: jest.fn(),
   };
   const jwtService = {
     signAsync: jest.fn(),
@@ -23,6 +26,7 @@ describe('AuthService', () => {
   };
   const configService = {
     get: jest.fn(),
+    getOrThrow: jest.fn(),
   };
   const authSessionsService = {
     storeRefreshSession: jest.fn(),
@@ -97,16 +101,22 @@ describe('AuthService', () => {
     jwtService.signAsync.mockResolvedValueOnce('refresh-token');
     configService.get.mockImplementation((key: string, fallback?: string) => {
       switch (key) {
-        case 'jwt.secret':
-          return 'secret';
         case 'jwt.expiresIn':
           return '15m';
-        case 'jwt.refreshSecret':
-          return 'refresh-secret';
         case 'jwt.refreshExpiresIn':
           return '7d';
         default:
           return fallback;
+      }
+    });
+    configService.getOrThrow.mockImplementation((key: string) => {
+      switch (key) {
+        case 'jwt.secret':
+          return 'secret';
+        case 'jwt.refreshSecret':
+          return 'refresh-secret';
+        default:
+          throw new Error(`Unexpected config key: ${key}`);
       }
     });
 
@@ -128,18 +138,25 @@ describe('AuthService', () => {
     jwtService.signAsync.mockResolvedValueOnce('next-refresh-token');
     configService.get.mockImplementation((key: string, fallback?: string) => {
       switch (key) {
-        case 'jwt.secret':
-          return 'secret';
         case 'jwt.expiresIn':
           return '15m';
-        case 'jwt.refreshSecret':
-          return 'refresh-secret';
         case 'jwt.refreshExpiresIn':
           return '7d';
         default:
           return fallback;
       }
     });
+    configService.getOrThrow.mockImplementation((key: string) => {
+      switch (key) {
+        case 'jwt.secret':
+          return 'secret';
+        case 'jwt.refreshSecret':
+          return 'refresh-secret';
+        default:
+          throw new Error(`Unexpected config key: ${key}`);
+      }
+    });
+
 
     const result = await service.refreshSession({
       userId: 'user-1',
@@ -159,6 +176,16 @@ describe('AuthService', () => {
   });
 
   it('should ignore invalid refresh token during logout', async () => {
+    configService.getOrThrow.mockImplementation((key: string) => {
+      switch (key) {
+        case 'jwt.secret':
+          return 'secret';
+        case 'jwt.refreshSecret':
+          return 'refresh-secret';
+        default:
+          throw new Error(`Unexpected config key: ${key}`);
+      }
+    });
     jwtService.verifyAsync.mockRejectedValue(new Error('invalid'));
 
     await expect(service.logout('bad-access-token', 'bad-refresh-token')).resolves.toBeUndefined();
@@ -181,6 +208,16 @@ describe('AuthService', () => {
   });
 
   it('should denylist access token during logout when token is valid', async () => {
+    configService.getOrThrow.mockImplementation((key: string) => {
+      switch (key) {
+        case 'jwt.secret':
+          return 'secret';
+        case 'jwt.refreshSecret':
+          return 'refresh-secret';
+        default:
+          throw new Error(`Unexpected config key: ${key}`);
+      }
+    });
     jwtService.verifyAsync
       .mockResolvedValueOnce({
         userId: 'user-1',
@@ -204,5 +241,51 @@ describe('AuthService', () => {
       'access-jti',
       expect.any(Number),
     );
+  });
+
+  it('should change password and clear mustChangePassword', async () => {
+    usersService.findByIdWithPassword.mockResolvedValue({
+      id: 'user-1',
+      password: 'hashed-password',
+      isActive: true,
+    });
+    compareMock.mockResolvedValue(true);
+    usersService.updatePassword.mockResolvedValue({
+      id: 'user-1',
+      mustChangePassword: false,
+    });
+
+    const result = await service.changePassword(
+      'user-1',
+      'old-secret',
+      'new-secret',
+    );
+
+    expect(usersService.findByIdWithPassword).toHaveBeenCalledWith('user-1');
+    expect(usersService.updatePassword).toHaveBeenCalledWith(
+      'user-1',
+      'new-secret',
+      false,
+    );
+    expect(result).toEqual({
+      user: {
+        id: 'user-1',
+        mustChangePassword: false,
+      },
+    });
+  });
+
+  it('should reject change password when current password is incorrect', async () => {
+    usersService.findByIdWithPassword.mockResolvedValue({
+      id: 'user-1',
+      password: 'hashed-password',
+      isActive: true,
+    });
+    compareMock.mockResolvedValue(false);
+
+    await expect(
+      service.changePassword('user-1', 'wrong-secret', 'new-secret'),
+    ).rejects.toThrow(UnauthorizedException);
+    expect(usersService.updatePassword).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,7 @@ import { UsersService } from 'src/users/users.service';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { RequestWithCookies } from '../interfaces/request-cookie.interface';
 import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
+import { errorPayload } from 'src/common/utils/error-payload.util';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -18,14 +19,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         return req.cookies['accessToken'] ? req.cookies['accessToken'] : null;
       },
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('jwt.secret', 'localhost'),
+      secretOrKey: config.getOrThrow<string>('jwt.secret'),
     });
   }
 
   async validate(payload: JwtPayload) {
     const user = await this.usersService.findById(payload.userId);
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Account is disabled');
+      throw new UnauthorizedException(
+        errorPayload('Account is disabled', 'AUTH_ACCOUNT_DISABLED'),
+      );
     }
 
     if (payload.jti) {
@@ -33,7 +36,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         payload.jti,
       );
       if (isDenied) {
-        throw new UnauthorizedException('Access token has been revoked');
+        throw new UnauthorizedException(
+          errorPayload(
+            'Access token has been revoked',
+            'AUTH_ACCESS_TOKEN_REVOKED',
+          ),
+        );
       }
     }
 
@@ -42,6 +50,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email,
       jti: payload.jti,
       isSuperAdmin: user.isSuperAdmin,
+      mustChangePassword: user.mustChangePassword,
     };
   }
 }

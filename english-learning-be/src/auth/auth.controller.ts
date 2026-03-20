@@ -1,5 +1,6 @@
 import { Controller, Post, Body, Res, UseGuards, Req, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { ApiResponse } from 'src/common/dto/api-response.dto';
@@ -9,36 +10,18 @@ import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { parseDurationToMs } from 'src/common/utils/duration.util';
 import type { RequestWithCookies } from './interfaces/request-cookie.interface';
+import { AuthSecurityService } from './auth-security.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
+    private readonly authSecurityService: AuthSecurityService,
   ) {}
 
-  private get cookieSecure(): boolean {
-    return this.config.get<boolean>('cookie.secure', false);
-  }
-
-  private get cookieSameSite(): CookieOptions['sameSite'] {
-    const sameSite = this.config
-      .get<string>('cookie.sameSite', 'lax')
-      .toLowerCase();
-
-    if (sameSite === 'none' || sameSite === 'strict' || sameSite === 'lax') {
-      return sameSite;
-    }
-
-    return 'lax';
-  }
-
   private get baseCookieOptions(): CookieOptions {
-    return {
-      httpOnly: true,
-      sameSite: this.cookieSameSite,
-      secure: this.cookieSecure,
-    };
+    return this.authSecurityService.authCookieOptions;
   }
 
   private get accessTokenMaxAgeMs(): number {
@@ -74,11 +57,29 @@ export class AuthController {
       refreshToken,
       this.refreshTokenMaxAgeMs,
     );
+    this.authSecurityService.issueCsrfCookie(res, this.refreshTokenMaxAgeMs);
   }
 
   private clearAuthCookies(res: Response) {
     res.clearCookie('accessToken', this.baseCookieOptions);
     res.clearCookie('refreshToken', this.baseCookieOptions);
+    this.authSecurityService.clearCsrfCookie(res);
+  }
+
+  @Get('csrf-token')
+  getCsrfToken(@Res({ passthrough: true }) res: Response) {
+    const csrfToken = this.authSecurityService.issueCsrfCookie(
+      res,
+      this.refreshTokenMaxAgeMs,
+    );
+
+    return ApiResponse.success(
+      {
+        csrfToken,
+        headerName: this.authSecurityService.csrfHeaderName,
+      },
+      'CSRF token issued',
+    );
   }
 
   @Post('login')
@@ -129,5 +130,19 @@ export class AuthController {
     const email = req.user.email;
     const result = await this.authService.me(email);
     return ApiResponse.success(result, 'Is authenticated');
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  async changePassword(
+    @Req() req: AuthRequest,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    const result = await this.authService.changePassword(
+      req.user.userId,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    return ApiResponse.success(result, 'Password changed successfully');
   }
 }

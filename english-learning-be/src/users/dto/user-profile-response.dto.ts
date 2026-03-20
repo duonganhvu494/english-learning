@@ -5,6 +5,7 @@ export class UserProfileResponse {
     userName: string;
     fullName: string;
     email: string;
+    mustChangePassword: boolean;
 
     static fromEntity(user: User): UserProfileResponse {
         const dto = new UserProfileResponse();
@@ -12,6 +13,7 @@ export class UserProfileResponse {
         dto.userName = user.userName;
         dto.fullName = user.fullName;
         dto.email = user.email;
+        dto.mustChangePassword = user.mustChangePassword;
         return dto;
     }
 }

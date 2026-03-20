@@ -5,4 +5,5 @@ export interface JwtPayload {
     exp?: number;
     iat?: number;
     isSuperAdmin?: boolean;
+    mustChangePassword?: boolean;
 }

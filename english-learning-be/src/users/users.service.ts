@@ -8,6 +8,7 @@ import * as bcrypt from 'bcryptjs';
 import { UserProfileResponse } from './dto/user-profile-response.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
+import { errorPayload } from 'src/common/utils/error-payload.util';
 
 @Injectable()
 export class UsersService {
@@ -23,7 +24,12 @@ export class UsersService {
       where: [{ email: dto.email }, { userName: dto.userName }],
     });
     if (exist) {
-      throw new BadRequestException('Email or username already exists');
+      throw new BadRequestException(
+        errorPayload(
+          'Email or username already exists',
+          'USER_CREDENTIALS_ALREADY_EXIST',
+        ),
+      );
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -58,6 +64,14 @@ export class UsersService {
     return this.usersRepo.findOne({ where: { id } });
   }
 
+  findByIdWithPassword(id: string) {
+    return this.usersRepo
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :id', { id })
+      .getOne();
+  }
+
   findByUserName(userName: string) {
     return this.usersRepo
       .createQueryBuilder('user')
@@ -69,7 +83,9 @@ export class UsersService {
   async getUserById(id: string) {
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException(
+        errorPayload('User not found', 'USER_NOT_FOUND'),
+      );
     }
 
     return UserProfileResponse.fromEntity(user);
@@ -79,7 +95,9 @@ export class UsersService {
   async updateProfile(id: string, dto: UpdateUserDto) {
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException(
+        errorPayload('User not found', 'USER_NOT_FOUND'),
+      );
     }
 
     if (dto.email && dto.email !== user.email) {
@@ -87,7 +105,9 @@ export class UsersService {
         where: { email: dto.email },
       });
       if (emailExist) {
-        throw new BadRequestException('Email already exists');
+        throw new BadRequestException(
+          errorPayload('Email already exists', 'USER_EMAIL_ALREADY_EXISTS'),
+        );
       }
     }
 
@@ -96,7 +116,12 @@ export class UsersService {
         where: { userName: dto.userName },
       });
       if (userNameExist) {
-        throw new BadRequestException('Username already exists');
+        throw new BadRequestException(
+          errorPayload(
+            'Username already exists',
+            'USER_USERNAME_ALREADY_EXISTS',
+          ),
+        );
       }
     }
 
@@ -104,11 +129,34 @@ export class UsersService {
     return this.getUserById(id);
   }
 
+  async updatePassword(
+    id: string,
+    newPassword: string,
+    mustChangePassword = false,
+  ) {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new BadRequestException(
+        errorPayload('User not found', 'USER_NOT_FOUND'),
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.usersRepo.update(id, {
+      password: hashedPassword,
+      mustChangePassword,
+    });
+
+    return this.getUserById(id);
+  }
+
   // ================== DELETE ==================
   async remove(id: string) {
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException(
+        errorPayload('User not found', 'USER_NOT_FOUND'),
+      );
     }
 
     if (!user.isActive) {

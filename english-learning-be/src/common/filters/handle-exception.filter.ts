@@ -20,6 +20,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const status = this.getStatus(exception);
     const message = this.getMessage(exception);
+    const code = this.getCode(exception, status, message);
     const requestLabel = `[${request.method}] ${request.url}`;
 
     if (status >= 500) {
@@ -31,7 +32,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.warn(`${requestLabel} ${status} - ${message}`);
     }
 
-    response.status(status).json(new ApiResponse<null>(status, message, null));
+    response.status(status).json(ApiResponse.error(status, message, code));
   }
 
   private getStatus(exception: unknown): number {
@@ -65,5 +66,39 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     return exception.message || 'Internal server error';
+  }
+
+  private getCode(
+    exception: unknown,
+    status: number,
+    message: string,
+  ): string {
+    if (exception instanceof HttpException) {
+      const response = exception.getResponse();
+
+      if (typeof response === 'object' && response !== null) {
+        const explicitCode = (response as { code?: unknown }).code;
+        if (typeof explicitCode === 'string' && explicitCode.trim().length > 0) {
+          return explicitCode.trim();
+        }
+
+        const rawMessage = (response as { message?: unknown }).message;
+        if (Array.isArray(rawMessage)) {
+          return 'VALIDATION_ERROR';
+        }
+      }
+    }
+
+    const normalizedCode = message
+      .trim()
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .toUpperCase();
+
+    if (normalizedCode.length > 0) {
+      return normalizedCode;
+    }
+
+    return `HTTP_${status}`;
   }
 }

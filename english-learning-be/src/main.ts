@@ -1,15 +1,39 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
+import { AuthSecurityService } from './auth/auth-security.service';
 import { AllExceptionsFilter } from './common/filters/handle-exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const config = app.get(ConfigService);
+  const authSecurityService = app.get(AuthSecurityService);
+  const allowedOrigins = config.get<string[]>('app.cors.allowedOrigins', []);
+  const csrfHeaderName = authSecurityService.csrfHeaderName;
+  authSecurityService.assertCookieSecurityConfig();
 
   app.use(cookieParser());
   app.enableCors({
-    origin: true,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    },
     credentials: true,
+    allowedHeaders: ['Content-Type', csrfHeaderName],
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   });
 
 

@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     HttpException,
     HttpStatus,
     Injectable,
@@ -13,6 +14,7 @@ import type { StringValue } from 'ms';
 import { randomUUID } from 'crypto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
+import { errorPayload } from 'src/common/utils/error-payload.util';
 
 @Injectable()
 export class AuthService {
@@ -31,7 +33,10 @@ export class AuthService {
         );
         if (isRateLimited) {
             throw new HttpException(
-                'Too many login attempts. Please try again later.',
+                errorPayload(
+                    'Too many login attempts. Please try again later.',
+                    'AUTH_LOGIN_RATE_LIMITED',
+                ),
                 HttpStatus.TOO_MANY_REQUESTS,
             );
         }
@@ -42,7 +47,12 @@ export class AuthService {
                 userName,
                 normalizedIpAddress,
             );
-            throw new UnauthorizedException('Username is not registered');
+            throw new UnauthorizedException(
+                errorPayload(
+                    'Username is not registered',
+                    'AUTH_USERNAME_NOT_REGISTERED',
+                ),
+            );
         }
 
         if (!user.isActive) {
@@ -50,7 +60,9 @@ export class AuthService {
                 userName,
                 normalizedIpAddress,
             );
-            throw new UnauthorizedException('Account is disabled');
+            throw new UnauthorizedException(
+                errorPayload('Account is disabled', 'AUTH_ACCOUNT_DISABLED'),
+            );
         }
 
         const matchPass = await bcrypt.compare(password, user.password);
@@ -59,7 +71,9 @@ export class AuthService {
                 userName,
                 normalizedIpAddress,
             );
-            throw new UnauthorizedException('Password is incorrect');
+            throw new UnauthorizedException(
+                errorPayload('Password is incorrect', 'AUTH_PASSWORD_INCORRECT'),
+            );
         }
 
         await this.authSessionsService.clearLoginAttempts(
@@ -81,7 +95,12 @@ export class AuthService {
 
     async refreshSession(payload: JwtPayload) {
         if (!payload.jti) {
-            throw new UnauthorizedException('Invalid refresh session');
+            throw new UnauthorizedException(
+                errorPayload(
+                    'Invalid refresh session',
+                    'AUTH_REFRESH_SESSION_INVALID',
+                ),
+            );
         }
 
         const nextJti = randomUUID();
@@ -120,12 +139,52 @@ export class AuthService {
     async me(email: string) {
         const user = await this.usersService.findByEmail(email);
         if (!user) {
-            throw new UnauthorizedException('Invalid email');
+            throw new UnauthorizedException(
+                errorPayload('Invalid email', 'AUTH_INVALID_EMAIL'),
+            );
         }
+        return UserProfileResponse.fromEntity(user);
+    }
+
+    async changePassword(
+        userId: string,
+        currentPassword: string,
+        newPassword: string,
+    ) {
+        const user = await this.usersService.findByIdWithPassword(userId);
+        if (!user || !user.isActive) {
+            throw new UnauthorizedException(
+                errorPayload('Unauthorized', 'AUTH_UNAUTHORIZED'),
+            );
+        }
+
+        if (currentPassword === newPassword) {
+            throw new BadRequestException(
+                errorPayload(
+                    'New password must be different from current password',
+                    'AUTH_NEW_PASSWORD_MUST_DIFFERENT',
+                ),
+            );
+        }
+
+        const matchPass = await bcrypt.compare(currentPassword, user.password);
+        if (!matchPass) {
+            throw new UnauthorizedException(
+                errorPayload(
+                    'Current password is incorrect',
+                    'AUTH_CURRENT_PASSWORD_INCORRECT',
+                ),
+            );
+        }
+
+        const updatedUser = await this.usersService.updatePassword(
+            userId,
+            newPassword,
+            false,
+        );
+
         return {
-            userName: user.userName,
-            fullName: user.fullName,
-            email: user.email,
+            user: updatedUser,
         };
     }
 
@@ -157,14 +216,14 @@ export class AuthService {
 
     private signAccessToken(payload: JwtPayload) {
         return this.jwtService.signAsync(payload, {
-            secret: this.config.get<string>('jwt.secret', 'localhost'),
+            secret: this.config.getOrThrow<string>('jwt.secret'),
             expiresIn: this.config.get<string>('jwt.expiresIn', '15m') as StringValue,
         });
     }
 
     private signRefreshToken(payload: JwtPayload) {
         return this.jwtService.signAsync(payload, {
-            secret: this.config.get<string>('jwt.refreshSecret', 'localhost'),
+            secret: this.config.getOrThrow<string>('jwt.refreshSecret'),
             expiresIn: this.config.get<string>('jwt.refreshExpiresIn', '7d') as StringValue,
         });
     }
@@ -176,7 +235,7 @@ export class AuthService {
 
         try {
             const payload = await this.jwtService.verifyAsync<JwtPayload>(refreshToken, {
-                secret: this.config.get<string>('jwt.refreshSecret', 'localhost'),
+                secret: this.config.getOrThrow<string>('jwt.refreshSecret'),
             });
 
             if (payload.jti) {
@@ -197,7 +256,7 @@ export class AuthService {
 
         try {
             const payload = await this.jwtService.verifyAsync<JwtPayload>(accessToken, {
-                secret: this.config.get<string>('jwt.secret', 'localhost'),
+                secret: this.config.getOrThrow<string>('jwt.secret'),
             });
 
             if (!payload.jti || !payload.exp) {

@@ -7,6 +7,7 @@ import { UsersService } from 'src/users/users.service';
 import { RequestWithCookies } from '../interfaces/request-cookie.interface';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
+import { errorPayload } from 'src/common/utils/error-payload.util';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(
@@ -23,18 +24,22 @@ export class JwtRefreshStrategy extends PassportStrategy(
         return req.cookies['refreshToken'] ? req.cookies['refreshToken'] : null;
       },
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('jwt.refreshSecret', 'localhost'),
+      secretOrKey: config.getOrThrow<string>('jwt.refreshSecret'),
     });
   }
 
   async validate(payload: JwtPayload) {
     if (!payload.jti) {
-      throw new UnauthorizedException('Invalid refresh session');
+      throw new UnauthorizedException(
+        errorPayload('Invalid refresh session', 'AUTH_REFRESH_SESSION_INVALID'),
+      );
     }
 
     const user = await this.usersService.findById(payload.userId);
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Account is disabled');
+      throw new UnauthorizedException(
+        errorPayload('Account is disabled', 'AUTH_ACCOUNT_DISABLED'),
+      );
     }
 
     const hasSession = await this.authSessionsService.hasRefreshSession(
@@ -42,7 +47,12 @@ export class JwtRefreshStrategy extends PassportStrategy(
       payload.jti,
     );
     if (!hasSession) {
-      throw new UnauthorizedException('Refresh session is invalid');
+      throw new UnauthorizedException(
+        errorPayload(
+          'Refresh session is invalid',
+          'AUTH_REFRESH_SESSION_REVOKED',
+        ),
+      );
     }
 
     return {
@@ -50,6 +60,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
       email: user.email,
       jti: payload.jti,
       isSuperAdmin: user.isSuperAdmin,
+      mustChangePassword: user.mustChangePassword,
     };
   }
 }

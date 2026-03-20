@@ -7,6 +7,6 @@ export default () => ({
   },
   cookie: {
     secure: process.env.COOKIE_SECURE === 'true',
-    sameSite: process.env.COOKIE_SAME_SITE || 'lax',
+    sameSite: process.env.COOKIE_SAME_SITE,
   },
 });
