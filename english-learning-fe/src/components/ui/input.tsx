@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from "react";
+import { cn } from "@/utils/cn";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
@@ -27,7 +28,11 @@ export function Input({
           </span>
         ) : null}
         <input
-          className={`h-full w-full border-none bg-transparent text-sm text-(--color-text) outline-none placeholder:text-(--color-text-soft) sm:text-base ${className} ${suffix ? "pr-9" : ""}`}
+          className={cn(
+            "h-full w-full border-none bg-transparent text-sm text-(--color-text) outline-none placeholder:text-(--color-text-soft) sm:text-base",
+            className,
+            suffix && "pr-9",
+          )}
           {...props}
         />
         {suffix ? (

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAppSettings } from "@/providers/app-settings-provider";
+import { cn } from "@/utils/cn";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { Breadcrumb } from "./breadcrumb";
@@ -34,14 +35,16 @@ export function MyCourseAppShell() {
       </div>
 
       <div
-        className={`fixed inset-0 z-40 lg:hidden ${
-          isSidebarOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
+        className={cn(
+          "fixed inset-0 z-40 lg:hidden",
+          isSidebarOpen ? "pointer-events-auto" : "pointer-events-none",
+        )}
       >
         <div
-          className={`absolute inset-0 bg-(--color-overlay) transition-opacity ${
-            isSidebarOpen ? "opacity-100" : "opacity-0"
-          }`}
+          className={cn(
+            "absolute inset-0 bg-(--color-overlay) transition-opacity",
+            isSidebarOpen ? "opacity-100" : "opacity-0",
+          )}
           onClick={() => setIsSidebarOpen(false)}
           role="button"
           tabIndex={isSidebarOpen ? 0 : -1}
@@ -54,9 +57,10 @@ export function MyCourseAppShell() {
         />
 
         <div
-          className={`absolute top-0 left-0 h-full w-[min(86vw,312px)] transition-transform ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+          className={cn(
+            "absolute top-0 left-0 h-full w-[min(86vw,312px)] transition-transform",
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full",
+          )}
         >
           <Sidebar mobile onClose={() => setIsSidebarOpen(false)} />
         </div>

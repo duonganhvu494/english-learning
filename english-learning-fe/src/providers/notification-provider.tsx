@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { cn } from "@/utils/cn";
 
 type NotificationType = "success" | "error";
 
@@ -98,9 +99,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           return (
             <div
               key={notification.id}
-              className={`pointer-events-auto rounded-xl border px-4 py-3 text-sm font-semibold shadow-lg transition-all duration-220 transform-gpu ${getToastClass(
-                notification.type,
-              )} ${isLeaving ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"}`}
+              className={cn(
+                "pointer-events-auto rounded-xl border px-4 py-3 text-sm font-semibold shadow-lg transition-all duration-220 transform-gpu",
+                getToastClass(notification.type),
+                isLeaving
+                  ? "opacity-0 -translate-y-2"
+                  : "opacity-100 translate-y-0",
+              )}
               style={{ animation: "fade-in 260ms ease-out" }}
             >
               <div className="flex items-start justify-between gap-3">

@@ -1,8 +1,10 @@
 "use client";
 
+import { Menu, ChevronDown, GraduationCap } from "lucide-react";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { LanguageSwitcher } from "../common/language-switcher";
 import { ThemeToggle } from "../common/theme-toggle";
+import { cn } from "@/utils/cn";
 
 type TopbarProps = {
   onOpenSidebar: () => void;
@@ -20,7 +22,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-(--color-border) bg-(--color-surface-2) text-(--color-text) lg:hidden"
           aria-label={dictionary.myCourse.topbar.openMenu}
         >
-          ☰
+          <Menu className="w-5 h-5" />
         </button>
 
         <button className="hidden text-[17px] font-medium text-(--color-text) lg:block">
@@ -36,9 +38,9 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
             aria-label={dictionary.myCourse.topbar.profileMenu}
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-(--color-primary-soft) text-(--color-primary)">
-              👩‍🎓
+              <GraduationCap className="w-4 h-4" />
             </div>
-            <span className="text-xs text-(--color-text-muted)">▾</span>
+            <ChevronDown className="w-3 h-3 text-(--color-text-muted)" />
           </button>
         </div>
       </div>

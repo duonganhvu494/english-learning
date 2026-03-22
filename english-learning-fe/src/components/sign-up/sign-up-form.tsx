@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { User, Mail, Lock, Eye } from "lucide-react";
 import { ApiError, authApi } from "@/api";
 import { translateApiMessage } from "@/api/core/api-message-translator";
 import { useAppSettings } from "@/providers/app-settings-provider";
@@ -83,15 +84,7 @@ export function SignUpForm() {
         <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
           <Input
             label={dictionary.signUp.fullNameLabel}
-            icon={
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                <circle cx="12" cy="8" r="3" stroke="currentColor" />
-                <path
-                  d="M5 20c0-3.3 2.7-6 6-6s6 2.7 6 6"
-                  stroke="currentColor"
-                />
-              </svg>
-            }
+            icon={<User className="h-5 w-5" />}
             type="text"
             placeholder={dictionary.signUp.fullNamePlaceholder}
             value={fullName}
@@ -101,15 +94,7 @@ export function SignUpForm() {
 
           <Input
             label={dictionary.signUp.userNameLabel}
-            icon={
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                <path
-                  d="M12 2a5 5 0 110 10 5 5 0 010-10z"
-                  stroke="currentColor"
-                />
-                <path d="M4 22c0-4 4-7 8-7s8 3 8 7" stroke="currentColor" />
-              </svg>
-            }
+            icon={<User className="h-5 w-5" />}
             type="text"
             placeholder={dictionary.signUp.userNamePlaceholder}
             value={userName}
@@ -119,19 +104,7 @@ export function SignUpForm() {
 
           <Input
             label={dictionary.signUp.emailLabel}
-            icon={
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                <rect
-                  x="3"
-                  y="5"
-                  width="18"
-                  height="14"
-                  rx="4"
-                  stroke="currentColor"
-                />
-                <path d="M4 7l8 6 8-6" stroke="currentColor" />
-              </svg>
-            }
+            icon={<Mail className="h-5 w-5" />}
             type="email"
             placeholder={dictionary.signUp.emailPlaceholder}
             value={email}
@@ -141,19 +114,7 @@ export function SignUpForm() {
 
           <Input
             label={dictionary.signUp.passwordLabel}
-            icon={
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                <rect
-                  x="5"
-                  y="10"
-                  width="14"
-                  height="10"
-                  rx="3"
-                  stroke="currentColor"
-                />
-                <path d="M8 10V8a4 4 0 118 0v2" stroke="currentColor" />
-              </svg>
-            }
+            icon={<Lock className="h-5 w-5" />}
             suffix={
               <button
                 type="button"
@@ -161,13 +122,7 @@ export function SignUpForm() {
                 className="text-(--color-text-soft) transition-colors hover:text-(--color-text)"
                 aria-label="Toggle password visibility"
               >
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                  <path
-                    d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"
-                    stroke="currentColor"
-                  />
-                  <circle cx="12" cy="12" r="3" stroke="currentColor" />
-                </svg>
+                <Eye className="h-5 w-5" />
               </button>
             }
             type={showPassword ? "text" : "password"}
@@ -179,19 +134,7 @@ export function SignUpForm() {
 
           <Input
             label={dictionary.signUp.confirmPasswordLabel}
-            icon={
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                <rect
-                  x="5"
-                  y="10"
-                  width="14"
-                  height="10"
-                  rx="3"
-                  stroke="currentColor"
-                />
-                <path d="M8 10V8a4 4 0 118 0v2" stroke="currentColor" />
-              </svg>
-            }
+            icon={<Lock className="h-5 w-5" />}
             suffix={
               <button
                 type="button"
@@ -199,13 +142,7 @@ export function SignUpForm() {
                 className="text-(--color-text-soft) transition-colors hover:text-(--color-text)"
                 aria-label="Toggle confirm password visibility"
               >
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                  <path
-                    d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"
-                    stroke="currentColor"
-                  />
-                  <circle cx="12" cy="12" r="3" stroke="currentColor" />
-                </svg>
+                <Eye className="h-5 w-5" />
               </button>
             }
             type={showConfirmPassword ? "text" : "password"}

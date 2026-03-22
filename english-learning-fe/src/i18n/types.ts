@@ -148,6 +148,39 @@ export type Dictionary = {
       };
     };
   };
+  dashboard: {
+    title: string;
+    description: string;
+    activeClasses: string;
+    totalStudents: string;
+    avgProgress: string;
+    pendingWork: string;
+    activeClassesList: string;
+    topStudents: string;
+    upcomingProjects: string;
+    viewAllClasses: string;
+    viewAllStudents: string;
+    status: string;
+    due: string;
+    submitted: string;
+    createClass: string;
+    planLabel: string;
+    greeting: string;
+    createDialogTitle: string;
+    createDialogDescription: string;
+    createDialogCancel: string;
+    createDialogSubmit: string;
+    upgradeAlert: string;
+    upgradePlan: string;
+    planPrice: string;
+    planBenefits: string;
+  };
+  notFound: {
+    title: string;
+    description: string;
+    goHome: string;
+    backToDashboard: string;
+  };
   options: {
     locales: Record<Locale, string>;
     themes: Record<Theme, string>;

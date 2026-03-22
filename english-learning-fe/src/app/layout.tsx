@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppSettingsProvider } from "@/providers/app-settings-provider";
 import { NotificationProvider } from "@/providers/notification-provider";
+import { cn } from "@/utils/cn";
 import "./globals.css";
+import { DataProvider } from "@/data/dataContext";
+import { SubscriptionProvider } from "@/context/subscriptionContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,10 +31,14 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={cn(geistSans.variable, geistMono.variable, "antialiased")}
       >
         <AppSettingsProvider>
-          <NotificationProvider>{children}</NotificationProvider>
+          <SubscriptionProvider>
+            <DataProvider>
+              <NotificationProvider>{children}</NotificationProvider>
+            </DataProvider>
+          </SubscriptionProvider>
         </AppSettingsProvider>
       </body>
     </html>

@@ -2,16 +2,18 @@
 
 import { sidebarSections } from "@/data/my-course";
 import { useAppSettings } from "@/providers/app-settings-provider";
+import { cn } from "@/utils/cn";
 import { UserPanel } from "./user-panel";
 
 function ItemIcon({ active }: { active: boolean }) {
   return (
     <span
-      className={`h-5 w-5 rounded-sm border ${
+      className={cn(
+        "h-5 w-5 rounded-sm border",
         active
           ? "border-(--color-text-inverse)"
-          : "border-(--color-border-strong)"
-      }`}
+          : "border-(--color-border-strong)",
+      )}
     />
   );
 }
@@ -66,11 +68,12 @@ export function Sidebar({ mobile = false, onClose }: SidebarProps) {
                   <button
                     type="button"
                     key={item.key}
-                    className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition ${
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition",
                       item.active
                         ? "bg-(--color-primary) text-(--color-text-inverse)"
-                        : "text-(--color-text) hover:bg-(--color-surface-2)"
-                    }`}
+                        : "text-(--color-text) hover:bg-(--color-surface-2)",
+                    )}
                   >
                     <span className="flex items-center gap-3">
                       <ItemIcon active={item.active} />

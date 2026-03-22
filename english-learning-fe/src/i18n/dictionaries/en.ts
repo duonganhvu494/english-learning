@@ -57,7 +57,8 @@ export const EN_DICTIONARY: Dictionary = {
     },
     overview: {
       title: "Teaching Overview",
-      description: "Quickly see your profile and classroom performance at a glance.",
+      description:
+        "Quickly see your profile and classroom performance at a glance.",
       profileTitle: "Teacher profile",
       profileFullName: "Full name",
       profileUserName: "Username",
@@ -153,6 +154,42 @@ export const EN_DICTIONARY: Dictionary = {
       passwordRequired: "Password cannot be empty.",
       emailInvalid: "Email is invalid.",
     },
+  },
+  dashboard: {
+    title: "Dashboard",
+    description: "Quick snapshot of your classroom performance",
+    activeClasses: "Active classes",
+    totalStudents: "Total students",
+    avgProgress: "Average progress",
+    pendingWork: "Pending work",
+    activeClassesList: "Recent classes",
+    topStudents: "Top students",
+    upcomingProjects: "Upcoming projects",
+    viewAllClasses: "View all classes",
+    viewAllStudents: "View all students",
+    status: "Status",
+    due: "Due",
+    submitted: "Submitted",
+    createClass: "Create class",
+    planLabel: "Current plan",
+    greeting: "Welcome back! Here's a summary of your classroom performance.",
+    createDialogTitle: "Create new class",
+    createDialogDescription: "Add a new class to your curriculum",
+    createDialogCancel: "Cancel",
+    createDialogSubmit: "Create class",
+    upgradeAlert:
+      "You reached the limit of {maxClasses} classes. Upgrade to add more.",
+    upgradePlan: "Upgrade to Pro",
+    planPrice: "$29/month",
+    planBenefits:
+      "Up to 10 classes, unlimited students, advanced analytics, priority support",
+  },
+  notFound: {
+    title: "Page Not Found",
+    description:
+      "Sorry, the page you are looking for does not exist or has been moved.",
+    goHome: "Go to Home",
+    backToDashboard: "Back to Dashboard",
   },
   options: {
     locales: {

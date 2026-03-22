@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from "react";
+import { cn } from "@/utils/cn";
 
 type ButtonVariant = "primary" | "secondary" | "outline";
 
@@ -22,7 +23,11 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex h-12 w-full items-center justify-center rounded-xl px-4 text-sm font-bold uppercase tracking-[0.08em] transition ${variantClass[variant]} ${className}`}
+      className={cn(
+        "inline-flex h-12 w-full items-center justify-center rounded-xl px-4 text-sm font-bold uppercase tracking-[0.08em] transition",
+        variantClass[variant],
+        className,
+      )}
       {...props}
     />
   );

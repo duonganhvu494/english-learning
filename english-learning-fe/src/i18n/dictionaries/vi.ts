@@ -21,8 +21,8 @@ export const VI_DICTIONARY: Dictionary = {
     formTitle: "Đăng nhập",
     formDescription:
       "Nhập username và mật khẩu để tiếp tục học, theo dõi tiến độ và quản lý tài khoản của bạn.",
-    userNameLabel: "Username",
-    userNamePlaceholder: "Nhập username của bạn",
+    userNameLabel: "Tên đăng nhập",
+    userNamePlaceholder: "Nhập tên đăng nhập của bạn",
     passwordLabel: "Mật khẩu",
     passwordPlaceholder: "Nhập mật khẩu",
     rememberMe: "Ghi nhớ đăng nhập",
@@ -153,6 +153,42 @@ export const VI_DICTIONARY: Dictionary = {
       passwordRequired: "Mật khẩu không được để trống.",
       emailInvalid: "Email không hợp lệ.",
     },
+  },
+  dashboard: {
+    title: "Bảng điều khiển",
+    description: "Tổng hợp nhanh hiệu suất lớp học của bạn",
+    activeClasses: "Lớp học đang hoạt động",
+    totalStudents: "Tổng số học viên",
+    avgProgress: "Tiến độ trung bình",
+    pendingWork: "Bài tập chờ",
+    activeClassesList: "Lớp học gần đây",
+    topStudents: "Học sinh hàng đầu",
+    upcomingProjects: "Dự án sắp tới",
+    viewAllClasses: "Xem tất cả lớp",
+    viewAllStudents: "Xem tất cả học viên",
+    status: "Trạng thái",
+    due: "Hạn chót",
+    submitted: "Đã nộp",
+    createClass: "Tạo lớp mới",
+    planLabel: "Gói hiện tại",
+    greeting: "Chào mừng! Dưới đây là tổng quan lớp học của bạn.",
+    createDialogTitle: "Tạo lớp mới",
+    createDialogDescription: "Thêm một lớp học mới vào chương trình giảng dạy",
+    createDialogCancel: "Hủy",
+    createDialogSubmit: "Tạo lớp",
+    upgradeAlert:
+      "Bạn đã đạt giới hạn gói {maxClasses} lớp. Nâng cấp để tạo tiếp.",
+    upgradePlan: "Nâng cấp lên Pro",
+    planPrice: "$29/ tháng",
+    planBenefits:
+      "Lên đến 10 lớp, học viên không giới hạn, phân tích sâu, hỗ trợ ưu tiên",
+  },
+  notFound: {
+    title: "Không tìm thấy trang",
+    description:
+      "Xin lỗi, trang bạn đang tìm kiếm không tồn tại hoặc đã được di chuyển.",
+    goHome: "Về trang chủ",
+    backToDashboard: "Quay lại bảng điều khiển",
   },
   options: {
     locales: {
