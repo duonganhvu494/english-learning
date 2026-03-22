@@ -75,7 +75,7 @@ describe('WorkspacesController', () => {
       'teacher-1',
     );
     expect(result).toEqual({
-      statusCode: 200,
+      statusCode: 201,
       message: 'Workspace created',
       result: { id: 'workspace-1' },
     });
@@ -148,7 +148,6 @@ describe('WorkspacesController', () => {
         email: 'student@example.com',
         userName: 'student1',
       },
-      'owner-1',
     );
     expect(result).toEqual({
       statusCode: 201,
@@ -172,7 +171,6 @@ describe('WorkspacesController', () => {
 
     expect(workspacesService.listWorkspaceStudents).toHaveBeenCalledWith(
       'workspace-1',
-      'owner-1',
     );
     expect(result).toEqual({
       statusCode: 200,
@@ -198,7 +196,6 @@ describe('WorkspacesController', () => {
       'workspace-1',
       'student-1',
       { fullName: 'Updated Student' },
-      'owner-1',
     );
     expect(result).toEqual({
       statusCode: 200,
@@ -225,7 +222,6 @@ describe('WorkspacesController', () => {
     expect(workspacesService.removeStudentFromWorkspace).toHaveBeenCalledWith(
       'workspace-1',
       'student-1',
-      'owner-1',
     );
     expect(result).toEqual({
       statusCode: 200,

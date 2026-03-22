@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -20,6 +21,7 @@ export enum AssignmentType {
   QUIZ = 'quiz',
 }
 
+@Index('uq_assignments_session_code', ['session', 'code'], { unique: true })
 @Entity('assignments')
 export class AssignmentEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -44,6 +46,9 @@ export class AssignmentEntity {
 
   @Column({ type: 'varchar', length: 255 })
   title: string;
+
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  code: string | null;
 
   @Column({ type: 'text', nullable: true })
   description: string | null;

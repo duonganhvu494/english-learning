@@ -17,6 +17,7 @@ import { AssignmentEntity, AssignmentType } from './entities/assignment.entity';
 import { AssignmentMaterial } from './entities/assignment-material.entity';
 import { AssignmentQuizAttemptEntity } from './entities/assignment-quiz-attempt.entity';
 import { errorPayload } from 'src/common/utils/error-payload.util';
+import { resolveNextSequentialCode } from 'src/common/utils/sequential-code.util';
 
 @Injectable()
 export class AssignmentsService {
@@ -65,6 +66,22 @@ export class AssignmentsService {
     );
     const normalizedTitle = this.normalizeTitle(dto.title);
     const normalizedDescription = this.normalizeDescription(dto.description);
+    const scopedAssignments = await this.assignmentRepo.find({
+      where: {
+        session: { id: sessionId },
+      },
+      select: {
+        id: true,
+        title: true,
+        code: true,
+      },
+    });
+
+    this.ensureNoDuplicateAssignmentTitle(scopedAssignments, normalizedTitle);
+    const code = resolveNextSequentialCode(
+      'ASM',
+      scopedAssignments.map((existingAssignment) => existingAssignment.code),
+    );
 
     const assignment = await this.assignmentRepo.manager.transaction(
       async (manager) => {
@@ -73,6 +90,7 @@ export class AssignmentsService {
 
         const createdAssignment = assignmentRepo.create({
           session,
+          code,
           type: dto.type ?? AssignmentType.MANUAL,
           title: normalizedTitle,
           description: normalizedDescription,
@@ -389,5 +407,24 @@ export class AssignmentsService {
     }
 
     return { timeStart, timeEnd };
+  }
+
+  private ensureNoDuplicateAssignmentTitle(
+    scopedAssignments: Array<Pick<AssignmentEntity, 'id' | 'title'>>,
+    title: string,
+  ): void {
+    const duplicateAssignment = scopedAssignments.find(
+      (existingAssignment) =>
+        existingAssignment.title.toLowerCase() === title.toLowerCase(),
+    );
+
+    if (duplicateAssignment) {
+      throw new BadRequestException(
+        errorPayload(
+          'An assignment with the same title already exists in this session',
+          'ASSIGNMENT_TITLE_ALREADY_EXISTS_IN_SESSION',
+        ),
+      );
+    }
   }
 }

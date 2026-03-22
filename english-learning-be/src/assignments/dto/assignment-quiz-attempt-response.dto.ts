@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   AssignmentQuizAttemptEntity,
   AssignmentQuizAttemptStatus,
@@ -5,16 +6,40 @@ import {
 import { AssignmentQuizAttemptAnswerResponseDto } from './assignment-quiz-attempt-answer-response.dto';
 
 export class AssignmentQuizAttemptResponseDto {
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440800' })
   assignmentId: string;
+
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440010' })
   studentId: string;
+
+  @ApiProperty({ example: AssignmentQuizAttemptStatus.SUBMITTED })
   status: string;
+
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440830',
+    nullable: true,
+  })
   attemptId: string | null;
+
+  @ApiProperty({ example: '2026-03-25T08:10:00.000Z', nullable: true })
   startedAt: Date | null;
+
+  @ApiProperty({ example: '2026-03-25T08:15:00.000Z', nullable: true })
   submittedAt: Date | null;
+
+  @ApiProperty({ example: 8.5, nullable: true })
   score: number | null;
+
+  @ApiProperty({ example: 10 })
   maxScore: number;
+
+  @ApiProperty({ example: 8 })
   correctCount: number;
+
+  @ApiProperty({ example: 10 })
   totalQuestions: number;
+
+  @ApiProperty({ type: [AssignmentQuizAttemptAnswerResponseDto] })
   answers: AssignmentQuizAttemptAnswerResponseDto[];
 
   static empty(input: {

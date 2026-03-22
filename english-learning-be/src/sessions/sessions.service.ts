@@ -8,6 +8,7 @@ import { SessionResponseDto } from './dto/session-response.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { SessionEntity } from './entities/session.entity';
 import { errorPayload } from 'src/common/utils/error-payload.util';
+import { resolveNextSequentialCode } from 'src/common/utils/sequential-code.util';
 
 @Injectable()
 export class SessionsService {
@@ -46,11 +47,35 @@ export class SessionsService {
       );
     }
 
+    const scopedSessions = await this.sessionRepo.find({
+      where: {
+        classEntity: { id: classId },
+      },
+      select: {
+        id: true,
+        topic: true,
+        timeStart: true,
+        timeEnd: true,
+        code: true,
+      },
+    });
+
+    this.ensureNoDuplicateSession(
+      scopedSessions,
+      normalizedTopic,
+      timeStart,
+      timeEnd,
+    );
+
     const session = this.sessionRepo.create({
       classEntity,
       timeStart,
       timeEnd,
       topic: normalizedTopic,
+      code: resolveNextSequentialCode(
+        'SES',
+        scopedSessions.map((existingSession) => existingSession.code),
+      ),
     });
     const savedSession = await this.sessionRepo.save(session);
 
@@ -127,18 +152,49 @@ export class SessionsService {
       nextTimeEnd,
     );
 
+    const nextTopic =
+      dto.topic !== undefined ? dto.topic.trim() : session.topic;
+    if (!nextTopic) {
+      throw new BadRequestException(
+        errorPayload('topic can not be empty', 'SESSION_TOPIC_REQUIRED'),
+      );
+    }
+
+    const scopedSessions = await this.sessionRepo.find({
+      where: {
+        classEntity: { id: session.classEntity.id },
+      },
+      select: {
+        id: true,
+        topic: true,
+        timeStart: true,
+        timeEnd: true,
+        code: true,
+      },
+    });
+
+    this.ensureNoDuplicateSession(
+      scopedSessions,
+      nextTopic,
+      timeStart,
+      timeEnd,
+      session.id,
+    );
+
     session.timeStart = timeStart;
     session.timeEnd = timeEnd;
 
     if (dto.topic !== undefined) {
-      const normalizedTopic = dto.topic.trim();
-      if (!normalizedTopic) {
-        throw new BadRequestException(
-          errorPayload('topic can not be empty', 'SESSION_TOPIC_REQUIRED'),
-        );
-      }
+      session.topic = nextTopic;
+    }
 
-      session.topic = normalizedTopic;
+    if (!session.code) {
+      session.code = resolveNextSequentialCode(
+        'SES',
+        scopedSessions
+          .filter((existingSession) => existingSession.id !== session.id)
+          .map((existingSession) => existingSession.code),
+      );
     }
 
     await this.sessionRepo.save(session);
@@ -185,5 +241,36 @@ export class SessionsService {
     }
 
     return { timeStart, timeEnd };
+  }
+
+  private ensureNoDuplicateSession(
+    scopedSessions: Array<
+      Pick<SessionEntity, 'id' | 'topic' | 'timeStart' | 'timeEnd'>
+    >,
+    topic: string,
+    timeStart: Date,
+    timeEnd: Date,
+    excludeSessionId?: string,
+  ): void {
+    const duplicateSession = scopedSessions.find((existingSession) => {
+      if (existingSession.id === excludeSessionId) {
+        return false;
+      }
+
+      return (
+        existingSession.topic.toLowerCase() === topic.toLowerCase() &&
+        existingSession.timeStart.getTime() === timeStart.getTime() &&
+        existingSession.timeEnd.getTime() === timeEnd.getTime()
+      );
+    });
+
+    if (duplicateSession) {
+      throw new BadRequestException(
+        errorPayload(
+          'A session with the same topic and time window already exists in this class',
+          'SESSION_DUPLICATE_IN_CLASS',
+        ),
+      );
+    }
   }
 }

@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { AccountType, User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { UserProfileResponse } from './dto/user-profile-response.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
@@ -54,10 +54,6 @@ export class UsersService {
     const users = await this.usersRepo.find();
     // eslint-disable-next-line @typescript-eslint/unbound-method
     return users.map(UserResponseDto.fromEntity);
-  }
-
-  findByEmail(email: string) {
-    return this.usersRepo.findOne({ where: { email } });
   }
 
   findById(id: string) {

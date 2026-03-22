@@ -19,6 +19,7 @@ import { AssignmentsService } from './assignments.service';
 describe('AssignmentsService', () => {
   let service: AssignmentsService;
   let assignmentRepo: {
+    find: jest.Mock;
     findOne: jest.Mock;
     delete: jest.Mock;
     manager: {
@@ -75,6 +76,7 @@ describe('AssignmentsService', () => {
     };
 
     assignmentRepo = {
+      find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
       delete: jest.fn(() => Promise.resolve({ affected: 1 })),
       manager: {
@@ -223,6 +225,7 @@ describe('AssignmentsService', () => {
     expect(assignmentRepoInTransaction.create).toHaveBeenCalledWith(
       expect.objectContaining({
         session: expect.objectContaining({ id: 'session-1' }),
+        code: 'ASM-001',
         title: 'Homework 01',
         description: 'Read and summarize the text',
         timeStart: new Date('2026-03-19T10:00:00.000Z'),
@@ -272,6 +275,7 @@ describe('AssignmentsService', () => {
 
     expect(assignmentRepoInTransaction.create).toHaveBeenCalledWith(
       expect.objectContaining({
+        code: 'ASM-001',
         type: AssignmentType.QUIZ,
         title: 'Vocabulary Quiz',
       }),
@@ -374,6 +378,39 @@ describe('AssignmentsService', () => {
         'teacher-1',
       ),
     ).rejects.toThrow(BadRequestException);
+
+    expect(assignmentRepo.manager.transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects createAssignment when the same title already exists in a session', async () => {
+    sessionRepo.findOne.mockResolvedValue({
+      id: 'session-1',
+      classEntity: {
+        id: 'class-1',
+        workspace: { id: 'workspace-1' },
+      },
+    });
+    userRepo.findOne.mockResolvedValue({ id: 'teacher-1' });
+    materialRepo.find.mockResolvedValue([]);
+    assignmentRepo.find.mockResolvedValue([
+      {
+        id: 'assignment-existing',
+        title: 'Homework 01',
+        code: 'ASM-001',
+      },
+    ]);
+
+    await expect(
+      service.createAssignment(
+        'session-1',
+        {
+          title: 'homework 01',
+          timeStart: '2026-03-19T10:00:00.000Z',
+          timeEnd: '2026-03-20T10:00:00.000Z',
+        },
+        'teacher-1',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(assignmentRepo.manager.transaction).not.toHaveBeenCalled();
   });

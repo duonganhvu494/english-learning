@@ -136,16 +136,6 @@ export class AuthService {
         ]);
     }
 
-    async me(email: string) {
-        const user = await this.usersService.findByEmail(email);
-        if (!user) {
-            throw new UnauthorizedException(
-                errorPayload('Invalid email', 'AUTH_INVALID_EMAIL'),
-            );
-        }
-        return UserProfileResponse.fromEntity(user);
-    }
-
     async changePassword(
         userId: string,
         currentPassword: string,

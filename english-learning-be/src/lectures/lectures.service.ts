@@ -16,6 +16,7 @@ import { UpdateLectureDto } from './dto/update-lecture.dto';
 import { LectureEntity } from './entities/lecture.entity';
 import { LectureMaterial } from './entities/lecture-material.entity';
 import { errorPayload } from 'src/common/utils/error-payload.util';
+import { resolveNextSequentialCode } from 'src/common/utils/sequential-code.util';
 
 @Injectable()
 export class LecturesService {
@@ -54,6 +55,22 @@ export class LecturesService {
     );
     const normalizedTitle = this.normalizeTitle(dto.title);
     const normalizedDescription = this.normalizeDescription(dto.description);
+    const scopedLectures = await this.lectureRepo.find({
+      where: {
+        session: { id: sessionId },
+      },
+      select: {
+        id: true,
+        title: true,
+        code: true,
+      },
+    });
+
+    this.ensureNoDuplicateLectureTitle(scopedLectures, normalizedTitle);
+    const code = resolveNextSequentialCode(
+      'LEC',
+      scopedLectures.map((existingLecture) => existingLecture.code),
+    );
 
     const lecture = await this.lectureRepo.manager.transaction(async (manager) => {
       const lectureRepo = manager.getRepository(LectureEntity);
@@ -61,6 +78,7 @@ export class LecturesService {
 
       const createdLecture = lectureRepo.create({
         session,
+        code,
         title: normalizedTitle,
         description: normalizedDescription,
         createdBy: actor,
@@ -174,6 +192,32 @@ export class LecturesService {
             lecture.session.classEntity.workspace.id,
           )
         : undefined;
+
+    const scopedLectures = await this.lectureRepo.find({
+      where: {
+        session: { id: lecture.session.id },
+      },
+      select: {
+        id: true,
+        title: true,
+        code: true,
+      },
+    });
+
+    this.ensureNoDuplicateLectureTitle(
+      scopedLectures,
+      lecture.title,
+      lecture.id,
+    );
+
+    if (!lecture.code) {
+      lecture.code = resolveNextSequentialCode(
+        'LEC',
+        scopedLectures
+          .filter((existingLecture) => existingLecture.id !== lecture.id)
+          .map((existingLecture) => existingLecture.code),
+      );
+    }
 
     await this.lectureRepo.manager.transaction(async (manager) => {
       const lectureRepo = manager.getRepository(LectureEntity);
@@ -370,5 +414,28 @@ export class LecturesService {
     }
 
     return description.trim() || null;
+  }
+
+  private ensureNoDuplicateLectureTitle(
+    scopedLectures: Array<Pick<LectureEntity, 'id' | 'title'>>,
+    title: string,
+    excludeLectureId?: string,
+  ): void {
+    const duplicateLecture = scopedLectures.find((existingLecture) => {
+      if (existingLecture.id === excludeLectureId) {
+        return false;
+      }
+
+      return existingLecture.title.toLowerCase() === title.toLowerCase();
+    });
+
+    if (duplicateLecture) {
+      throw new BadRequestException(
+        errorPayload(
+          'A lecture with the same title already exists in this session',
+          'LECTURE_TITLE_ALREADY_EXISTS_IN_SESSION',
+        ),
+      );
+    }
   }
 }

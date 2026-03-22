@@ -48,6 +48,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: user.id,
       email: user.email,
+      userName: user.userName,
+      fullName: user.fullName,
       jti: payload.jti,
       isSuperAdmin: user.isSuperAdmin,
       mustChangePassword: user.mustChangePassword,

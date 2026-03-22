@@ -25,6 +25,7 @@ describe('WorkspacesService', () => {
     save: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
   const userRepo = {
     findOne: jest.fn(),
@@ -37,7 +38,7 @@ describe('WorkspacesService', () => {
     count: jest.fn(),
   };
   const workspaceAccessService = {
-    assertTeacherWorkspaceOwner: jest.fn(),
+    getWorkspaceOrThrow: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -48,6 +49,12 @@ describe('WorkspacesService', () => {
     memberRepo.create.mockImplementation(
       (input: Record<string, unknown>) => input,
     );
+    memberRepo.createQueryBuilder.mockReturnValue({
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(0),
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -178,7 +185,7 @@ describe('WorkspacesService', () => {
       fullName: 'Student Updated',
     };
 
-    workspaceAccessService.assertTeacherWorkspaceOwner.mockResolvedValue({
+    workspaceAccessService.getWorkspaceOrThrow.mockResolvedValue({
       id: 'workspace-1',
     });
     memberRepo.findOne.mockResolvedValue(member);
@@ -188,7 +195,6 @@ describe('WorkspacesService', () => {
       'workspace-1',
       'student-1',
       { fullName: 'Student Updated' },
-      'owner-1',
     );
 
     expect(userRepo.save).toHaveBeenCalledWith(
@@ -208,7 +214,7 @@ describe('WorkspacesService', () => {
   });
 
   it('rejects updating a workspace student to an email that already exists', async () => {
-    workspaceAccessService.assertTeacherWorkspaceOwner.mockResolvedValue({
+    workspaceAccessService.getWorkspaceOrThrow.mockResolvedValue({
       id: 'workspace-1',
     });
     memberRepo.findOne.mockResolvedValue({
@@ -228,8 +234,53 @@ describe('WorkspacesService', () => {
         'workspace-1',
         'student-1',
         { email: 'taken@example.com' },
-        'owner-1',
       ),
     ).rejects.toThrow(new BadRequestException('Email already exists'));
+  });
+
+  it('returns workspace detail for a super admin without workspace membership', async () => {
+    workspaceRepo.findOne.mockResolvedValue({
+      id: 'workspace-1',
+      name: 'English Center',
+      owner: {
+        id: 'teacher-1',
+        userName: 'teacher1',
+        fullName: 'Teacher One',
+        email: 'teacher@example.com',
+      },
+      isActive: true,
+    });
+    memberRepo.findOne.mockResolvedValue(null);
+    userRepo.findOne.mockResolvedValue({
+      id: 'super-admin-1',
+      isSuperAdmin: true,
+    });
+    classRepo.count.mockResolvedValue(4);
+    memberRepo.createQueryBuilder.mockReturnValue({
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(28),
+    });
+
+    const result = await service.getWorkspaceDetail(
+      'workspace-1',
+      'super-admin-1',
+    );
+
+    expect(result).toEqual({
+      id: 'workspace-1',
+      name: 'English Center',
+      owner: {
+        id: 'teacher-1',
+        userName: 'teacher1',
+        fullName: 'Teacher One',
+        email: 'teacher@example.com',
+      },
+      isActive: true,
+      currentUserRole: 'owner',
+      studentCount: 28,
+      classCount: 4,
+    });
   });
 });

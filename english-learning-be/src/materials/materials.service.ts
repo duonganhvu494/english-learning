@@ -12,7 +12,6 @@ import { S3StorageService } from 'src/storage/s3-storage.service';
 import { validateMultipartUploadRequest } from 'src/storage/utils/storage-upload-validation.util';
 import { User } from 'src/users/entities/user.entity';
 import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
-import { Workspace } from 'src/workspaces/entities/workspace.entity';
 import { SubmissionEntity } from 'src/submissions/entities/submission.entity';
 import { AbortMaterialUploadDto } from './dto/abort-material-upload.dto';
 import { CompleteMaterialUploadDto } from './dto/complete-material-upload.dto';
@@ -68,7 +67,7 @@ export class MaterialsService {
     actorUserId: string,
   ): Promise<MaterialUploadInitResponseDto> {
     const [workspace, actor] = await Promise.all([
-      this.assertWorkspaceOwnerForMaterials(workspaceId, actorUserId),
+      this.workspaceAccessService.getWorkspaceOrThrow(workspaceId),
       this.userRepo.findOne({
         where: { id: actorUserId },
       }),
@@ -165,9 +164,8 @@ export class MaterialsService {
   async signMaterialUploadPart(
     workspaceId: string,
     dto: SignMaterialUploadPartDto,
-    actorUserId: string,
   ): Promise<MaterialUploadPartSignedResponseDto> {
-    await this.assertWorkspaceOwnerForMaterials(workspaceId, actorUserId);
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
     const uploadSession = await this.loadUploadSessionOrThrow({
       workspaceId,
       materialId: dto.materialId,
@@ -206,9 +204,8 @@ export class MaterialsService {
   async completeMaterialUpload(
     workspaceId: string,
     dto: CompleteMaterialUploadDto,
-    actorUserId: string,
   ): Promise<MaterialResponseDto> {
-    await this.assertWorkspaceOwnerForMaterials(workspaceId, actorUserId);
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
     const uploadSession = await this.loadUploadSessionOrThrow({
       workspaceId,
       materialId: dto.materialId,
@@ -262,9 +259,8 @@ export class MaterialsService {
   async abortMaterialUpload(
     workspaceId: string,
     dto: AbortMaterialUploadDto,
-    actorUserId: string,
   ): Promise<MaterialUploadAbortResponseDto> {
-    await this.assertWorkspaceOwnerForMaterials(workspaceId, actorUserId);
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
     const uploadSession = await this.loadUploadSessionOrThrow({
       workspaceId,
       materialId: dto.materialId,
@@ -294,9 +290,8 @@ export class MaterialsService {
 
   async listWorkspaceMaterials(
     workspaceId: string,
-    actorUserId: string,
   ): Promise<MaterialResponseDto[]> {
-    await this.assertWorkspaceOwnerForMaterials(workspaceId, actorUserId);
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const materials = await this.materialRepo.find({
       where: {
@@ -418,24 +413,6 @@ export class MaterialsService {
     }
 
     return material;
-  }
-
-  private async assertWorkspaceOwnerForMaterials(
-    workspaceId: string,
-    actorUserId: string,
-  ): Promise<Workspace> {
-    return this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        notFoundCode: 'WORKSPACE_NOT_FOUND',
-        ownerForbiddenMessage: 'Only workspace owner can manage materials',
-        ownerForbiddenCode: 'MATERIAL_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage materials',
-        teacherForbiddenCode: 'MATERIAL_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
-    );
   }
 
   private async loadUploadSessionOrThrow(input: {

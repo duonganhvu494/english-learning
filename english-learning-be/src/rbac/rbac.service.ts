@@ -24,6 +24,7 @@ import { RolePermission } from './entities/role-permission.entity';
 import { Role } from './entities/role.entity';
 import { RbacScopeType } from './interfaces/scope-options.interface';
 import { WorkspaceAccessService } from './workspace-access.service';
+import { errorPayload } from 'src/common/utils/error-payload.util';
 
 interface PermissionCheckInput {
   userId: string;
@@ -405,18 +406,8 @@ export class RbacService implements OnModuleInit {
   async createCustomRole(
     workspaceId: string,
     dto: CreateCustomRoleDto,
-    actorUserId: string,
   ): Promise<CustomRoleResponseDto> {
-    await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        ownerForbiddenMessage:
-          'Only workspace owner can manage custom roles',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage custom roles',
-      },
-    );
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const normalizedName = dto.name.trim();
     const normalizedDescription = dto.description?.trim() || undefined;
@@ -433,8 +424,9 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (workspaceRole) {
-      throw new BadRequestException(
+      this.throwBadRequest(
         'Role name already exists in this workspace',
+        'RBAC_WORKSPACE_ROLE_NAME_EXISTS',
       );
     }
 
@@ -447,8 +439,9 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (systemRole) {
-      throw new BadRequestException(
+      this.throwBadRequest(
         'Role name conflicts with reserved system role',
+        'RBAC_ROLE_NAME_CONFLICTS_SYSTEM',
       );
     }
 
@@ -492,18 +485,8 @@ export class RbacService implements OnModuleInit {
 
   async listPermissions(
     workspaceId: string,
-    actorUserId: string,
   ): Promise<PermissionResponseDto[]> {
-    await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        ownerForbiddenMessage:
-          'Only workspace owner can manage custom roles',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage custom roles',
-      },
-    );
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const permissions = await this.permissionRepo.find({
       order: {
@@ -519,18 +502,8 @@ export class RbacService implements OnModuleInit {
 
   async listCustomRoles(
     workspaceId: string,
-    actorUserId: string,
   ): Promise<CustomRoleResponseDto[]> {
-    await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        ownerForbiddenMessage:
-          'Only workspace owner can manage custom roles',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage custom roles',
-      },
-    );
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const roles = await this.roleRepo.find({
       where: {
@@ -557,18 +530,8 @@ export class RbacService implements OnModuleInit {
     workspaceId: string,
     roleId: string,
     dto: UpdateCustomRoleDto,
-    actorUserId: string,
   ): Promise<CustomRoleResponseDto> {
-    await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        ownerForbiddenMessage:
-          'Only workspace owner can manage custom roles',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage custom roles',
-      },
-    );
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const role = await this.findWorkspaceCustomRoleOrThrow(workspaceId, roleId);
     await this.applyRoleUpdates(role, dto, {
@@ -586,18 +549,8 @@ export class RbacService implements OnModuleInit {
   async deleteCustomRole(
     workspaceId: string,
     roleId: string,
-    actorUserId: string,
   ): Promise<DeleteRoleResponseDto> {
-    await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        ownerForbiddenMessage:
-          'Only workspace owner can manage custom roles',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage custom roles',
-      },
-    );
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const role = await this.findWorkspaceCustomRoleOrThrow(workspaceId, roleId);
     const assignmentCount = await this.memberRepo.count({
@@ -606,8 +559,9 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (assignmentCount > 0) {
-      throw new BadRequestException(
+      this.throwBadRequest(
         'Cannot delete workspace role while it is still assigned to members',
+        'RBAC_WORKSPACE_CUSTOM_ROLE_ASSIGNED',
       );
     }
 
@@ -632,14 +586,20 @@ export class RbacService implements OnModuleInit {
   private async findPermissionByKey(key: string): Promise<Permission> {
     const [action, resource, extra] = key.split(':');
     if (!action || !resource || extra) {
-      throw new BadRequestException(`Invalid permission key: ${key}`);
+      this.throwBadRequest(
+        `Invalid permission key: ${key}`,
+        'RBAC_PERMISSION_KEY_INVALID',
+      );
     }
 
     const permission = await this.permissionRepo.findOne({
       where: { action, resource },
     });
     if (!permission) {
-      throw new BadRequestException(`Permission not found: ${key}`);
+      this.throwBadRequest(
+        `Permission not found: ${key}`,
+        'RBAC_PERMISSION_NOT_FOUND',
+      );
     }
 
     return permission;
@@ -648,17 +608,8 @@ export class RbacService implements OnModuleInit {
   async createClassCustomRole(
     classId: string,
     dto: CreateClassRoleDto,
-    actorUserId: string,
   ): Promise<CustomRoleResponseDto> {
-    await this.workspaceAccessService.assertTeacherClassOwner(
-      classId,
-      actorUserId,
-      {
-        ownerForbiddenMessage: 'Only workspace owner can manage class roles',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage class roles',
-      },
-    );
+    await this.workspaceAccessService.getClassOrThrow(classId);
 
     const normalizedName = dto.name.trim();
     const normalizedDescription = dto.description?.trim() || undefined;
@@ -675,7 +626,10 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (classRole) {
-      throw new BadRequestException('Role name already exists in this class');
+      this.throwBadRequest(
+        'Role name already exists in this class',
+        'RBAC_CLASS_ROLE_NAME_EXISTS',
+      );
     }
 
     const systemRole = await this.roleRepo.findOne({
@@ -687,8 +641,9 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (systemRole) {
-      throw new BadRequestException(
+      this.throwBadRequest(
         'Role name conflicts with reserved system role',
+        'RBAC_ROLE_NAME_CONFLICTS_SYSTEM',
       );
     }
 
@@ -732,17 +687,8 @@ export class RbacService implements OnModuleInit {
 
   async listClassCustomRoles(
     classId: string,
-    actorUserId: string,
   ): Promise<CustomRoleResponseDto[]> {
-    await this.workspaceAccessService.assertTeacherClassOwner(
-      classId,
-      actorUserId,
-      {
-        ownerForbiddenMessage: 'Only workspace owner can manage class roles',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage class roles',
-      },
-    );
+    await this.workspaceAccessService.getClassOrThrow(classId);
 
     const roles = await this.roleRepo.find({
       where: {
@@ -832,17 +778,8 @@ export class RbacService implements OnModuleInit {
     classId: string,
     roleId: string,
     dto: UpdateCustomRoleDto,
-    actorUserId: string,
   ): Promise<CustomRoleResponseDto> {
-    await this.workspaceAccessService.assertTeacherClassOwner(
-      classId,
-      actorUserId,
-      {
-        ownerForbiddenMessage: 'Only workspace owner can manage class roles',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage class roles',
-      },
-    );
+    await this.workspaceAccessService.getClassOrThrow(classId);
 
     const role = await this.findClassCustomRoleOrThrow(classId, roleId);
     this.assertMutableClassRole(role);
@@ -861,17 +798,8 @@ export class RbacService implements OnModuleInit {
   async deleteClassCustomRole(
     classId: string,
     roleId: string,
-    actorUserId: string,
   ): Promise<DeleteRoleResponseDto> {
-    await this.workspaceAccessService.assertTeacherClassOwner(
-      classId,
-      actorUserId,
-      {
-        ownerForbiddenMessage: 'Only workspace owner can manage class roles',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage class roles',
-      },
-    );
+    await this.workspaceAccessService.getClassOrThrow(classId);
 
     const role = await this.findClassCustomRoleOrThrow(classId, roleId);
     this.assertMutableClassRole(role);
@@ -881,8 +809,9 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (assignmentCount > 0) {
-      throw new BadRequestException(
+      this.throwBadRequest(
         'Cannot delete class role while it is still assigned to class students',
+        'RBAC_CLASS_CUSTOM_ROLE_ASSIGNED',
       );
     }
 
@@ -936,7 +865,10 @@ export class RbacService implements OnModuleInit {
       const normalizedName = dto.name.trim();
 
       if (!normalizedName) {
-        throw new BadRequestException('Role name can not be empty');
+        this.throwBadRequest(
+          'Role name can not be empty',
+          'RBAC_ROLE_NAME_REQUIRED',
+        );
       }
 
       await this.ensureRoleNameDoesNotConflictWithSystemRole(normalizedName);
@@ -1008,7 +940,10 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (!role) {
-      throw new BadRequestException('Workspace custom role not found');
+      this.throwBadRequest(
+        'Workspace custom role not found',
+        'RBAC_WORKSPACE_CUSTOM_ROLE_NOT_FOUND',
+      );
     }
 
     return role;
@@ -1027,7 +962,10 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (!role) {
-      throw new BadRequestException('Class custom role not found');
+      this.throwBadRequest(
+        'Class custom role not found',
+        'RBAC_CLASS_CUSTOM_ROLE_NOT_FOUND',
+      );
     }
 
     return role;
@@ -1050,7 +988,10 @@ export class RbacService implements OnModuleInit {
       where: { id: roleId },
     });
     if (!role) {
-      throw new BadRequestException('Default class role not found');
+      this.throwBadRequest(
+        'Default class role not found',
+        'RBAC_DEFAULT_CLASS_ROLE_NOT_FOUND',
+      );
     }
 
     for (const assignment of assignments) {
@@ -1062,8 +1003,9 @@ export class RbacService implements OnModuleInit {
 
   private assertMutableClassRole(role: Role): void {
     if (role.classId && role.name === this.defaultClassStudentRoleName) {
-      throw new BadRequestException(
+      this.throwBadRequest(
         'Default class student role can not be updated or deleted',
+        'RBAC_DEFAULT_CLASS_ROLE_IMMUTABLE',
       );
     }
   }
@@ -1080,8 +1022,9 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (systemRole) {
-      throw new BadRequestException(
+      this.throwBadRequest(
         'Role name conflicts with reserved system role',
+        'RBAC_ROLE_NAME_CONFLICTS_SYSTEM',
       );
     }
   }
@@ -1091,6 +1034,7 @@ export class RbacService implements OnModuleInit {
     roleName: string,
     excludeRoleId?: string,
     conflictMessage = 'Role name already exists in this workspace',
+    conflictCode = 'RBAC_WORKSPACE_ROLE_NAME_EXISTS',
   ): Promise<void> {
     const existingRole = await this.roleRepo.findOne({
       where: {
@@ -1102,7 +1046,7 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (existingRole) {
-      throw new BadRequestException(conflictMessage);
+      this.throwBadRequest(conflictMessage, conflictCode);
     }
   }
 
@@ -1111,6 +1055,7 @@ export class RbacService implements OnModuleInit {
     roleName: string,
     excludeRoleId?: string,
     conflictMessage = 'Role name already exists in this class',
+    conflictCode = 'RBAC_CLASS_ROLE_NAME_EXISTS',
   ): Promise<void> {
     const existingRole = await this.roleRepo.findOne({
       where: {
@@ -1122,7 +1067,7 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (existingRole) {
-      throw new BadRequestException(conflictMessage);
+      this.throwBadRequest(conflictMessage, conflictCode);
     }
   }
 
@@ -1146,13 +1091,22 @@ export class RbacService implements OnModuleInit {
       },
     });
     if (!role) {
-      throw new BadRequestException('Role not found');
+      this.throwBadRequest('Role not found', 'RBAC_ROLE_NOT_FOUND');
     }
 
     return role;
   }
 
+  private throwBadRequest(message: string, code: string): never {
+    throw new BadRequestException(errorPayload(message, code));
+  }
+
   private throwUnsupportedScopeType(scopeType: never): never {
-    throw new BadRequestException(`Unsupported RBAC scope type: ${String(scopeType)}`);
+    throw new BadRequestException(
+      errorPayload(
+        `Unsupported RBAC scope type: ${String(scopeType)}`,
+        'RBAC_SCOPE_TYPE_UNSUPPORTED',
+      ),
+    );
   }
 }

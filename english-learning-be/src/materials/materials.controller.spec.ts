@@ -10,6 +10,10 @@ describe('MaterialsController', () => {
   let controller: MaterialsController;
   let materialsService: {
     initMaterialUpload: jest.Mock;
+    signMaterialUploadPart: jest.Mock;
+    completeMaterialUpload: jest.Mock;
+    abortMaterialUpload: jest.Mock;
+    listWorkspaceMaterials: jest.Mock;
     getMaterialDownloadTarget: jest.Mock;
     deleteMaterial: jest.Mock;
   };
@@ -17,6 +21,10 @@ describe('MaterialsController', () => {
   beforeEach(async () => {
     materialsService = {
       initMaterialUpload: jest.fn(),
+      signMaterialUploadPart: jest.fn(),
+      completeMaterialUpload: jest.fn(),
+      abortMaterialUpload: jest.fn(),
+      listWorkspaceMaterials: jest.fn(),
       getMaterialDownloadTarget: jest.fn(),
       deleteMaterial: jest.fn(),
     };

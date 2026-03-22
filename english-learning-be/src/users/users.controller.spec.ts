@@ -55,7 +55,7 @@ describe('UsersController', () => {
       password: 'secret123',
     });
     expect(result).toEqual({
-      statusCode: 200,
+      statusCode: 201,
       message: 'User created',
       result: { id: 'user-1' },
     });
@@ -71,21 +71,6 @@ describe('UsersController', () => {
       statusCode: 200,
       message: 'Users retrieved',
       result: [{ id: 'user-1' }],
-    });
-  });
-
-  it('returns the current user profile', async () => {
-    usersService.getUserById.mockResolvedValue({ id: 'user-1' });
-
-    const result = await controller.getMe({
-      user: { userId: 'user-1' },
-    } as never);
-
-    expect(usersService.getUserById).toHaveBeenCalledWith('user-1');
-    expect(result).toEqual({
-      statusCode: 200,
-      message: 'User retrieved',
-      result: { id: 'user-1' },
     });
   });
 

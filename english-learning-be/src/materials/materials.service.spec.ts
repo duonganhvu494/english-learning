@@ -52,7 +52,7 @@ describe('MaterialsService', () => {
     findOne: jest.Mock;
   };
   let workspaceAccessService: {
-    assertTeacherWorkspaceOwner: jest.Mock;
+    getWorkspaceOrThrow: jest.Mock;
   };
   let s3StorageService: {
     multipartPartSize: number;
@@ -118,7 +118,7 @@ describe('MaterialsService', () => {
       findOne: jest.fn(),
     };
     workspaceAccessService = {
-      assertTeacherWorkspaceOwner: jest.fn().mockResolvedValue(workspace),
+      getWorkspaceOrThrow: jest.fn().mockResolvedValue(workspace),
     };
     s3StorageService = {
       multipartPartSize: 10,
@@ -270,7 +270,6 @@ describe('MaterialsService', () => {
         objectKey: 'workspace/workspace-1/lecture/2026/03/video.mp4',
         partNumber: 2,
       },
-      'user-1',
     );
 
     expect(uploadSessionRepo.save).toHaveBeenCalledWith(
@@ -382,7 +381,6 @@ describe('MaterialsService', () => {
           { partNumber: 1, etag: '"etag-1"' },
         ],
       },
-      'user-1',
     );
 
     expect(s3StorageService.completeMultipartUpload).toHaveBeenCalledWith({
@@ -438,7 +436,6 @@ describe('MaterialsService', () => {
         uploadId: 'upload-1',
         objectKey: 'workspace/workspace-1/lecture/2026/03/video.mp4',
       },
-      'user-1',
     );
 
     expect(s3StorageService.abortMultipartUpload).toHaveBeenCalledWith({
@@ -527,7 +524,6 @@ describe('MaterialsService', () => {
           objectKey: 'workspace/workspace-1/lecture/2026/03/video.mp4',
           partNumber: 3,
         },
-        'user-1',
       ),
     ).rejects.toThrow(new BadRequestException('partNumber exceeds totalParts'));
   });
