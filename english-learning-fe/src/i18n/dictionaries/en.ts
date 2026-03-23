@@ -12,6 +12,167 @@ export const EN_DICTIONARY: Dictionary = {
     localeLabel: "Language",
     themeLabel: "Theme",
   },
+  landing: {
+    nav: {
+      features: "Features",
+      pricing: "Pricing",
+    },
+    hero: {
+      badge: "Trusted by 10,000+ design educators",
+      title: "The Ultimate Platform for Design Education",
+      description:
+        "Manage your Figma classes, track student progress, and streamline assignments all in one beautiful platform. Built for design educators.",
+      startFree: "Start Teaching Free",
+      watchDemo: "Watch Demo",
+      noCard: "No credit card required • Get started in 2 minutes",
+    },
+    features: {
+      title: "Everything You Need to Teach Design",
+      description:
+        "Powerful features designed specifically for design educators",
+      items: {
+        classManagement: {
+          title: "Class Management",
+          description: "Create and organize unlimited classes with ease",
+        },
+        studentTracking: {
+          title: "Student Tracking",
+          description: "Monitor student progress and engagement",
+        },
+        assignments: {
+          title: "Assignments",
+          description: "Create, distribute, and grade assignments",
+        },
+        calendar: {
+          title: "Calendar & Events",
+          description: "Schedule classes and manage important dates",
+        },
+        analytics: {
+          title: "Analytics",
+          description: "Track performance with detailed insights",
+        },
+        grading: {
+          title: "Easy Grading",
+          description: "Streamlined grading and feedback system",
+        },
+      },
+    },
+    testimonials: {
+      title: "Loved by Design Educators",
+      description: "See what teachers are saying about us",
+      items: {
+        michael: {
+          name: "Michael Chen",
+          role: "Design Instructor",
+          content:
+            "This platform has transformed how I manage my Figma classes. The interface is intuitive and my students love it!",
+        },
+        emily: {
+          name: "Emily Rodriguez",
+          role: "UX/UI Teacher",
+          content:
+            "Finally, a class management tool built specifically for design education. The assignment tracking is phenomenal.",
+        },
+        david: {
+          name: "David Kim",
+          role: "Design Bootcamp Lead",
+          content:
+            "Switched from multiple tools to just this platform. Saves me hours every week. Highly recommended!",
+        },
+      },
+    },
+    pricing: {
+      title: "Simple, Transparent Pricing",
+      description: "Choose the plan that works best for you",
+      mostPopular: "Most Popular",
+      plans: {
+        free: {
+          name: "Free",
+          price: "$0",
+          period: "forever",
+          description: "Perfect for trying out",
+          features: [
+            "Up to 3 classes",
+            "Unlimited students per class",
+            "Basic analytics",
+            "Assignment management",
+            "Calendar & events",
+            "Email support",
+          ],
+          cta: "Get Started Free",
+        },
+        pro: {
+          name: "Pro",
+          price: "$29",
+          period: "per month",
+          description: "For professional educators",
+          features: [
+            "Up to 10 classes",
+            "Unlimited students",
+            "Advanced analytics",
+            "Priority support",
+            "Custom branding",
+            "Export data",
+            "Automation tools",
+          ],
+          cta: "Start Free Trial",
+        },
+        enterprise: {
+          name: "Enterprise",
+          price: "$99",
+          period: "per month",
+          description: "For schools & institutions",
+          features: [
+            "Unlimited classes",
+            "Unlimited students",
+            "Advanced analytics",
+            "Dedicated support",
+            "Custom integrations",
+            "API access",
+            "Team collaboration",
+            "White-label option",
+          ],
+          cta: "Contact Sales",
+        },
+      },
+    },
+    cta: {
+      title: "Ready to Transform Your Design Classes?",
+      description:
+        "Join thousands of educators who are already using Figma Class Manager",
+      startTrial: "Start Free Trial",
+    },
+    footer: {
+      brand: {
+        description:
+          "The ultimate platform for design education and class management.",
+      },
+      sections: {
+        product: {
+          title: "Product",
+          features: "Features",
+          pricing: "Pricing",
+          updates: "Updates",
+          roadmap: "Roadmap",
+        },
+        resources: {
+          title: "Resources",
+          documentation: "Documentation",
+          tutorials: "Tutorials",
+          blog: "Blog",
+          support: "Support",
+        },
+        company: {
+          title: "Company",
+          about: "About",
+          contact: "Contact",
+          privacy: "Privacy",
+          terms: "Terms",
+        },
+      },
+      copyright: "© 2026 Figma Class Manager. All rights reserved.",
+    },
+  },
   login: {
     brandBadge: "Online learning - Clear roadmap",
     welcomeTitle: "Sign in to continue your Japanese learning journey.",

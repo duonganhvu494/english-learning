@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, GraduationCap, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppSettings } from "@/providers/app-settings-provider";
+import { LanguageSwitcher } from "@/components/common/language-switcher";
+import { ThemeToggle } from "@/components/common/theme-toggle";
 
 const navItems = [
   { path: "/dashboard", key: "dashboard", icon: LayoutDashboard },
@@ -37,8 +39,10 @@ export function DashboardHeader() {
             return (
               <Link key={item.key} href={item.path}>
                 <Button
-                  variant={isActive ? "secondary" : "outline"}
-                  className="h-10"
+                  variant={isActive ? "primary" : "outline"}
+                  className={
+                    isActive ? "h-10 text-(--color-text-inverse)" : "h-10"
+                  }
                 >
                   <Icon className="w-4 h-4 mr-2" />
                   {item.key === "dashboard"
@@ -68,8 +72,12 @@ export function DashboardHeader() {
                   return (
                     <Link key={item.key} href={item.path}>
                       <Button
-                        variant={isActive ? "secondary" : "outline"}
-                        className="w-full justify-start"
+                        variant={isActive ? "primary" : "outline"}
+                        className={
+                          isActive
+                            ? "w-full justify-start text-(--color-text-inverse)"
+                            : "w-full justify-start"
+                        }
                       >
                         <Icon className="w-4 h-4 mr-2" />
                         {item.key === "dashboard"
@@ -87,6 +95,8 @@ export function DashboardHeader() {
         </div>
 
         <div className="hidden md:flex items-center gap-2 ml-auto">
+          <LanguageSwitcher />
+          <ThemeToggle />
           <div className="text-right text-sm">
             <div className="font-medium text-app-text">Teacher Name</div>
             <div className="text-app-text-muted">instructor@school.com</div>

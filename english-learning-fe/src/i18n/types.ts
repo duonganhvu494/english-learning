@@ -10,6 +10,136 @@ export type Dictionary = {
     localeLabel: string;
     themeLabel: string;
   };
+  landing: {
+    nav: {
+      features: string;
+      pricing: string;
+    };
+    hero: {
+      badge: string;
+      title: string;
+      description: string;
+      startFree: string;
+      watchDemo: string;
+      noCard: string;
+    };
+    features: {
+      title: string;
+      description: string;
+      items: {
+        classManagement: {
+          title: string;
+          description: string;
+        };
+        studentTracking: {
+          title: string;
+          description: string;
+        };
+        assignments: {
+          title: string;
+          description: string;
+        };
+        calendar: {
+          title: string;
+          description: string;
+        };
+        analytics: {
+          title: string;
+          description: string;
+        };
+        grading: {
+          title: string;
+          description: string;
+        };
+      };
+    };
+    testimonials: {
+      title: string;
+      description: string;
+      items: {
+        michael: {
+          name: string;
+          role: string;
+          content: string;
+        };
+        emily: {
+          name: string;
+          role: string;
+          content: string;
+        };
+        david: {
+          name: string;
+          role: string;
+          content: string;
+        };
+      };
+    };
+    pricing: {
+      title: string;
+      description: string;
+      mostPopular: string;
+      plans: {
+        free: {
+          name: string;
+          price: string;
+          period: string;
+          description: string;
+          features: string[];
+          cta: string;
+        };
+        pro: {
+          name: string;
+          price: string;
+          period: string;
+          description: string;
+          features: string[];
+          cta: string;
+        };
+        enterprise: {
+          name: string;
+          price: string;
+          period: string;
+          description: string;
+          features: string[];
+          cta: string;
+        };
+      };
+    };
+    cta: {
+      title: string;
+      description: string;
+      startTrial: string;
+    };
+    footer: {
+      brand: {
+        description: string;
+      };
+      sections: {
+        product: {
+          title: string;
+          features: string;
+          pricing: string;
+          updates: string;
+          roadmap: string;
+        };
+        resources: {
+          title: string;
+          documentation: string;
+          tutorials: string;
+          blog: string;
+          support: string;
+        };
+        company: {
+          title: string;
+          about: string;
+          contact: string;
+          privacy: string;
+          terms: string;
+        };
+      };
+      copyright: string;
+    };
+  };
   login: {
     brandBadge: string;
     welcomeTitle: string;

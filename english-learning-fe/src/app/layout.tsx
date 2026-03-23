@@ -4,7 +4,7 @@ import { AppSettingsProvider } from "@/providers/app-settings-provider";
 import { NotificationProvider } from "@/providers/notification-provider";
 import { cn } from "@/utils/cn";
 import "./globals.css";
-import { DataProvider } from "@/data/dataContext";
+import { DataProvider } from "@/mock-data/dataContext";
 import { SubscriptionProvider } from "@/context/subscriptionContext";
 
 const geistSans = Geist({

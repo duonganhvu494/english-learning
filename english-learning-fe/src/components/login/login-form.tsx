@@ -9,7 +9,7 @@ import { translateApiMessage } from "@/api/core/api-message-translator";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { useNotification } from "@/providers/notification-provider";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card } from "@/components/ui/section-card";
 import { Input } from "@/components/ui/input";
 
 export function LoginForm() {

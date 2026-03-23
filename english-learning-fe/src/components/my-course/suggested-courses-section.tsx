@@ -1,6 +1,6 @@
 "use client";
 
-import { suggestedCourses } from "@/data/my-course";
+import { suggestedCourses } from "@/mock-data/my-course";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { SuggestedCourseCard } from "./suggested-course-card";
 

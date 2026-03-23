@@ -4,7 +4,6 @@ import { Menu, ChevronDown, GraduationCap } from "lucide-react";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { LanguageSwitcher } from "../common/language-switcher";
 import { ThemeToggle } from "../common/theme-toggle";
-import { cn } from "@/utils/cn";
 
 type TopbarProps = {
   onOpenSidebar: () => void;

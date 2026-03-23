@@ -1,6 +1,6 @@
 "use client";
 
-import { sidebarSections } from "@/data/my-course";
+import { sidebarSections } from "@/mock-data/my-course";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { cn } from "@/utils/cn";
 import { UserPanel } from "./user-panel";

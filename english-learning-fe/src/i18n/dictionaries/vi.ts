@@ -12,6 +12,167 @@ export const VI_DICTIONARY: Dictionary = {
     localeLabel: "Ngôn ngữ",
     themeLabel: "Giao diện",
   },
+  landing: {
+    nav: {
+      features: "Tính năng",
+      pricing: "Giá cả",
+    },
+    hero: {
+      badge: "Được tin dùng bởi 10,000+ giáo viên thiết kế",
+      title: "Nền tảng tối ưu cho giáo dục thiết kế",
+      description:
+        "Quản lý lớp Figma, theo dõi tiến độ học sinh và tối ưu hóa bài tập trong một nền tảng đẹp mắt. Được xây dựng dành riêng cho giáo viên thiết kế.",
+      startFree: "Bắt đầu dạy miễn phí",
+      watchDemo: "Xem demo",
+      noCard: "Không cần thẻ tín dụng • Bắt đầu trong 2 phút",
+    },
+    features: {
+      title: "Mọi thứ bạn cần để dạy thiết kế",
+      description:
+        "Các tính năng mạnh mẽ được thiết kế đặc biệt cho giáo viên thiết kế",
+      items: {
+        classManagement: {
+          title: "Quản lý lớp học",
+          description: "Tạo và tổ chức lớp học không giới hạn một cách dễ dàng",
+        },
+        studentTracking: {
+          title: "Theo dõi học sinh",
+          description: "Giám sát tiến độ và sự tham gia của học sinh",
+        },
+        assignments: {
+          title: "Bài tập",
+          description: "Tạo, phân phát và chấm bài tập",
+        },
+        calendar: {
+          title: "Lịch & Sự kiện",
+          description: "Lên lịch lớp học và quản lý ngày quan trọng",
+        },
+        analytics: {
+          title: "Phân tích",
+          description: "Theo dõi hiệu suất với thông tin chi tiết",
+        },
+        grading: {
+          title: "Chấm điểm dễ dàng",
+          description: "Hệ thống chấm điểm và phản hồi được tối ưu hóa",
+        },
+      },
+    },
+    testimonials: {
+      title: "Được yêu thích bởi giáo viên thiết kế",
+      description: "Xem giáo viên nói gì về chúng tôi",
+      items: {
+        michael: {
+          name: "Michael Chen",
+          role: "Giảng viên thiết kế",
+          content:
+            "Nền tảng này đã thay đổi cách tôi quản lý lớp Figma. Giao diện trực quan và học sinh của tôi rất thích!",
+        },
+        emily: {
+          name: "Emily Rodriguez",
+          role: "Giáo viên UX/UI",
+          content:
+            "Cuối cùng cũng có công cụ quản lý lớp học được thiết kế đặc biệt cho giáo dục thiết kế. Việc theo dõi bài tập thật tuyệt vời.",
+        },
+        david: {
+          name: "David Kim",
+          role: "Trưởng bootcamp thiết kế",
+          content:
+            "Chuyển từ nhiều công cụ sang chỉ một nền tảng này. Tiết kiệm hàng giờ mỗi tuần. Rất khuyến khích!",
+        },
+      },
+    },
+    pricing: {
+      title: "Giá cả đơn giản, minh bạch",
+      description: "Chọn gói phù hợp nhất với bạn",
+      mostPopular: "Phổ biến nhất",
+      plans: {
+        free: {
+          name: "Miễn phí",
+          price: "$0",
+          period: "mãi mãi",
+          description: "Hoàn hảo để thử nghiệm",
+          features: [
+            "Tối đa 3 lớp học",
+            "Số học sinh không giới hạn mỗi lớp",
+            "Phân tích cơ bản",
+            "Quản lý bài tập",
+            "Lịch & sự kiện",
+            "Hỗ trợ email",
+          ],
+          cta: "Bắt đầu miễn phí",
+        },
+        pro: {
+          name: "Pro",
+          price: "$29",
+          period: "mỗi tháng",
+          description: "Dành cho giáo viên chuyên nghiệp",
+          features: [
+            "Tối đa 10 lớp học",
+            "Số học sinh không giới hạn",
+            "Phân tích nâng cao",
+            "Hỗ trợ ưu tiên",
+            "Thương hiệu tùy chỉnh",
+            "Xuất dữ liệu",
+            "Công cụ tự động hóa",
+          ],
+          cta: "Bắt đầu dùng thử miễn phí",
+        },
+        enterprise: {
+          name: "Enterprise",
+          price: "$99",
+          period: "mỗi tháng",
+          description: "Dành cho trường học & tổ chức",
+          features: [
+            "Lớp học không giới hạn",
+            "Số học sinh không giới hạn",
+            "Phân tích nâng cao",
+            "Hỗ trợ chuyên dụng",
+            "Tích hợp tùy chỉnh",
+            "API access",
+            "Hợp tác nhóm",
+            "Tùy chọn white-label",
+          ],
+          cta: "Liên hệ bán hàng",
+        },
+      },
+    },
+    cta: {
+      title: "Sẵn sàng biến đổi lớp thiết kế của bạn?",
+      description:
+        "Tham gia cùng hàng nghìn giáo viên đang sử dụng Figma Class Manager",
+      startTrial: "Bắt đầu dùng thử miễn phí",
+    },
+    footer: {
+      brand: {
+        description:
+          "Nền tảng tối ưu cho giáo dục thiết kế và quản lý lớp học.",
+      },
+      sections: {
+        product: {
+          title: "Sản phẩm",
+          features: "Tính năng",
+          pricing: "Giá cả",
+          updates: "Cập nhật",
+          roadmap: "Lộ trình",
+        },
+        resources: {
+          title: "Tài nguyên",
+          documentation: "Tài liệu",
+          tutorials: "Hướng dẫn",
+          blog: "Blog",
+          support: "Hỗ trợ",
+        },
+        company: {
+          title: "Công ty",
+          about: "Về chúng tôi",
+          contact: "Liên hệ",
+          privacy: "Bảo mật",
+          terms: "Điều khoản",
+        },
+      },
+      copyright: "© 2026 Figma Class Manager. Tất cả quyền được bảo lưu.",
+    },
+  },
   login: {
     brandBadge: "Học trực tuyến - Lộ trình rõ ràng",
     welcomeTitle: "Đăng nhập để tiếp tục hành trình học tiếng Nhật của bạn.",

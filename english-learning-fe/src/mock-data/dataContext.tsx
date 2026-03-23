@@ -261,7 +261,7 @@ const mockCalendarEvents: CalendarEvent[] = [
 export function DataProvider({ children }: { children: ReactNode }) {
   const [classes, setClasses] = useState<Class[]>(mockClasses);
   const [students, setStudents] = useState<Student[]>(mockStudents);
-  const [projects, setProjects] = useState<Project[]>(mockProjects);
+  const [projects] = useState<Project[]>(mockProjects);
   const [assignments, setAssignments] = useState<Assignment[]>(mockAssignments);
   const [calendarEvents, setCalendarEvents] =
     useState<CalendarEvent[]>(mockCalendarEvents);

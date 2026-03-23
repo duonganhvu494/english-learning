@@ -1,7 +1,7 @@
 "use client";
 
 import { useAppSettings } from "@/providers/app-settings-provider";
-import { useData } from "../../data/dataContext";
+import { useData } from "../../mock-data/dataContext";
 import { useSubscription } from "@/context/subscriptionContext";
 import { cn } from "@/utils/cn";
 import {
@@ -10,7 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../../components/dashboard/card";
+} from "../../components/ui/card";
 import {
   Users,
   GraduationCap,
@@ -20,7 +20,7 @@ import {
   Crown,
 } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "@/components/dashboard/badge";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/dashboard/progress";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -153,7 +153,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 md:px-6 lg:px-8 xl:px-10">
       <DashboardHeader />
       <div className="space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

@@ -6,7 +6,7 @@ import { cn } from "@/utils/cn";
 
 function getButtonClass(isActive: boolean) {
   return cn(
-    "inline-flex h-9 items-center justify-center rounded-full px-3 text-xs font-semibold transition-colors",
+    "inline-flex h-9 items-center justify-center rounded-full px-3 text-xs font-semibold transition-colors hover:cursor-pointer",
     isActive
       ? "bg-[var(--color-primary)] text-[var(--color-text-inverse)]"
       : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]",

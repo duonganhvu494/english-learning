@@ -1,6 +1,6 @@
 "use client";
 
-import type { SuggestedCourseKey, TeacherKey } from "@/data/my-course";
+import type { SuggestedCourseKey, TeacherKey } from "@/mock-data/my-course";
 import { useAppSettings } from "@/providers/app-settings-provider";
 
 type SuggestedCourse = {
