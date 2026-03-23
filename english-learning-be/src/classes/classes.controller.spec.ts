@@ -78,7 +78,6 @@ describe('ClassesController', () => {
     expect(classesService.createClass).toHaveBeenCalledWith(
       'workspace-1',
       { className: 'Grammar A' },
-      'owner-1',
     );
     expect(result).toEqual({
       statusCode: 201,
@@ -97,7 +96,6 @@ describe('ClassesController', () => {
 
     expect(classesService.listWorkspaceClasses).toHaveBeenCalledWith(
       'workspace-1',
-      'owner-1',
     );
     expect(result).toEqual({
       statusCode: 200,
@@ -114,10 +112,7 @@ describe('ClassesController', () => {
       { user: { userId: 'owner-1' } } as never,
     );
 
-    expect(classesService.getClassDetail).toHaveBeenCalledWith(
-      'class-1',
-      'owner-1',
-    );
+    expect(classesService.getClassDetail).toHaveBeenCalledWith('class-1');
     expect(result).toEqual({
       statusCode: 200,
       message: 'Class detail fetched',
@@ -136,10 +131,7 @@ describe('ClassesController', () => {
       { user: { userId: 'owner-1' } } as never,
     );
 
-    expect(classesService.getClassStudents).toHaveBeenCalledWith(
-      'class-1',
-      'owner-1',
-    );
+    expect(classesService.getClassStudents).toHaveBeenCalledWith('class-1');
     expect(result).toEqual({
       statusCode: 200,
       message: 'Class students fetched',
@@ -165,7 +157,6 @@ describe('ClassesController', () => {
     expect(classesService.addStudentsToClass).toHaveBeenCalledWith(
       'class-1',
       { studentIds: ['student-1'] },
-      'owner-1',
     );
     expect(result).toEqual({
       statusCode: 200,
@@ -189,7 +180,6 @@ describe('ClassesController', () => {
     expect(classesService.updateClass).toHaveBeenCalledWith(
       'class-1',
       { description: 'Updated description' },
-      'owner-1',
     );
     expect(result).toEqual({
       statusCode: 200,
@@ -213,7 +203,6 @@ describe('ClassesController', () => {
     expect(classesService.removeStudentFromClass).toHaveBeenCalledWith(
       'class-1',
       'student-1',
-      'owner-1',
     );
     expect(result).toEqual({
       statusCode: 200,
@@ -233,10 +222,7 @@ describe('ClassesController', () => {
       { user: { userId: 'owner-1' } } as never,
     );
 
-    expect(classesService.deleteClass).toHaveBeenCalledWith(
-      'class-1',
-      'owner-1',
-    );
+    expect(classesService.deleteClass).toHaveBeenCalledWith('class-1');
     expect(result).toEqual({
       statusCode: 200,
       message: 'Class deleted',
@@ -263,7 +249,6 @@ describe('ClassesController', () => {
       'class-1',
       'student-1',
       { roleId: 'role-1' },
-      'owner-1',
     );
     expect(result).toEqual({
       statusCode: 200,

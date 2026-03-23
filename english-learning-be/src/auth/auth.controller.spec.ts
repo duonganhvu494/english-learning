@@ -10,7 +10,6 @@ describe('AuthController', () => {
     signIn: jest.Mock;
     refreshSession: jest.Mock;
     logout: jest.Mock;
-    me: jest.Mock;
     changePassword: jest.Mock;
   };
   let configService: {
@@ -23,7 +22,6 @@ describe('AuthController', () => {
       signIn: jest.fn(),
       refreshSession: jest.fn(),
       logout: jest.fn(),
-      me: jest.fn(),
       changePassword: jest.fn(),
     };
     configService = {
@@ -246,25 +244,25 @@ describe('AuthController', () => {
   });
 
   it('returns the authenticated user profile', async () => {
-    authService.me.mockResolvedValue({
-      id: 'user-1',
-      email: 'teacher@example.com',
-    });
-
     const result = await controller.getMe({
       user: {
         userId: 'user-1',
+        userName: 'teacher1',
+        fullName: 'Teacher One',
         email: 'teacher@example.com',
+        mustChangePassword: false,
       },
     } as never);
 
-    expect(authService.me).toHaveBeenCalledWith('teacher@example.com');
     expect(result).toEqual({
       statusCode: 200,
       message: 'Is authenticated',
       result: {
         id: 'user-1',
+        userName: 'teacher1',
+        fullName: 'Teacher One',
         email: 'teacher@example.com',
+        mustChangePassword: false,
       },
     });
   });

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { parseDurationToSeconds } from 'src/common/utils/duration.util';
-import { RedisService } from 'src/redis/redis.service';
+import { RedisService } from 'src/rbac/redis/redis.service';
 
 @Injectable()
 export class AuthSessionsService {

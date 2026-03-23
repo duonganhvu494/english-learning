@@ -1,7 +1,11 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { ClassStudentListItemDto } from './class-student-list-item.dto';
 
 export class ClassRosterResponseDto {
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440200' })
   classId: string;
+
+  @ApiProperty({ type: [ClassStudentListItemDto] })
   students: ClassStudentListItemDto[];
 
   static fromData(input: {

@@ -1,15 +1,31 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { MaterialSummaryDto } from 'src/materials/dto/material-summary.dto';
 import { User } from 'src/users/entities/user.entity';
 import { SubmissionEntity } from '../entities/submission.entity';
 
 export class SubmissionResponseDto {
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440800' })
   assignmentId: string;
+
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440010' })
   studentId: string;
+
+  @ApiProperty({ example: 'Nguyen Van A', nullable: true })
   studentName: string | null;
+
+  @ApiProperty({ example: true })
   submitted: boolean;
+
+  @ApiProperty({ example: '2026-03-25T09:00:00.000Z', nullable: true })
   submittedAt: Date | null;
+
+  @ApiProperty({ example: 8.5, nullable: true })
   grade: number | null;
+
+  @ApiProperty({ example: 'Good job, but review question 3.', nullable: true })
   feedback: string | null;
+
+  @ApiProperty({ type: MaterialSummaryDto, nullable: true })
   material: MaterialSummaryDto | null;
 
   static fromEntity(

@@ -40,8 +40,8 @@ describe('ClassesService', () => {
     find: jest.fn(),
   };
   const workspaceAccessService = {
-    assertTeacherWorkspaceOwner: jest.fn(),
-    assertTeacherClassOwner: jest.fn(),
+    getWorkspaceOrThrow: jest.fn(),
+    getClassOrThrow: jest.fn(),
   };
   const rbacService = {
     ensureDefaultClassStudentRole: jest.fn(),
@@ -105,7 +105,7 @@ describe('ClassesService', () => {
   });
 
   it('creates a class, normalizes text fields, and ensures the default student role', async () => {
-    workspaceAccessService.assertTeacherWorkspaceOwner.mockResolvedValue({
+    workspaceAccessService.getWorkspaceOrThrow.mockResolvedValue({
       id: 'workspace-1',
     });
     classRepo.findOne.mockResolvedValue(null);
@@ -126,7 +126,6 @@ describe('ClassesService', () => {
         className: '  Grammar A  ',
         description: '  Morning class  ',
       },
-      'owner-1',
     );
 
     expect(classRepo.create).toHaveBeenCalledWith({
@@ -147,7 +146,7 @@ describe('ClassesService', () => {
   });
 
   it('rejects duplicate class names inside the same workspace', async () => {
-    workspaceAccessService.assertTeacherWorkspaceOwner.mockResolvedValue({
+    workspaceAccessService.getWorkspaceOrThrow.mockResolvedValue({
       id: 'workspace-1',
     });
     classRepo.findOne.mockResolvedValue({ id: 'class-existing' });
@@ -156,7 +155,6 @@ describe('ClassesService', () => {
       service.createClass(
         'workspace-1',
         { className: 'Grammar A' },
-        'owner-1',
       ),
     ).rejects.toThrow(
       new BadRequestException(
@@ -189,7 +187,7 @@ describe('ClassesService', () => {
       role: null,
     };
 
-    workspaceAccessService.assertTeacherClassOwner.mockResolvedValue(classEntity);
+    workspaceAccessService.getClassOrThrow.mockResolvedValue(classEntity);
     memberRepo.find.mockResolvedValue([
       {
         user: student1,
@@ -212,7 +210,6 @@ describe('ClassesService', () => {
     const result = await service.addStudentsToClass(
       'class-1',
       { studentIds: ['student-1', 'student-2'] },
-      'owner-1',
     );
 
     expect(managerClassStudentRepo.create).toHaveBeenCalledWith({
@@ -244,7 +241,7 @@ describe('ClassesService', () => {
       student: { id: 'student-1' },
       role: null,
     });
-    workspaceAccessService.assertTeacherClassOwner.mockResolvedValue({
+    workspaceAccessService.getClassOrThrow.mockResolvedValue({
       id: 'class-1',
     });
     rbacService.ensureDefaultClassStudentRole.mockResolvedValue(defaultRole);
@@ -256,7 +253,6 @@ describe('ClassesService', () => {
       'class-1',
       'student-1',
       {},
-      'owner-1',
     );
 
     expect(rbacService.ensureDefaultClassStudentRole).toHaveBeenCalledWith(
@@ -271,7 +267,7 @@ describe('ClassesService', () => {
   });
 
   it('rejects adding students that do not belong to the workspace', async () => {
-    workspaceAccessService.assertTeacherClassOwner.mockResolvedValue({
+    workspaceAccessService.getClassOrThrow.mockResolvedValue({
       id: 'class-1',
       workspace: { id: 'workspace-1' },
     });
@@ -288,7 +284,6 @@ describe('ClassesService', () => {
       service.addStudentsToClass(
         'class-1',
         { studentIds: ['student-1', 'student-2'] },
-        'owner-1',
       ),
     ).rejects.toThrow(
       new BadRequestException(

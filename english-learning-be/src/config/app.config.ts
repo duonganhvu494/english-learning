@@ -31,6 +31,13 @@ export default () => {
               ? defaultDevOrigins
               : [],
       },
+      swagger: {
+        enabled:
+          process.env.SWAGGER_ENABLED !== undefined
+            ? process.env.SWAGGER_ENABLED === 'true'
+            : nodeEnv !== 'production',
+        path: process.env.SWAGGER_PATH || 'api-docs',
+      },
     },
     security: {
       csrfCookieName: process.env.CSRF_COOKIE_NAME || 'csrfToken',

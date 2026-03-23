@@ -68,6 +68,7 @@ export const validateEnvironment = (env: EnvRecord): EnvRecord => {
     'COOKIE_SECURE',
     'DB_SYNCHRONIZE',
     'S3_FORCE_PATH_STYLE',
+    'SWAGGER_ENABLED',
   ].forEach((key) => {
     if (!isBlank(env[key])) {
       requireBooleanEnv(env, key, errors);

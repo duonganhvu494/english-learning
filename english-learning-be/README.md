@@ -168,14 +168,13 @@ Lưu ý:
 ### 7.1. Users
 
 - đăng ký tài khoản teacher
-- lấy profile hiện tại
 - cập nhật profile hiện tại
 - super admin xem danh sách user, xem chi tiết user, disable user
 
 Lưu ý:
 
 - `DELETE /users/:id` hiện là disable user (`isActive = false`), không phải xóa cứng
-- hiện đang có cả `GET /auth/me` và `GET /users/me`
+- profile hiện tại đang dùng `GET /auth/me`, không dùng `GET /users/me`
 
 ### 7.2. Workspaces
 
@@ -515,7 +514,6 @@ npm run lint
 
 - `POST /users/register`
 - `GET /users`
-- `GET /users/me`
 - `GET /users/:id`
 - `PATCH /users/me`
 - `DELETE /users/:id`
@@ -646,7 +644,6 @@ npm run lint
 ### `JwtAuthGuard` only
 
 - `GET /auth/me`
-- `GET /users/me`
 - `PATCH /users/me`
 - `POST /workspaces`
 - `GET /workspaces/me`

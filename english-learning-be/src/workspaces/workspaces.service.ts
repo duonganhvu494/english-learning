@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, IsNull, Repository } from "typeorm";
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { Workspace } from "./entities/workspace.entity";
 import {
   WorkspaceMember,
@@ -129,7 +129,7 @@ export class WorkspacesService {
     workspaceId: string,
     actorUserId: string,
   ): Promise<WorkspaceDetailResponseDto> {
-    const [workspace, viewerMembership, studentCount, classCount] =
+    const [workspace, viewerMembership, actorUser, studentCount, classCount] =
       await Promise.all([
         this.workspaceRepo.findOne({
           where: { id: workspaceId },
@@ -146,6 +146,9 @@ export class WorkspacesService {
           relations: {
             role: true,
           },
+        }),
+        this.userRepo.findOne({
+          where: { id: actorUserId },
         }),
         this.memberRepo
           .createQueryBuilder('member')
@@ -172,18 +175,11 @@ export class WorkspacesService {
       );
     }
 
-    if (!viewerMembership) {
-      throw new ForbiddenException(
-        errorPayload(
-          'You are not a member of this workspace',
-          'WORKSPACE_MEMBER_REQUIRED',
-        ),
-      );
-    }
-
     return WorkspaceDetailResponseDto.fromData({
       workspace,
-      currentUserRole: viewerMembership.role.name,
+      currentUserRole:
+        viewerMembership?.role.name ??
+        (actorUser?.isSuperAdmin ? 'owner' : 'unknown'),
       studentCount,
       classCount,
     });
@@ -192,22 +188,9 @@ export class WorkspacesService {
   async createStudentInWorkspace(
     workspaceId: string,
     dto: CreateStudentDto,
-    actorUserId: string,
   ) {
-    const workspace = await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        notFoundCode: 'WORKSPACE_NOT_FOUND',
-        ownerForbiddenMessage:
-          "Only workspace owner can manage workspace students",
-        ownerForbiddenCode: 'WORKSPACE_STUDENT_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          "Only teacher workspace owner can manage workspace students",
-        teacherForbiddenCode:
-          'WORKSPACE_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    const workspace =
+      await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const studentRole = await this.roleRepo.findOne({
       where: {
@@ -274,22 +257,8 @@ export class WorkspacesService {
 
   async listWorkspaceStudents(
     workspaceId: string,
-    actorUserId: string,
   ) {
-    await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        notFoundCode: 'WORKSPACE_NOT_FOUND',
-        ownerForbiddenMessage:
-          "Only workspace owner can manage workspace students",
-        ownerForbiddenCode: 'WORKSPACE_STUDENT_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          "Only teacher workspace owner can manage workspace students",
-        teacherForbiddenCode:
-          'WORKSPACE_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const members = await this.memberRepo
       .createQueryBuilder('member')
@@ -313,22 +282,8 @@ export class WorkspacesService {
     workspaceId: string,
     studentId: string,
     dto: UpdateWorkspaceStudentDto,
-    actorUserId: string,
   ): Promise<WorkspaceStudentListItemDto> {
-    await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        notFoundCode: 'WORKSPACE_NOT_FOUND',
-        ownerForbiddenMessage:
-          'Only workspace owner can manage workspace students',
-        ownerForbiddenCode: 'WORKSPACE_STUDENT_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage workspace students',
-        teacherForbiddenCode:
-          'WORKSPACE_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const member = await this.memberRepo.findOne({
       where: {
@@ -389,22 +344,8 @@ export class WorkspacesService {
   async removeStudentFromWorkspace(
     workspaceId: string,
     studentId: string,
-    actorUserId: string,
   ): Promise<RemoveWorkspaceStudentResponseDto> {
-    await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        notFoundCode: 'WORKSPACE_NOT_FOUND',
-        ownerForbiddenMessage:
-          "Only workspace owner can manage workspace students",
-        ownerForbiddenCode: 'WORKSPACE_STUDENT_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          "Only teacher workspace owner can manage workspace students",
-        teacherForbiddenCode:
-          'WORKSPACE_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const member = await this.memberRepo.findOne({
       where: {

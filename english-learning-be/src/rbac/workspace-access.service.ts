@@ -1,11 +1,9 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AccountType } from 'src/users/entities/user.entity';
 import { ClassEntity } from 'src/classes/entities/class.entity';
 import { AssignmentEntity } from 'src/assignments/entities/assignment.entity';
 import { LectureEntity } from 'src/lectures/entities/lecture.entity';
@@ -18,13 +16,9 @@ import {
 } from './interfaces/scope-options.interface';
 import { errorPayload } from 'src/common/utils/error-payload.util';
 
-interface TeacherWorkspaceOwnerAssertionOptions {
+interface ResourceLookupOptions {
   notFoundMessage?: string;
   notFoundCode?: string;
-  ownerForbiddenMessage?: string;
-  ownerForbiddenCode?: string;
-  teacherForbiddenMessage?: string;
-  teacherForbiddenCode?: string;
 }
 
 @Injectable()
@@ -49,10 +43,9 @@ export class WorkspaceAccessService {
     private readonly materialRepo: Repository<Material>,
   ) {}
 
-  async assertTeacherWorkspaceOwner(
+  async getWorkspaceOrThrow(
     workspaceId: string,
-    actorUserId: string,
-    options?: TeacherWorkspaceOwnerAssertionOptions,
+    options?: ResourceLookupOptions,
   ): Promise<Workspace> {
     const workspace = await this.workspaceRepo.findOne({
       where: { id: workspaceId },
@@ -69,21 +62,17 @@ export class WorkspaceAccessService {
       );
     }
 
-    this.ensureTeacherWorkspaceOwner(workspace, actorUserId, options);
     return workspace;
   }
 
-  async assertTeacherClassOwner(
+  async getClassOrThrow(
     classId: string,
-    actorUserId: string,
-    options?: TeacherWorkspaceOwnerAssertionOptions,
+    options?: ResourceLookupOptions,
   ): Promise<ClassEntity> {
     const classEntity = await this.classRepo.findOne({
       where: { id: classId },
       relations: {
-        workspace: {
-          owner: true,
-        },
+        workspace: true,
       },
     });
     if (!classEntity) {
@@ -95,26 +84,18 @@ export class WorkspaceAccessService {
       );
     }
 
-    this.ensureTeacherWorkspaceOwner(
-      classEntity.workspace,
-      actorUserId,
-      options,
-    );
     return classEntity;
   }
 
-  async assertTeacherSessionOwner(
+  async getSessionOrThrow(
     sessionId: string,
-    actorUserId: string,
-    options?: TeacherWorkspaceOwnerAssertionOptions,
+    options?: ResourceLookupOptions,
   ): Promise<SessionEntity> {
     const session = await this.sessionRepo.findOne({
       where: { id: sessionId },
       relations: {
         classEntity: {
-          workspace: {
-            owner: true,
-          },
+          workspace: true,
         },
       },
     });
@@ -127,11 +108,6 @@ export class WorkspaceAccessService {
       );
     }
 
-    this.ensureTeacherWorkspaceOwner(
-      session.classEntity.workspace,
-      actorUserId,
-      options,
-    );
     return session;
   }
 
@@ -275,32 +251,6 @@ export class WorkspaceAccessService {
       }
       default:
         return this.throwUnsupportedScopeResource(resourceType);
-    }
-  }
-
-  private ensureTeacherWorkspaceOwner(
-    workspace: Workspace,
-    actorUserId: string,
-    options?: TeacherWorkspaceOwnerAssertionOptions,
-  ) {
-    if (workspace.owner.id !== actorUserId) {
-      throw new ForbiddenException(
-        errorPayload(
-          options?.ownerForbiddenMessage ??
-            'Only workspace owner can access this resource',
-          options?.ownerForbiddenCode ?? 'WORKSPACE_OWNER_REQUIRED',
-        ),
-      );
-    }
-
-    if (workspace.owner.accountType !== AccountType.TEACHER) {
-      throw new ForbiddenException(
-        errorPayload(
-          options?.teacherForbiddenMessage ??
-            'Only teacher workspace owner can access this resource',
-          options?.teacherForbiddenCode ?? 'WORKSPACE_TEACHER_OWNER_REQUIRED',
-        ),
-      );
     }
   }
 

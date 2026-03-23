@@ -1,13 +1,22 @@
 import { AccountType, User } from '../entities/user.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class UserResponseDto {
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
   id: string;
+  @ApiProperty({ example: 'Duong Anh Vu' })
   fullName: string;
+  @ApiProperty({ example: 'duonganhvu' })
   userName: string;
+  @ApiProperty({ example: 'duonganhvu@example.com' })
   email: string;
+  @ApiProperty({ example: false })
   mustChangePassword: boolean;
+  @ApiProperty({ enum: AccountType, example: AccountType.TEACHER })
   accountType: AccountType;
+  @ApiProperty({ example: false })
   isSuperAdmin: boolean;
+  @ApiProperty({ example: true })
   isActive: boolean;
 
   static fromEntity(user: User): UserResponseDto {

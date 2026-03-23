@@ -48,21 +48,9 @@ export class ClassesService {
   async createClass(
     workspaceId: string,
     dto: CreateClassDto,
-    actorUserId: string,
   ): Promise<ClassResponseDto> {
-    const workspace = await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        notFoundCode: 'WORKSPACE_NOT_FOUND',
-        ownerForbiddenMessage:
-          'Only workspace owner can manage workspace classes',
-        ownerForbiddenCode: 'CLASS_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage workspace classes',
-        teacherForbiddenCode: 'CLASS_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    const workspace =
+      await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const normalizedClassName = dto.className.trim();
     const existedClass = await this.classRepo.findOne({
@@ -96,21 +84,8 @@ export class ClassesService {
 
   async listWorkspaceClasses(
     workspaceId: string,
-    actorUserId: string,
   ): Promise<ClassResponseDto[]> {
-    await this.workspaceAccessService.assertTeacherWorkspaceOwner(
-      workspaceId,
-      actorUserId,
-      {
-        notFoundCode: 'WORKSPACE_NOT_FOUND',
-        ownerForbiddenMessage:
-          'Only workspace owner can manage workspace classes',
-        ownerForbiddenCode: 'CLASS_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage workspace classes',
-        teacherForbiddenCode: 'CLASS_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const classes = await this.classRepo
       .createQueryBuilder('class')
@@ -125,20 +100,8 @@ export class ClassesService {
 
   async getClassDetail(
     classId: string,
-    actorUserId: string,
   ): Promise<ClassResponseDto> {
-    await this.workspaceAccessService.assertTeacherClassOwner(
-      classId,
-      actorUserId,
-      {
-        notFoundCode: 'CLASS_NOT_FOUND',
-        ownerForbiddenMessage: 'Only workspace owner can access class detail',
-        ownerForbiddenCode: 'CLASS_DETAIL_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can access class detail',
-        teacherForbiddenCode: 'CLASS_DETAIL_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    await this.workspaceAccessService.getClassOrThrow(classId);
 
     const classEntity = await this.classRepo
       .createQueryBuilder('class')
@@ -157,20 +120,8 @@ export class ClassesService {
 
   async getClassStudents(
     classId: string,
-    actorUserId: string,
   ): Promise<ClassRosterResponseDto> {
-    await this.workspaceAccessService.assertTeacherClassOwner(
-      classId,
-      actorUserId,
-      {
-        notFoundCode: 'CLASS_NOT_FOUND',
-        ownerForbiddenMessage: 'Only workspace owner can access class students',
-        ownerForbiddenCode: 'CLASS_STUDENT_ACCESS_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can access class students',
-        teacherForbiddenCode: 'CLASS_STUDENT_ACCESS_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    await this.workspaceAccessService.getClassOrThrow(classId);
 
     const assignments = await this.classStudentRepo.find({
       where: {
@@ -198,20 +149,8 @@ export class ClassesService {
   async updateClass(
     classId: string,
     dto: UpdateClassDto,
-    actorUserId: string,
   ): Promise<ClassResponseDto> {
-    await this.workspaceAccessService.assertTeacherClassOwner(
-      classId,
-      actorUserId,
-      {
-        notFoundCode: 'CLASS_NOT_FOUND',
-        ownerForbiddenMessage: 'Only workspace owner can manage workspace classes',
-        ownerForbiddenCode: 'CLASS_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage workspace classes',
-        teacherForbiddenCode: 'CLASS_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    await this.workspaceAccessService.getClassOrThrow(classId);
 
     const classEntity = await this.classRepo.findOne({
       where: { id: classId },
@@ -254,25 +193,15 @@ export class ClassesService {
     }
 
     const savedClass = await this.classRepo.save(classEntity);
-    return this.getClassDetail(savedClass.id, actorUserId);
+    return this.getClassDetail(savedClass.id);
   }
 
   async addStudentsToClass(
     classId: string,
     dto: AddClassStudentsDto,
-    actorUserId: string,
   ): Promise<ClassStudentsResponseDto> {
-    const classEntity = await this.workspaceAccessService.assertTeacherClassOwner(
+    const classEntity = await this.workspaceAccessService.getClassOrThrow(
       classId,
-      actorUserId,
-      {
-        notFoundCode: 'CLASS_NOT_FOUND',
-        ownerForbiddenMessage: 'Only workspace owner can manage class students',
-        ownerForbiddenCode: 'CLASS_STUDENT_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage class students',
-        teacherForbiddenCode: 'CLASS_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
     );
     const normalizedStudentIds = [...new Set(dto.studentIds)];
     const workspaceStudents = await this.getWorkspaceStudentsForClass(
@@ -337,20 +266,8 @@ export class ClassesService {
   async removeStudentFromClass(
     classId: string,
     studentId: string,
-    actorUserId: string,
   ): Promise<ClassStudentsResponseDto> {
-    await this.workspaceAccessService.assertTeacherClassOwner(
-      classId,
-      actorUserId,
-      {
-        notFoundCode: 'CLASS_NOT_FOUND',
-        ownerForbiddenMessage: 'Only workspace owner can manage class students',
-        ownerForbiddenCode: 'CLASS_STUDENT_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage class students',
-        teacherForbiddenCode: 'CLASS_STUDENT_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    await this.workspaceAccessService.getClassOrThrow(classId);
 
     const assignment = await this.classStudentRepo.findOne({
       where: {
@@ -387,20 +304,8 @@ export class ClassesService {
 
   async deleteClass(
     classId: string,
-    actorUserId: string,
   ): Promise<ClassDeleteResponseDto> {
-    await this.workspaceAccessService.assertTeacherClassOwner(
-      classId,
-      actorUserId,
-      {
-        notFoundCode: 'CLASS_NOT_FOUND',
-        ownerForbiddenMessage: 'Only workspace owner can delete class',
-        ownerForbiddenCode: 'CLASS_DELETE_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can delete class',
-        teacherForbiddenCode: 'CLASS_DELETE_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    await this.workspaceAccessService.getClassOrThrow(classId);
 
     await this.classRepo.manager.transaction(async (manager) => {
       await manager
@@ -442,20 +347,8 @@ export class ClassesService {
     classId: string,
     studentId: string,
     dto: UpdateClassStudentRoleDto,
-    actorUserId: string,
   ): Promise<ClassStudentRoleResponseDto> {
-    await this.workspaceAccessService.assertTeacherClassOwner(
-      classId,
-      actorUserId,
-      {
-        notFoundCode: 'CLASS_NOT_FOUND',
-        ownerForbiddenMessage: 'Only workspace owner can manage class roles',
-        ownerForbiddenCode: 'CLASS_ROLE_MANAGEMENT_OWNER_REQUIRED',
-        teacherForbiddenMessage:
-          'Only teacher workspace owner can manage class roles',
-        teacherForbiddenCode: 'CLASS_ROLE_MANAGEMENT_TEACHER_OWNER_REQUIRED',
-      },
-    );
+    await this.workspaceAccessService.getClassOrThrow(classId);
 
     const assignment = await this.classStudentRepo.findOne({
       where: {

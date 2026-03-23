@@ -13,15 +13,93 @@ import { LecturesService } from './lectures.service';
 
 describe('LecturesService', () => {
   let service: LecturesService;
+  let lectureRepo: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    manager: {
+      transaction: jest.Mock;
+    };
+  };
   let lectureMaterialRepo: {
+    findOne: jest.Mock;
+  };
+  let sessionRepo: {
+    findOne: jest.Mock;
+  };
+  let userRepo: {
     findOne: jest.Mock;
   };
   let s3StorageService: {
     createSignedDownloadUrl: jest.Mock;
   };
+  let lectureRepoInTransaction: {
+    create: jest.Mock;
+    save: jest.Mock;
+  };
+  let lectureMaterialRepoInTransaction: {
+    create: jest.Mock;
+    save: jest.Mock;
+    delete: jest.Mock;
+  };
 
   beforeEach(async () => {
+    lectureRepoInTransaction = {
+      create: jest.fn((input: Partial<LectureEntity>) => input),
+      save: jest.fn((input: Partial<LectureEntity>) =>
+        Promise.resolve({
+          id: 'lecture-1',
+          ...input,
+        }),
+      ),
+    };
+    lectureMaterialRepoInTransaction = {
+      create: jest.fn((input: Partial<LectureMaterial>) => input),
+      save: jest.fn((input: Partial<LectureMaterial>[]) =>
+        Promise.resolve(input),
+      ),
+      delete: jest.fn(() => Promise.resolve({ affected: 1 })),
+    };
+    lectureRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+      manager: {
+        transaction: jest.fn(
+          (
+            callback: (manager: {
+              getRepository: (
+                entity: typeof LectureEntity | typeof LectureMaterial,
+              ) =>
+                | typeof lectureRepoInTransaction
+                | typeof lectureMaterialRepoInTransaction;
+            }) => Promise<unknown>,
+          ) =>
+            callback({
+              getRepository: jest.fn(
+                (
+                  entity: typeof LectureEntity | typeof LectureMaterial,
+                ) => {
+                  if (entity === LectureEntity) {
+                    return lectureRepoInTransaction;
+                  }
+
+                  if (entity === LectureMaterial) {
+                    return lectureMaterialRepoInTransaction;
+                  }
+
+                  throw new Error('Unexpected repository in transaction');
+                },
+              ),
+            }),
+        ),
+      },
+    };
     lectureMaterialRepo = {
+      findOne: jest.fn(),
+    };
+    sessionRepo = {
+      findOne: jest.fn(),
+    };
+    userRepo = {
       findOne: jest.fn(),
     };
     s3StorageService = {
@@ -35,7 +113,7 @@ describe('LecturesService', () => {
         LecturesService,
         {
           provide: getRepositoryToken(LectureEntity),
-          useValue: {},
+          useValue: lectureRepo,
         },
         {
           provide: getRepositoryToken(LectureMaterial),
@@ -47,11 +125,11 @@ describe('LecturesService', () => {
         },
         {
           provide: getRepositoryToken(SessionEntity),
-          useValue: {},
+          useValue: sessionRepo,
         },
         {
           provide: getRepositoryToken(User),
-          useValue: {},
+          useValue: userRepo,
         },
         {
           provide: S3StorageService,
@@ -65,6 +143,72 @@ describe('LecturesService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('creates a lecture with a generated scoped code', async () => {
+    sessionRepo.findOne.mockResolvedValue({
+      id: 'session-1',
+      classEntity: { id: 'class-1', workspace: { id: 'workspace-1' } },
+    });
+    userRepo.findOne.mockResolvedValue({ id: 'teacher-1' });
+    lectureRepo.find.mockResolvedValue([
+      {
+        id: 'lecture-existing',
+        title: 'Pronunciation Warmup',
+        code: 'LEC-001',
+      },
+    ]);
+    jest.spyOn(service, 'getLectureDetail').mockResolvedValue({
+      id: 'lecture-1',
+      code: 'LEC-002',
+    } as never);
+
+    const result = await service.createLecture(
+      'session-1',
+      {
+        title: '  Present Simple Overview  ',
+      },
+      'teacher-1',
+    );
+
+    expect(lectureRepoInTransaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Present Simple Overview',
+        code: 'LEC-002',
+        createdBy: expect.objectContaining({ id: 'teacher-1' }),
+      }),
+    );
+    expect(result).toEqual({
+      id: 'lecture-1',
+      code: 'LEC-002',
+    });
+  });
+
+  it('rejects createLecture when the same title already exists in a session', async () => {
+    sessionRepo.findOne.mockResolvedValue({
+      id: 'session-1',
+      classEntity: { id: 'class-1', workspace: { id: 'workspace-1' } },
+    });
+    userRepo.findOne.mockResolvedValue({ id: 'teacher-1' });
+    lectureRepo.find.mockResolvedValue([
+      {
+        id: 'lecture-existing',
+        title: 'Present Simple Overview',
+        code: 'LEC-001',
+      },
+    ]);
+
+    await expect(
+      service.createLecture(
+        'session-1',
+        {
+          title: 'present simple overview',
+        },
+        'teacher-1',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(lectureRepo.manager.transaction).not.toHaveBeenCalled();
   });
 
   it('returns a remote target for lecture materials stored on S3', async () => {

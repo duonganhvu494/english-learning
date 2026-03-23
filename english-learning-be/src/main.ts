@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import { AuthSecurityService } from './auth/auth-security.service';
 import { AllExceptionsFilter } from './common/filters/handle-exception.filter';
+import { setupSwagger } from './swagger/setup-swagger';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
@@ -39,6 +41,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.useGlobalFilters(new AllExceptionsFilter());
+  setupSwagger(app);
 
   
   console.log("Application is running on: http://localhost:" + (process.env.PORT ?? 3000));
