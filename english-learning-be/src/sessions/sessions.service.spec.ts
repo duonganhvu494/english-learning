@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ClassEntity } from 'src/classes/entities/class.entity';
@@ -17,6 +18,9 @@ describe('SessionsService', () => {
   let classRepo: {
     findOne: jest.Mock;
   };
+  let eventEmitter: {
+    emit: jest.Mock;
+  };
 
   beforeEach(async () => {
     sessionRepo = {
@@ -34,6 +38,9 @@ describe('SessionsService', () => {
     classRepo = {
       findOne: jest.fn(),
     };
+    eventEmitter = {
+      emit: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -45,6 +52,10 @@ describe('SessionsService', () => {
         {
           provide: getRepositoryToken(ClassEntity),
           useValue: classRepo,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: eventEmitter,
         },
       ],
     }).compile();
@@ -83,6 +94,13 @@ describe('SessionsService', () => {
         code: 'SES-002',
         timeStart: new Date('2026-03-21T08:00:00.000Z'),
         timeEnd: new Date('2026-03-21T10:00:00.000Z'),
+      }),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'session.created',
+      expect.objectContaining({
+        sessionId: 'session-1',
+        classId: 'class-1',
       }),
     );
     expect(result).toEqual(
@@ -160,11 +178,44 @@ describe('SessionsService', () => {
         topic: 'Grammar revision advanced',
       }),
     );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'session.updated',
+      expect.objectContaining({
+        sessionId: 'session-1',
+        previousTopic: 'Grammar revision',
+      }),
+    );
     expect(result).toEqual(
       expect.objectContaining({
         id: 'session-1',
         code: 'SES-003',
       }),
     );
+  });
+
+  it('emits session cancelled when deleting a session', async () => {
+    sessionRepo.findOne.mockResolvedValue({
+      id: 'session-1',
+      topic: 'Grammar revision',
+      timeStart: new Date('2026-03-22T08:00:00.000Z'),
+      timeEnd: new Date('2026-03-22T10:00:00.000Z'),
+      classEntity: {
+        id: 'class-1',
+        workspace: { id: 'workspace-1' },
+      },
+    });
+
+    const result = await service.deleteSession('session-1');
+
+    expect(sessionRepo.delete).toHaveBeenCalledWith('session-1');
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'session.cancelled',
+      expect.objectContaining({
+        sessionId: 'session-1',
+        classId: 'class-1',
+        workspaceId: 'workspace-1',
+      }),
+    );
+    expect(result).toEqual({ sessionId: 'session-1' });
   });
 });

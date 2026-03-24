@@ -1,3 +1,4 @@
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AssignmentEntity } from 'src/assignments/entities/assignment.entity';
@@ -12,6 +13,7 @@ import { SubmissionsService } from './submissions.service';
 
 @Module({
   imports: [
+    EventEmitterModule,
     RbacModule,
     StorageModule,
     TypeOrmModule.forFeature([

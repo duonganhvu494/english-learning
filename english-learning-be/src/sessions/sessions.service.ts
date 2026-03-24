@@ -1,12 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ClassEntity } from 'src/classes/entities/class.entity';
 import { CreateSessionDto } from './dto/create-session.dto';
+import { SessionCancelledEvent } from './events/session-cancelled.event';
+import { SessionCreatedEvent } from './events/session-created.event';
 import { SessionDeleteResponseDto } from './dto/session-delete-response.dto';
 import { SessionResponseDto } from './dto/session-response.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { SessionEntity } from './entities/session.entity';
+import { SessionUpdatedEvent } from './events/session-updated.event';
 import { errorPayload } from 'src/common/utils/error-payload.util';
 import { resolveNextSequentialCode } from 'src/common/utils/sequential-code.util';
 
@@ -18,6 +22,8 @@ export class SessionsService {
 
     @InjectRepository(ClassEntity)
     private readonly classRepo: Repository<ClassEntity>,
+
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createSession(
@@ -78,6 +84,11 @@ export class SessionsService {
       ),
     });
     const savedSession = await this.sessionRepo.save(session);
+
+    this.eventEmitter.emit(
+      SessionCreatedEvent.eventName,
+      new SessionCreatedEvent(savedSession.id, classId),
+    );
 
     return SessionResponseDto.fromEntity(savedSession);
   }
@@ -145,6 +156,10 @@ export class SessionsService {
       );
     }
 
+    const previousTopic = session.topic;
+    const previousTimeStart = session.timeStart.toISOString();
+    const previousTimeEnd = session.timeEnd.toISOString();
+
     const nextTimeStart = dto.timeStart ?? session.timeStart.toISOString();
     const nextTimeEnd = dto.timeEnd ?? session.timeEnd.toISOString();
     const { timeStart, timeEnd } = this.parseSessionWindow(
@@ -198,14 +213,46 @@ export class SessionsService {
     }
 
     await this.sessionRepo.save(session);
+
+    if (
+      previousTopic !== session.topic ||
+      previousTimeStart !== session.timeStart.toISOString() ||
+      previousTimeEnd !== session.timeEnd.toISOString()
+    ) {
+      this.eventEmitter.emit(
+        SessionUpdatedEvent.eventName,
+        new SessionUpdatedEvent(
+          session.id,
+          previousTopic,
+          previousTimeStart,
+          previousTimeEnd,
+          new Date().toISOString(),
+        ),
+      );
+    }
+
     return SessionResponseDto.fromEntity(session);
   }
 
   async deleteSession(sessionId: string): Promise<SessionDeleteResponseDto> {
     const session = await this.sessionRepo.findOne({
       where: { id: sessionId },
+      relations: {
+        classEntity: {
+          workspace: true,
+        },
+      },
       select: {
         id: true,
+        topic: true,
+        timeStart: true,
+        timeEnd: true,
+        classEntity: {
+          id: true,
+          workspace: {
+            id: true,
+          },
+        },
       },
     });
     if (!session) {
@@ -215,6 +262,18 @@ export class SessionsService {
     }
 
     await this.sessionRepo.delete(sessionId);
+    this.eventEmitter.emit(
+      SessionCancelledEvent.eventName,
+      new SessionCancelledEvent(
+        session.id,
+        session.classEntity.workspace.id,
+        session.classEntity.id,
+        session.topic,
+        session.timeStart.toISOString(),
+        session.timeEnd.toISOString(),
+        new Date().toISOString(),
+      ),
+    );
     return SessionDeleteResponseDto.fromData({ sessionId });
   }
 

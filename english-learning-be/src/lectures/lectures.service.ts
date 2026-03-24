@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import {
@@ -17,6 +18,8 @@ import { LectureEntity } from './entities/lecture.entity';
 import { LectureMaterial } from './entities/lecture-material.entity';
 import { errorPayload } from 'src/common/utils/error-payload.util';
 import { resolveNextSequentialCode } from 'src/common/utils/sequential-code.util';
+import { LectureCreatedEvent } from './events/lecture-created.event';
+import { LectureMaterialsPublishedEvent } from './events/lecture-materials-published.event';
 
 @Injectable()
 export class LecturesService {
@@ -37,6 +40,7 @@ export class LecturesService {
     private readonly userRepo: Repository<User>,
 
     private readonly s3StorageService: S3StorageService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createLecture(
@@ -101,6 +105,24 @@ export class LecturesService {
       return savedLecture;
     });
 
+    this.eventEmitter.emit(
+      LectureCreatedEvent.eventName,
+      new LectureCreatedEvent(lecture.id, sessionId, actorUserId),
+    );
+
+    if (materials.length > 0) {
+      this.eventEmitter.emit(
+        LectureMaterialsPublishedEvent.eventName,
+        new LectureMaterialsPublishedEvent(
+          lecture.id,
+          sessionId,
+          actorUserId,
+          materials.map((material) => material.id),
+          new Date().toISOString(),
+        ),
+      );
+    }
+
     return this.getLectureDetail(lecture.id);
   }
 
@@ -160,6 +182,9 @@ export class LecturesService {
       this.lectureRepo.findOne({
         where: { id: lectureId },
         relations: {
+          lectureMaterials: {
+            material: true,
+          },
           session: {
             classEntity: {
               workspace: true,
@@ -192,6 +217,17 @@ export class LecturesService {
             lecture.session.classEntity.workspace.id,
           )
         : undefined;
+    const existingMaterialIds = new Set(
+      (lecture.lectureMaterials ?? []).map(
+        (lectureMaterial) => lectureMaterial.material.id,
+      ),
+    );
+    const newlyPublishedMaterialIds =
+      materials === undefined
+        ? []
+        : materials
+            .filter((material) => !existingMaterialIds.has(material.id))
+            .map((material) => material.id);
 
     const scopedLectures = await this.lectureRepo.find({
       where: {
@@ -243,6 +279,19 @@ export class LecturesService {
         }
       }
     });
+
+    if (newlyPublishedMaterialIds.length > 0) {
+      this.eventEmitter.emit(
+        LectureMaterialsPublishedEvent.eventName,
+        new LectureMaterialsPublishedEvent(
+          lecture.id,
+          lecture.session.id,
+          actorUserId,
+          newlyPublishedMaterialIds,
+          new Date().toISOString(),
+        ),
+      );
+    }
 
     return this.getLectureDetail(lecture.id);
   }

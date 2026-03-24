@@ -4,8 +4,10 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { AttendanceUpdatedEvent } from './events/attendance-updated.event';
 import { ClassStudent } from 'src/classes/entities/class-student.entity';
 import { SessionEntity } from 'src/sessions/entities/session.entity';
 import { AccountType } from 'src/users/entities/user.entity';
@@ -30,6 +32,7 @@ export class AttendancesService {
     private readonly classStudentRepo: Repository<ClassStudent>,
 
     private readonly config: ConfigService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async getSessionAttendances(
@@ -121,11 +124,25 @@ export class AttendancesService {
       );
     }
 
+    const existingAttendance = await this.findAttendance(sessionId, studentId);
+
     const savedAttendance = await this.upsertAttendance(
       session,
       classStudent.student,
       dto.status,
     );
+
+    if (!existingAttendance || existingAttendance.status !== savedAttendance.status) {
+      this.eventEmitter.emit(
+        AttendanceUpdatedEvent.eventName,
+        new AttendanceUpdatedEvent(
+          sessionId,
+          studentId,
+          savedAttendance.status,
+          new Date().toISOString(),
+        ),
+      );
+    }
 
     return AttendanceUpdateResponseDto.fromData({
       sessionId,

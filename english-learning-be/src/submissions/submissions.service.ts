@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -33,6 +34,8 @@ import { InitSubmissionUploadDto } from './dto/init-submission-upload.dto';
 import { ReviewSubmissionDto } from './dto/review-submission.dto';
 import { SubmissionResponseDto } from './dto/submission-response.dto';
 import { SubmissionEntity } from './entities/submission.entity';
+import { SubmissionCreatedEvent } from './events/submission-created.event';
+import { SubmissionReviewedEvent } from './events/submission-reviewed.event';
 import { errorPayload } from 'src/common/utils/error-payload.util';
 import { resolveAssignmentStatus, AssignmentStatus } from 'src/assignments/utils/assignment-window.util';
 
@@ -55,6 +58,7 @@ export class SubmissionsService {
     private readonly uploadSessionRepo: Repository<MaterialUploadSession>,
 
     private readonly s3StorageService: S3StorageService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async initMySubmissionUpload(
@@ -276,6 +280,17 @@ export class SubmissionsService {
       studentId,
     );
 
+    this.eventEmitter.emit(
+      SubmissionCreatedEvent.eventName,
+      new SubmissionCreatedEvent(
+        assignmentId,
+        studentId,
+        studentId,
+        hydratedSubmission.submittedAt.toISOString(),
+        Boolean(existingSubmission),
+      ),
+    );
+
     if (previousMaterial && previousMaterial.id !== uploadSession.material.id) {
       this.cleanupMaterial(previousMaterial).catch(() => undefined);
     }
@@ -428,6 +443,7 @@ export class SubmissionsService {
   async reviewSubmission(
     assignmentId: string,
     studentId: string,
+    reviewerUserId: string,
     dto: ReviewSubmissionDto,
   ): Promise<SubmissionResponseDto> {
     if (dto.grade === undefined && dto.feedback === undefined) {
@@ -453,6 +469,16 @@ export class SubmissionsService {
     const updatedSubmission = await this.loadSubmissionOrThrow(
       assignmentId,
       studentId,
+    );
+
+    this.eventEmitter.emit(
+      SubmissionReviewedEvent.eventName,
+      new SubmissionReviewedEvent(
+        assignmentId,
+        studentId,
+        reviewerUserId,
+        updatedSubmission.updatedAt.toISOString(),
+      ),
     );
 
     return SubmissionResponseDto.fromEntity(

@@ -1,3 +1,4 @@
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClassStudent } from 'src/classes/entities/class-student.entity';
@@ -9,6 +10,7 @@ import { AttendanceEntity } from './entities/attendance.entity';
 
 @Module({
   imports: [
+    EventEmitterModule,
     RbacModule,
     TypeOrmModule.forFeature([AttendanceEntity, SessionEntity, ClassStudent]),
   ],

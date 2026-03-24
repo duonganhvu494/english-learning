@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
@@ -65,6 +66,9 @@ describe('SubmissionsService', () => {
     abortMultipartUpload: jest.Mock;
     createSignedDownloadUrl: jest.Mock;
     deleteObject: jest.Mock;
+  };
+  let eventEmitter: {
+    emit: jest.Mock;
   };
 
   const assignment = {
@@ -180,6 +184,9 @@ describe('SubmissionsService', () => {
         .mockResolvedValue('https://signed-submission-download'),
       deleteObject: jest.fn().mockResolvedValue(undefined),
     };
+    eventEmitter = {
+      emit: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -207,6 +214,10 @@ describe('SubmissionsService', () => {
         {
           provide: S3StorageService,
           useValue: s3StorageService,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: eventEmitter,
         },
       ],
     }).compile();
@@ -358,6 +369,7 @@ describe('SubmissionsService', () => {
         submittedAt: new Date('2026-03-17T10:00:00.000Z'),
         grade: null,
         feedback: null,
+        updatedAt: new Date('2026-03-17T10:00:00.000Z'),
       });
 
     const result = await service.completeMySubmissionUpload(
@@ -388,6 +400,15 @@ describe('SubmissionsService', () => {
         submittedAt: new Date('2026-03-17T10:00:00.000Z'),
         grade: null,
         feedback: null,
+      }),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'submission.created',
+      expect.objectContaining({
+        assignmentId: 'assignment-1',
+        studentId: 'student-1',
+        submitterUserId: 'student-1',
+        isResubmission: false,
       }),
     );
     expect(result.submitted).toBe(true);
@@ -455,6 +476,7 @@ describe('SubmissionsService', () => {
         },
         grade: 8,
         feedback: 'Good',
+        submittedAt: new Date('2026-03-10T10:00:00.000Z'),
       })
       .mockResolvedValueOnce({
         assignment: { id: 'assignment-1' },
@@ -470,6 +492,7 @@ describe('SubmissionsService', () => {
         submittedAt: new Date('2026-03-17T10:00:00.000Z'),
         grade: null,
         feedback: null,
+        updatedAt: new Date('2026-03-17T10:00:00.000Z'),
       });
 
     const result = await service.completeMySubmissionUpload(
@@ -486,6 +509,15 @@ describe('SubmissionsService', () => {
 
     expect((service as never).cleanupMaterial).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'material-old' }),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'submission.created',
+      expect.objectContaining({
+        assignmentId: 'assignment-1',
+        studentId: 'student-1',
+        submitterUserId: 'student-1',
+        isResubmission: true,
+      }),
     );
     expect(result.grade).toBeNull();
     expect(result.feedback).toBeNull();
@@ -526,6 +558,7 @@ describe('SubmissionsService', () => {
         submittedAt: new Date('2026-03-17T10:00:00.000Z'),
         grade: null,
         feedback: null,
+        updatedAt: new Date('2026-03-24T12:00:00.000Z'),
       })
       .mockResolvedValueOnce({
         assignment: { id: 'assignment-1' },
@@ -541,17 +574,31 @@ describe('SubmissionsService', () => {
         submittedAt: new Date('2026-03-17T10:00:00.000Z'),
         grade: 9,
         feedback: 'Strong work',
+        updatedAt: new Date('2026-03-24T12:00:00.000Z'),
       });
 
-    const result = await service.reviewSubmission('assignment-1', 'student-1', {
-      grade: 9,
-      feedback: '  Strong work  ',
-    });
+    const result = await service.reviewSubmission(
+      'assignment-1',
+      'student-1',
+      'teacher-1',
+      {
+        grade: 9,
+        feedback: '  Strong work  ',
+      },
+    );
 
     expect(submissionRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({
         grade: 9,
         feedback: 'Strong work',
+      }),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'submission.reviewed',
+      expect.objectContaining({
+        assignmentId: 'assignment-1',
+        studentId: 'student-1',
+        reviewerUserId: 'teacher-1',
       }),
     );
     expect(result.grade).toBe(9);

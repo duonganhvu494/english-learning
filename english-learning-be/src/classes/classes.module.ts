@@ -1,3 +1,4 @@
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RbacModule } from 'src/rbac/rbac.module';
@@ -12,6 +13,7 @@ import { ClassStudent } from './entities/class-student.entity';
 
 @Module({
   imports: [
+    EventEmitterModule,
     RbacModule,
     TypeOrmModule.forFeature([
       ClassEntity,
