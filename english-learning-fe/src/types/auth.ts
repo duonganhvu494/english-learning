@@ -18,7 +18,9 @@ export type UserProfile = {
 };
 
 export type MeResponse = {
+  id?: string;
   userName: string;
   fullName: string;
   email: string;
+  mustChangePassword?: boolean;
 };

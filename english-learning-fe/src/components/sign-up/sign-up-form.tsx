@@ -1,18 +1,22 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, Mail, Lock, Eye } from "lucide-react";
-import { ApiError, authApi } from "@/api";
+import { ApiError, authApi, workspacesApi } from "@/api";
 import { translateApiMessage } from "@/api/core/api-message-translator";
 import { useAppSettings } from "@/providers/app-settings-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { useNotification } from "@/providers/notification-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/section-card";
 import { Input } from "@/components/ui/input";
 
 export function SignUpForm() {
+  const router = useRouter();
   const { dictionary } = useAppSettings();
+  const { login, refreshUser } = useAuth();
   const { success: notifySuccess, error: notifyError } = useNotification();
 
   const [fullName, setFullName] = useState("");
@@ -42,12 +46,27 @@ export function SignUpForm() {
     setIsSubmitting(true);
 
     try {
+      const nextFullName = fullName.trim();
+      const nextUserName = userName.trim();
+      const nextEmail = email.trim();
+
       await authApi.register({
-        fullName: fullName.trim(),
-        userName: userName.trim(),
-        email: email.trim(),
+        fullName: nextFullName,
+        userName: nextUserName,
+        email: nextEmail,
         password,
       });
+
+      await login({
+        userName: nextUserName,
+        password,
+      });
+
+      await workspacesApi.createWorkspace({
+        name: `${nextFullName} Workspace`,
+      });
+
+      await refreshUser();
 
       notifySuccess(dictionary.signUp.defaultSuccessMessage);
 
@@ -56,7 +75,7 @@ export function SignUpForm() {
       setEmail("");
       setPassword("");
       setConfirmPassword("");
-      // chuyển hướng qua login
+      router.replace("/dashboard");
     } catch (apiError) {
       if (apiError instanceof ApiError) {
         notifyError(

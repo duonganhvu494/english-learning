@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppSettingsProvider } from "@/providers/app-settings-provider";
 import { NotificationProvider } from "@/providers/notification-provider";
+import { AuthProvider } from "@/providers/auth-provider";
 import { cn } from "@/utils/cn";
 import "./globals.css";
 import { DataProvider } from "@/mock-data/dataContext";
@@ -34,11 +35,13 @@ export default function RootLayout({
         className={cn(geistSans.variable, geistMono.variable, "antialiased")}
       >
         <AppSettingsProvider>
-          <SubscriptionProvider>
-            <DataProvider>
-              <NotificationProvider>{children}</NotificationProvider>
-            </DataProvider>
-          </SubscriptionProvider>
+          <AuthProvider>
+            <SubscriptionProvider>
+              <DataProvider>
+                <NotificationProvider>{children}</NotificationProvider>
+              </DataProvider>
+            </SubscriptionProvider>
+          </AuthProvider>
         </AppSettingsProvider>
       </body>
     </html>

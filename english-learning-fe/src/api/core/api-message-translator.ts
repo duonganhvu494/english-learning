@@ -12,6 +12,10 @@ const AUTH_ERROR_MESSAGE_MAP = {
   "password can not be empty": "passwordRequired",
   "password must be at least 6 characters": "passwordTooShort",
   "email is invalid": "emailInvalid",
+  "you already have a class with this name in this workspace":
+    "classNameAlreadyExists",
+  "workspace not found": "workspaceNotFound",
+  "csrf token is missing or invalid": "csrfInvalid",
 } as const;
 
 const AUTH_ERROR_CODE_MAP = {
@@ -28,6 +32,9 @@ const AUTH_ERROR_CODE_MAP = {
   PASSWORD_REQUIRED: "passwordRequired",
   PASSWORD_TOO_SHORT: "passwordTooShort",
   EMAIL_INVALID: "emailInvalid",
+  CLASS_NAME_ALREADY_EXISTS: "classNameAlreadyExists",
+  WORKSPACE_NOT_FOUND: "workspaceNotFound",
+  AUTH_CSRF_INVALID: "csrfInvalid",
 } as const;
 
 function normalizeMessage(message: string) {
@@ -43,6 +50,11 @@ function getErrorTextFromKey(key: string, dictionary: Dictionary) {
   if (key in dictionary.signUp.errors) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (dictionary.signUp.errors as any)[key];
+  }
+
+  if (key in dictionary.dashboard) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (dictionary.dashboard as any)[key];
   }
 
   return undefined;

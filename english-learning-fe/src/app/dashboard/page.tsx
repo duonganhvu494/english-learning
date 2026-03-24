@@ -1,8 +1,12 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { useAppSettings } from "@/providers/app-settings-provider";
+import { classesApi } from "@/api";
+import { useAuth } from "@/providers/auth-provider";
 import { useData } from "../../mock-data/dataContext";
 import { useSubscription } from "@/context/subscriptionContext";
+import type { Class as DashboardClass } from "@/types/types";
 import { cn } from "@/utils/cn";
 import {
   Card,
@@ -11,40 +15,16 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import {
-  Users,
-  GraduationCap,
-  FileText,
-  TrendingUp,
-  Plus,
-  Crown,
-} from "lucide-react";
+import { Users, GraduationCap, FileText, TrendingUp, Plus } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/dashboard/progress";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/dashboard/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/dashboard/label";
-import { Textarea } from "@/components/dashboard/textarea";
 import { DashboardHeader } from "@/components/dashboard/header";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/dashboard/select";
+import { CreateClassDialog } from "@/components/common/create-class-dialog";
+import { UpgradePlanDialog } from "@/components/common/upgrade-plan-dialog";
 
-const colors = [
+const CLASS_COLORS = [
   "#8B5CF6",
   "#3B82F6",
   "#10B981",
@@ -55,22 +35,53 @@ const colors = [
   "#6366F1",
 ];
 
+function mapClassColor(index: number) {
+  return CLASS_COLORS[index % CLASS_COLORS.length];
+}
+
 export default function Dashboard() {
   const { dictionary } = useAppSettings();
-  const { classes, students, projects, addClass } = useData();
+  const { activeWorkspaceId } = useAuth();
+  const { students, projects } = useData();
   const { tier, maxClasses, upgradeTier } = useSubscription();
+  const [classes, setClasses] = useState<DashboardClass[]>([]);
+  const [isClassesLoading, setIsClassesLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    schedule: "",
-    level: "Beginner" as "Beginner" | "Intermediate" | "Advanced",
-    status: "Active" as "Active" | "Draft" | "Completed",
-    color: colors[0],
-  });
 
-  const activeClasses = classes.filter((c) => c.status === "Active").length;
+  const loadClasses = useCallback(async () => {
+    if (!activeWorkspaceId) {
+      setClasses([]);
+      setIsClassesLoading(false);
+      return;
+    }
+
+    setIsClassesLoading(true);
+    try {
+      const response = await classesApi.listClasses(activeWorkspaceId);
+      const mapped = response.result.map((item, index) => ({
+        id: item.id,
+        name: item.className,
+        description: item.description ?? "",
+        schedule: "",
+        studentCount: item.studentCount,
+        color: mapClassColor(index),
+        level: "Beginner" as const,
+        status: "Active" as const,
+      }));
+      setClasses(mapped);
+    } catch {
+      setClasses([]);
+    } finally {
+      setIsClassesLoading(false);
+    }
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    void loadClasses();
+  }, [loadClasses]);
+
+  const activeClasses = classes.length;
   const totalStudents = students.length;
   const avgProgress =
     students.length > 0
@@ -124,6 +135,10 @@ export default function Dashboard() {
   ];
 
   const handleCreateClass = () => {
+    if (!activeWorkspaceId) {
+      return;
+    }
+
     if (classes.length >= maxClasses) {
       setUpgradeDialogOpen(true);
     } else {
@@ -131,25 +146,18 @@ export default function Dashboard() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    addClass({
-      ...formData,
-      studentCount: 0,
-    });
-    handleCloseDialog();
-  };
-
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setFormData({
-      name: "",
-      description: "",
-      schedule: "",
-      level: "Beginner",
-      status: "Active",
-      color: colors[0],
-    });
+  const handleAddClass = (classData: {
+    id: string;
+    name: string;
+    description: string;
+    schedule: string;
+    level: "Beginner" | "Intermediate" | "Advanced";
+    status: "Active" | "Draft" | "Completed";
+    color: string;
+    studentCount: number;
+  }) => {
+    void classData;
+    void loadClasses();
   };
 
   return (
@@ -222,6 +230,9 @@ export default function Dashboard() {
               <CardDescription>Your current teaching schedule</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isClassesLoading && (
+                <p className="text-sm text-app-text-muted">Loading classes...</p>
+              )}
               {recentClasses.map((classItem) => (
                 <Link key={classItem.id} href={`/class/${classItem.id}`}>
                   <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-app-surface-2 transition-colors cursor-pointer">
@@ -241,7 +252,7 @@ export default function Dashboard() {
                         </Badge>
                       </div>
                       <p className="text-sm text-app-text-muted mb-1">
-                        {classItem.schedule}
+                        {classItem.schedule || classItem.description}
                       </p>
                       <div className="flex items-center gap-2 text-sm text-app-text-muted">
                         <Users className="w-3 h-3" />
@@ -358,250 +369,18 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Create Class Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Class</DialogTitle>
-              <DialogDescription>
-                Add a new class to your curriculum
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Class Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    placeholder="e.g., Advanced Prototyping"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    placeholder="Brief description of the class"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="schedule">Schedule</Label>
-                  <Input
-                    id="schedule"
-                    value={formData.schedule}
-                    onChange={(e) =>
-                      setFormData({ ...formData, schedule: e.target.value })
-                    }
-                    placeholder="e.g., Mon & Wed, 10:00 AM"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="level">Level</Label>
-                    <Select
-                      value={formData.level}
-                      onValueChange={(value: string) =>
-                        setFormData({
-                          ...formData,
-                          level: value as
-                            | "Beginner"
-                            | "Intermediate"
-                            | "Advanced",
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Beginner">Beginner</SelectItem>
-                        <SelectItem value="Intermediate">
-                          Intermediate
-                        </SelectItem>
-                        <SelectItem value="Advanced">Advanced</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value: string) =>
-                        setFormData({
-                          ...formData,
-                          status: value as "Active" | "Draft" | "Completed",
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Draft">Draft</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Color Theme</Label>
-                  <div className="flex gap-2">
-                    {colors.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        className={cn(
-                          "w-10 h-10 rounded-lg border-2 transition-all",
-                          formData.color === color
-                            ? "border-gray-900 scale-110"
-                            : "border-transparent",
-                        )}
-                        style={{ backgroundColor: color }}
-                        onClick={() => setFormData({ ...formData, color })}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCloseDialog}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit">Create Class</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <CreateClassDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onCreate={handleAddClass}
+        />
 
-        {/* Upgrade Dialog */}
-        <Dialog open={upgradeDialogOpen} onOpenChange={setUpgradeDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Crown className="w-6 h-6 text-yellow-500" />
-                Upgrade Your Plan
-              </DialogTitle>
-              <DialogDescription>
-                You have reached the limit of {maxClasses} classes on the free
-                plan. Upgrade to create more!
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-6">
-              <Card className="border-2 border-purple-600">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Pro Plan</CardTitle>
-                    <Badge>Most Popular</Badge>
-                  </div>
-                  <CardDescription className="text-2xl font-semibold mt-2">
-                    $29
-                    <span className="text-sm font-normal text-gray-600">
-                      /month
-                    </span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-green-600 rounded-full" />
-                    </div>
-                    <span>Up to 10 classes</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-green-600 rounded-full" />
-                    </div>
-                    <span>Unlimited students</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-green-600 rounded-full" />
-                    </div>
-                    <span>Advanced analytics</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-green-600 rounded-full" />
-                    </div>
-                    <span>Priority support</span>
-                  </div>
-                  <Button
-                    className="w-full mt-4"
-                    onClick={() => {
-                      upgradeTier("pro");
-                      setUpgradeDialogOpen(false);
-                    }}
-                  >
-                    Upgrade to Pro
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Enterprise Plan</CardTitle>
-                  <CardDescription className="text-2xl font-semibold mt-2">
-                    $99
-                    <span className="text-sm font-normal text-gray-600">
-                      /month
-                    </span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-green-600 rounded-full" />
-                    </div>
-                    <span>Unlimited classes</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-green-600 rounded-full" />
-                    </div>
-                    <span>Unlimited students</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-green-600 rounded-full" />
-                    </div>
-                    <span>Custom branding</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-green-600 rounded-full" />
-                    </div>
-                    <span>Dedicated support</span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="w-full mt-4"
-                    onClick={() => {
-                      upgradeTier("enterprise");
-                      setUpgradeDialogOpen(false);
-                    }}
-                  >
-                    Upgrade to Enterprise
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <UpgradePlanDialog
+          open={upgradeDialogOpen}
+          onOpenChange={setUpgradeDialogOpen}
+          onUpgrade={upgradeTier}
+          maxClasses={maxClasses === Infinity ? 999 : maxClasses}
+        />
       </div>
     </div>
   );

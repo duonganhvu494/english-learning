@@ -14,7 +14,7 @@ interface DataContextType {
   projects: Project[];
   assignments: Assignment[];
   calendarEvents: CalendarEvent[];
-  addClass: (classData: Omit<Class, "id">) => void;
+  addClass: (classData: Omit<Class, "id"> & Partial<Pick<Class, "id">>) => void;
   updateClass: (id: string, classData: Partial<Class>) => void;
   deleteClass: (id: string) => void;
   addStudent: (studentData: Omit<Student, "id">) => void;
@@ -266,11 +266,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [calendarEvents, setCalendarEvents] =
     useState<CalendarEvent[]>(mockCalendarEvents);
 
-  const addClass = (classData: Omit<Class, "id">) => {
+  const addClass = (
+    classData: Omit<Class, "id"> & Partial<Pick<Class, "id">>,
+  ) => {
     const newClass: Class = {
       ...classData,
-      id: Date.now().toString(),
-    };
+      id: classData.id ?? Date.now().toString(),
+    } as Class;
+
     setClasses([...classes, newClass]);
   };
 

@@ -4,9 +4,10 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, Lock, Eye } from "lucide-react";
-import { ApiError, authApi } from "@/api";
+import { ApiError } from "@/api";
 import { translateApiMessage } from "@/api/core/api-message-translator";
 import { useAppSettings } from "@/providers/app-settings-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { useNotification } from "@/providers/notification-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/section-card";
@@ -15,6 +16,7 @@ import { Input } from "@/components/ui/input";
 export function LoginForm() {
   const router = useRouter();
   const { dictionary } = useAppSettings();
+  const { login } = useAuth();
   const { success: notifySuccess, error: notifyError } = useNotification();
   const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
@@ -28,7 +30,7 @@ export function LoginForm() {
     setIsSubmitting(true);
 
     try {
-      const response = await authApi.login({
+      const response = await login({
         userName,
         password,
       });
@@ -42,7 +44,7 @@ export function LoginForm() {
         ),
       );
       setPassword("");
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (apiError) {
       if (apiError instanceof ApiError) {
         notifyError(

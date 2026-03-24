@@ -1,6 +1,14 @@
 "use client";
 
 import {
+  AlertCircle,
+  CheckCircle,
+  Info,
+  X,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
+import {
   createContext,
   useCallback,
   useContext,
@@ -10,39 +18,119 @@ import {
 } from "react";
 import { cn } from "@/utils/cn";
 
-type NotificationType = "success" | "error";
+type NotificationType = "success" | "error" | "warning" | "info";
 
 type NotificationItem = {
   id: number;
   type: NotificationType;
-  message: string;
+  title: string;
+  message?: string;
 };
 
 type NotifyOptions = {
   type: NotificationType;
-  message: string;
+  title: string;
+  message?: string;
   duration?: number;
 };
 
 type NotificationContextValue = {
   notify: (options: NotifyOptions) => void;
-  success: (message: string, duration?: number) => void;
-  error: (message: string, duration?: number) => void;
+  success: (
+    title: string,
+    messageOrDuration?: string | number,
+    duration?: number,
+  ) => void;
+  error: (
+    title: string,
+    messageOrDuration?: string | number,
+    duration?: number,
+  ) => void;
+  warning: (
+    title: string,
+    messageOrDuration?: string | number,
+    duration?: number,
+  ) => void;
+  info: (
+    title: string,
+    messageOrDuration?: string | number,
+    duration?: number,
+  ) => void;
   remove: (id: number) => void;
 };
 
 const DEFAULT_DURATION = 3500;
+const EXIT_DURATION = 300;
 
 const NotificationContext = createContext<NotificationContextValue | null>(
   null,
 );
 
-function getToastClass(type: NotificationType) {
-  if (type === "success") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
+  success: CheckCircle,
+  error: XCircle,
+  warning: AlertCircle,
+  info: Info,
+};
+
+const NOTIFICATION_STYLES: Record<
+  NotificationType,
+  {
+    container: string;
+    icon: string;
+    title: string;
+    message: string;
+    closeButton: string;
+  }
+> = {
+  success: {
+    container:
+      "border-[color-mix(in_srgb,var(--color-success)_35%,var(--color-border)_65%)] bg-[color-mix(in_srgb,var(--color-success-soft)_82%,var(--color-surface)_18%)]",
+    icon: "text-(--color-success)",
+    title: "text-(--color-success)",
+    message: "text-app-text",
+    closeButton:
+      "text-(--color-success) hover:bg-[color-mix(in_srgb,var(--color-success-soft)_68%,var(--color-surface)_32%)]",
+  },
+  error: {
+    container:
+      "border-[color-mix(in_srgb,var(--color-error)_35%,var(--color-border)_65%)] bg-[color-mix(in_srgb,var(--color-error-soft)_82%,var(--color-surface)_18%)]",
+    icon: "text-(--color-error)",
+    title: "text-(--color-error)",
+    message: "text-app-text",
+    closeButton:
+      "text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_68%,var(--color-surface)_32%)]",
+  },
+  warning: {
+    container:
+      "border-[color-mix(in_srgb,var(--color-warning)_35%,var(--color-border)_65%)] bg-[color-mix(in_srgb,var(--color-warning-soft)_82%,var(--color-surface)_18%)]",
+    icon: "text-(--color-warning)",
+    title: "text-(--color-warning)",
+    message: "text-app-text",
+    closeButton:
+      "text-(--color-warning) hover:bg-[color-mix(in_srgb,var(--color-warning-soft)_68%,var(--color-surface)_32%)]",
+  },
+  info: {
+    container:
+      "border-[color-mix(in_srgb,var(--color-info)_35%,var(--color-border)_65%)] bg-[color-mix(in_srgb,var(--color-info-soft)_82%,var(--color-surface)_18%)]",
+    icon: "text-(--color-info)",
+    title: "text-(--color-info)",
+    message: "text-app-text",
+    closeButton:
+      "text-(--color-info) hover:bg-[color-mix(in_srgb,var(--color-info-soft)_68%,var(--color-surface)_32%)]",
+  },
+};
+
+function normalizeNotificationInput(
+  title: string,
+  messageOrDuration?: string | number,
+  duration?: number,
+) {
+  if (typeof messageOrDuration === "number") {
+    return { title, message: undefined, duration: messageOrDuration };
   }
 
-  return "border-red-200 bg-red-50 text-red-700";
+  return { title, message: messageOrDuration, duration };
 }
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
@@ -61,13 +149,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         next.delete(id);
         return next;
       });
-    }, 220);
+    }, EXIT_DURATION);
   }, []);
 
   const notify = useCallback(
-    ({ type, message, duration = DEFAULT_DURATION }: NotifyOptions) => {
+    ({ type, title, message, duration = DEFAULT_DURATION }: NotifyOptions) => {
       const id = Date.now() + Math.floor(Math.random() * 1000);
-      setNotifications((previous) => [...previous, { id, type, message }]);
+      setNotifications((previous) => [
+        ...previous,
+        { id, type, title, message },
+      ]);
 
       window.setTimeout(() => {
         remove(id);
@@ -79,10 +170,26 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const value = useMemo<NotificationContextValue>(
     () => ({
       notify,
-      success: (message, duration) =>
-        notify({ type: "success", message, duration }),
-      error: (message, duration) =>
-        notify({ type: "error", message, duration }),
+      success: (title, messageOrDuration, duration) =>
+        notify({
+          type: "success",
+          ...normalizeNotificationInput(title, messageOrDuration, duration),
+        }),
+      error: (title, messageOrDuration, duration) =>
+        notify({
+          type: "error",
+          ...normalizeNotificationInput(title, messageOrDuration, duration),
+        }),
+      warning: (title, messageOrDuration, duration) =>
+        notify({
+          type: "warning",
+          ...normalizeNotificationInput(title, messageOrDuration, duration),
+        }),
+      info: (title, messageOrDuration, duration) =>
+        notify({
+          type: "info",
+          ...normalizeNotificationInput(title, messageOrDuration, duration),
+        }),
       remove,
     }),
     [notify, remove],
@@ -92,31 +199,65 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     <NotificationContext.Provider value={value}>
       {children}
 
-      <div className="pointer-events-none fixed top-4 right-4 z-100 flex w-[min(92vw,360px)] flex-col gap-3">
+      <div
+        className="pointer-events-none fixed top-4 right-4 z-50 flex w-full max-w-sm flex-col gap-2 px-4 sm:px-0"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {notifications.map((notification) => {
           const isLeaving = exiting.has(notification.id);
+          const Icon = NOTIFICATION_ICONS[notification.type];
+          const colorScheme = NOTIFICATION_STYLES[notification.type];
 
           return (
             <div
               key={notification.id}
               className={cn(
-                "pointer-events-auto rounded-xl border px-4 py-3 text-sm font-semibold shadow-lg transition-all duration-220 transform-gpu",
-                getToastClass(notification.type),
+                "pointer-events-auto rounded-xl border px-4 py-3 shadow-lg backdrop-blur-sm transition-all duration-300 ease-out transform-gpu",
+                colorScheme.container,
                 isLeaving
-                  ? "opacity-0 -translate-y-2"
-                  : "opacity-100 translate-y-0",
+                  ? "opacity-0 translate-x-full"
+                  : "opacity-100 translate-x-0",
               )}
-              style={{ animation: "fade-in 260ms ease-out" }}
+              style={{
+                animation: isLeaving ? "none" : "slide-in-right 300ms ease-out",
+              }}
+              role="status"
             >
-              <div className="flex items-start justify-between gap-3">
-                <p>{notification.message}</p>
+              <div className="flex items-start gap-3">
+                <Icon
+                  className={cn("mt-0.5 h-5 w-5 shrink-0", colorScheme.icon)}
+                />
+                <div className="min-w-0 flex-1">
+                  <h3
+                    className={cn(
+                      "mb-1 text-sm font-semibold",
+                      colorScheme.title,
+                    )}
+                  >
+                    {notification.title}
+                  </h3>
+                  {notification.message ? (
+                    <p
+                      className={cn(
+                        "text-sm leading-5 opacity-90",
+                        colorScheme.message,
+                      )}
+                    >
+                      {notification.message}
+                    </p>
+                  ) : null}
+                </div>
                 <button
                   type="button"
                   onClick={() => remove(notification.id)}
-                  className="cursor-pointer text-inherit/80 transition-colors hover:text-inherit"
+                  className={cn(
+                    "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors",
+                    colorScheme.closeButton,
+                  )}
                   aria-label="Close notification"
                 >
-                  X
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>

@@ -169,7 +169,7 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-overlay"
-      className={cn("fixed inset-0 z-50 bg-black/50", className)}
+      className={cn("fixed inset-0 z-50 bg-(--color-overlay)", className)}
       onClick={() => setOpen(false)}
       {...props}
     />
@@ -215,7 +215,7 @@ function DialogContent({
           role="dialog"
           aria-modal="true"
           className={cn(
-            "bg-background z-50 grid w-full max-w-lg gap-4 rounded-lg border p-6 shadow-lg",
+            "bg-app-surface text-app-text border-app-border z-50 grid w-full max-w-lg gap-4 rounded-lg border p-6 shadow-lg",
             className,
           )}
           onClick={(e) => e.stopPropagation()}
