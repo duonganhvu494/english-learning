@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Role } from 'src/rbac/entities/role.entity';
 import { RbacService } from 'src/rbac/rbac.service';
@@ -46,6 +47,9 @@ describe('ClassesService', () => {
   const rbacService = {
     ensureDefaultClassStudentRole: jest.fn(),
   };
+  const eventEmitter = {
+    emit: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -66,6 +70,7 @@ describe('ClassesService', () => {
         });
       },
     );
+    eventEmitter.emit.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -93,6 +98,10 @@ describe('ClassesService', () => {
         {
           provide: RbacService,
           useValue: rbacService,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: eventEmitter,
         },
       ],
     }).compile();
@@ -227,6 +236,14 @@ describe('ClassesService', () => {
       expect.objectContaining({
         student: student2,
         role: defaultRole,
+      }),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'class.students_added',
+      expect.objectContaining({
+        classId: 'class-1',
+        workspaceId: 'workspace-1',
+        studentIds: ['student-1'],
       }),
     );
     expect(result).toEqual({

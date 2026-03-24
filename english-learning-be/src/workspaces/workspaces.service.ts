@@ -59,6 +59,15 @@ export class WorkspacesService {
     return password;
   }
 
+  private isUniqueConstraintViolation(error: unknown): error is { code: string } {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof (error as { code?: unknown }).code === 'string'
+    );
+  }
+
   // ================= CREATE WORKSPACE =================
   async createWorkspace(dto: CreateWorkspaceDto, userId: string) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -79,7 +88,6 @@ export class WorkspacesService {
 
     const existedWorkspace = await this.workspaceRepo.findOne({
       where: {
-        name: dto.name,
         owner: { id: userId },
       },
     });
@@ -87,8 +95,8 @@ export class WorkspacesService {
     if (existedWorkspace) {
       throw new BadRequestException(
         errorPayload(
-          'You already have a workspace with this name',
-          'WORKSPACE_NAME_ALREADY_EXISTS',
+          'Each teacher can own only one workspace',
+          'WORKSPACE_OWNER_ALREADY_HAS_WORKSPACE',
         ),
       );
     }
@@ -99,7 +107,21 @@ export class WorkspacesService {
       isActive: true,
     });
 
-    const savedWorkspace = await this.workspaceRepo.save(workspace);
+    let savedWorkspace: Workspace;
+    try {
+      savedWorkspace = await this.workspaceRepo.save(workspace);
+    } catch (error) {
+      if (this.isUniqueConstraintViolation(error)) {
+        throw new BadRequestException(
+          errorPayload(
+            'Each teacher can own only one workspace',
+            'WORKSPACE_OWNER_ALREADY_HAS_WORKSPACE',
+          ),
+        );
+      }
+
+      throw error;
+    }
     
     const ownerRole = await this.roleRepo.findOne({
       where: {
@@ -395,20 +417,35 @@ export class WorkspacesService {
     });
   }
 
-  // ================= LIST USER WORKSPACES =================
-  async listMyWorkspaces(userId: string) {
+  // ================= CURRENT USER WORKSPACE =================
+  async getMyWorkspace(userId: string): Promise<WorkspaceDetailResponseDto> {
     const members = await this.memberRepo.find({
       where: {
         user: { id: userId },
         status: WorkspaceMemberStatus.ACTIVE,
       },
-      relations: ["workspace", "role"],
+      relations: ['workspace', 'role'],
     });
+    if (members.length === 0) {
+      throw new BadRequestException(
+        errorPayload(
+          'Current workspace not found',
+          'WORKSPACE_CURRENT_NOT_FOUND',
+        ),
+      );
+    }
 
-    return members.map((m) => ({
-      workspaceId: m.workspace.id,
-      workspaceName: m.workspace.name,
-      role: m.role.name,
-    }));
+    const currentMembership = [...members].sort((left, right) => {
+      if (left.role?.name === 'owner' && right.role?.name !== 'owner') {
+        return -1;
+      }
+      if (left.role?.name !== 'owner' && right.role?.name === 'owner') {
+        return 1;
+      }
+
+      return left.workspace.name.localeCompare(right.workspace.name);
+    })[0];
+
+    return this.getWorkspaceDetail(currentMembership.workspace.id, userId);
   }
 }

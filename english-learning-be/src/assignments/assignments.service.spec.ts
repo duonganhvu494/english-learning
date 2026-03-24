@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
@@ -46,6 +47,9 @@ describe('AssignmentsService', () => {
   };
   let s3StorageService: {
     createSignedDownloadUrl: jest.Mock;
+  };
+  let eventEmitter: {
+    emit: jest.Mock;
   };
   let assignmentRepoInTransaction: {
     create: jest.Mock;
@@ -133,6 +137,9 @@ describe('AssignmentsService', () => {
         .fn()
         .mockResolvedValue('https://signed-assignment-download'),
     };
+    eventEmitter = {
+      emit: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -168,6 +175,10 @@ describe('AssignmentsService', () => {
         {
           provide: S3StorageService,
           useValue: s3StorageService,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: eventEmitter,
         },
       ],
     }).compile();
@@ -244,6 +255,23 @@ describe('AssignmentsService', () => {
         sortOrder: 1,
       }),
     ]);
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'assignment.created',
+      expect.objectContaining({
+        assignmentId: 'assignment-1',
+        sessionId: 'session-1',
+        actorUserId: 'teacher-1',
+      }),
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'assignment.materials_published',
+      expect.objectContaining({
+        assignmentId: 'assignment-1',
+        sessionId: 'session-1',
+        actorUserId: 'teacher-1',
+        materialIds: ['material-1', 'material-2'],
+      }),
+    );
     expect(result).toEqual({ id: 'assignment-1' });
   });
 

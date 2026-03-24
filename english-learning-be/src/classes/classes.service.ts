@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { RbacService } from 'src/rbac/rbac.service';
@@ -25,6 +26,7 @@ import { ClassEntity } from './entities/class.entity';
 import { ClassStudent } from './entities/class-student.entity';
 import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
 import { errorPayload } from 'src/common/utils/error-payload.util';
+import { ClassStudentsAddedEvent } from './events/class-students-added.event';
 
 @Injectable()
 export class ClassesService {
@@ -43,6 +45,7 @@ export class ClassesService {
 
     private readonly workspaceAccessService: WorkspaceAccessService,
     private readonly rbacService: RbacService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createClass(
@@ -224,6 +227,9 @@ export class ClassesService {
     const existingStudentIds = new Set(
       existingAssignments.map((assignment) => assignment.student.id),
     );
+    const newlyAddedStudentIds = workspaceStudents
+      .filter((student) => !existingStudentIds.has(student.id))
+      .map((student) => student.id);
 
     await this.classStudentRepo.manager.transaction(async (manager) => {
       const classStudentRepo = manager.getRepository(ClassStudent);
@@ -256,6 +262,18 @@ export class ClassesService {
         student: true,
       },
     });
+
+    if (newlyAddedStudentIds.length > 0) {
+      this.eventEmitter.emit(
+        ClassStudentsAddedEvent.eventName,
+        new ClassStudentsAddedEvent(
+          classEntity.workspace.id,
+          classId,
+          newlyAddedStudentIds,
+          new Date().toISOString(),
+        ),
+      );
+    }
 
     return ClassStudentsResponseDto.fromData({
       classId,

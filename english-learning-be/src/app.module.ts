@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import databaseConfig from './config/database.config';
 import { AppService } from './app.service';
 import { AppController } from './app.controller';
@@ -23,6 +25,7 @@ import { SessionsModule } from './sessions/sessions.module';
 import { AttendancesModule } from './attendances/attendances.module';
 import { LecturesModule } from './lectures/lectures.module';
 import { MaterialsModule } from './materials/materials.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { AssignmentsModule } from './assignments/assignments.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { CsrfMiddleware } from './auth/middlewares/csrf.middleware';
@@ -34,6 +37,8 @@ import { CsrfMiddleware } from './auth/middlewares/csrf.middleware';
       validate: validateEnvironment,
       load: [databaseConfig, jwtConfig, appConfig, redisConfig, storageConfig],
     }),
+    EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
 
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -59,6 +64,7 @@ import { CsrfMiddleware } from './auth/middlewares/csrf.middleware';
     AttendancesModule,
     LecturesModule,
     MaterialsModule,
+    NotificationsModule,
     AssignmentsModule,
     SubmissionsModule,
   ],

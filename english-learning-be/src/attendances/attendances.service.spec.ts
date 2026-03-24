@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ClassStudent } from 'src/classes/entities/class-student.entity';
@@ -22,6 +23,9 @@ describe('AttendancesService', () => {
   let classStudentRepo: {
     findOne: jest.Mock;
   };
+  let eventEmitter: {
+    emit: jest.Mock;
+  };
 
   beforeEach(async () => {
     attendanceRepo = {
@@ -37,6 +41,9 @@ describe('AttendancesService', () => {
     };
     classStudentRepo = {
       findOne: jest.fn(),
+    };
+    eventEmitter = {
+      emit: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -65,6 +72,10 @@ describe('AttendancesService', () => {
         {
           provide: WorkspaceAccessService,
           useValue: {},
+        },
+        {
+          provide: EventEmitter2,
+          useValue: eventEmitter,
         },
       ],
     }).compile();
@@ -206,5 +217,33 @@ describe('AttendancesService', () => {
       studentId: 'student-1',
       status: null,
     });
+  });
+
+  it('emits attendance updated when a teacher marks a student', async () => {
+    sessionRepo.findOne.mockResolvedValue({
+      id: 'session-1',
+      topic: 'Speaking Practice',
+      classEntity: { id: 'class-1' },
+    });
+    classStudentRepo.findOne.mockResolvedValue({
+      student: {
+        id: 'student-1',
+      },
+    });
+    attendanceRepo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+
+    const result = await service.updateAttendance('session-1', 'student-1', {
+      status: AttendanceStatus.PRESENT,
+    });
+
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'attendance.updated',
+      expect.objectContaining({
+        sessionId: 'session-1',
+        studentId: 'student-1',
+        status: AttendanceStatus.PRESENT,
+      }),
+    );
+    expect(result.status).toBe(AttendanceStatus.PRESENT);
   });
 });

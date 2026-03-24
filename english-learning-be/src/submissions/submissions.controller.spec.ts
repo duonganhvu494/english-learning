@@ -148,12 +148,14 @@ describe('SubmissionsController', () => {
     const result = await controller.reviewSubmission(
       'assignment-1',
       'student-2',
+      { user: { userId: 'teacher-1' } } as never,
       { grade: 9, feedback: 'Strong work' },
     );
 
     expect(submissionsService.reviewSubmission).toHaveBeenCalledWith(
       'assignment-1',
       'student-2',
+      'teacher-1',
       { grade: 9, feedback: 'Strong work' },
     );
     expect(result).toEqual({

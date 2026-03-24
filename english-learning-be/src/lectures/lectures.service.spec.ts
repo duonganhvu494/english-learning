@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
@@ -23,6 +24,9 @@ describe('LecturesService', () => {
   let lectureMaterialRepo: {
     findOne: jest.Mock;
   };
+  let materialRepo: {
+    find: jest.Mock;
+  };
   let sessionRepo: {
     findOne: jest.Mock;
   };
@@ -31,6 +35,9 @@ describe('LecturesService', () => {
   };
   let s3StorageService: {
     createSignedDownloadUrl: jest.Mock;
+  };
+  let eventEmitter: {
+    emit: jest.Mock;
   };
   let lectureRepoInTransaction: {
     create: jest.Mock;
@@ -96,6 +103,9 @@ describe('LecturesService', () => {
     lectureMaterialRepo = {
       findOne: jest.fn(),
     };
+    materialRepo = {
+      find: jest.fn(),
+    };
     sessionRepo = {
       findOne: jest.fn(),
     };
@@ -106,6 +116,9 @@ describe('LecturesService', () => {
       createSignedDownloadUrl: jest
         .fn()
         .mockResolvedValue('https://signed-lecture-download'),
+    };
+    eventEmitter = {
+      emit: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -121,7 +134,7 @@ describe('LecturesService', () => {
         },
         {
           provide: getRepositoryToken(Material),
-          useValue: {},
+          useValue: materialRepo,
         },
         {
           provide: getRepositoryToken(SessionEntity),
@@ -134,6 +147,10 @@ describe('LecturesService', () => {
         {
           provide: S3StorageService,
           useValue: s3StorageService,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: eventEmitter,
         },
       ],
     }).compile();
@@ -178,10 +195,55 @@ describe('LecturesService', () => {
         createdBy: expect.objectContaining({ id: 'teacher-1' }),
       }),
     );
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'lecture.created',
+      expect.objectContaining({
+        lectureId: 'lecture-1',
+        sessionId: 'session-1',
+        actorUserId: 'teacher-1',
+      }),
+    );
     expect(result).toEqual({
       id: 'lecture-1',
       code: 'LEC-002',
     });
+  });
+
+  it('emits lecture materials published when a lecture is created with materials', async () => {
+    sessionRepo.findOne.mockResolvedValue({
+      id: 'session-1',
+      classEntity: { id: 'class-1', workspace: { id: 'workspace-1' } },
+    });
+    userRepo.findOne.mockResolvedValue({ id: 'teacher-1' });
+    lectureRepo.find.mockResolvedValue([]);
+    materialRepo.find.mockResolvedValue([
+      {
+        id: 'material-1',
+        status: 'ready',
+        bucket: 'bucket-1',
+        objectKey: 'workspace/1/lecture/material-1.pdf',
+      },
+    ]);
+    jest.spyOn(service, 'getLectureDetail').mockResolvedValue({
+      id: 'lecture-1',
+    } as never);
+
+    await service.createLecture(
+      'session-1',
+      {
+        title: 'Slides',
+        materialIds: ['material-1'],
+      },
+      'teacher-1',
+    );
+
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'lecture.materials_published',
+      expect.objectContaining({
+        lectureId: 'lecture-1',
+        materialIds: ['material-1'],
+      }),
+    );
   });
 
   it('rejects createLecture when the same title already exists in a session', async () => {

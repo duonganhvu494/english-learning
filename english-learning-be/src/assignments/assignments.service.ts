@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import {
@@ -13,6 +14,8 @@ import { User } from 'src/users/entities/user.entity';
 import { AssignmentDeleteResponseDto } from './dto/assignment-delete-response.dto';
 import { AssignmentResponseDto } from './dto/assignment-response.dto';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
+import { AssignmentCreatedEvent } from './events/assignment-created.event';
+import { AssignmentMaterialsPublishedEvent } from './events/assignment-materials-published.event';
 import { AssignmentEntity, AssignmentType } from './entities/assignment.entity';
 import { AssignmentMaterial } from './entities/assignment-material.entity';
 import { AssignmentQuizAttemptEntity } from './entities/assignment-quiz-attempt.entity';
@@ -44,6 +47,7 @@ export class AssignmentsService {
     private readonly userRepo: Repository<User>,
 
     private readonly s3StorageService: S3StorageService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createAssignment(
@@ -116,6 +120,24 @@ export class AssignmentsService {
         return savedAssignment;
       },
     );
+
+    this.eventEmitter.emit(
+      AssignmentCreatedEvent.eventName,
+      new AssignmentCreatedEvent(assignment.id, sessionId, actorUserId),
+    );
+
+    if (materials.length > 0) {
+      this.eventEmitter.emit(
+        AssignmentMaterialsPublishedEvent.eventName,
+        new AssignmentMaterialsPublishedEvent(
+          assignment.id,
+          sessionId,
+          actorUserId,
+          materials.map((material) => material.id),
+          new Date().toISOString(),
+        ),
+      );
+    }
 
     return this.getAssignmentDetail(assignment.id);
   }

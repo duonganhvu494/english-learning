@@ -508,11 +508,13 @@ export class SubmissionsController {
   async reviewSubmission(
     @Param('assignmentId') assignmentId: string,
     @Param('studentId') studentId: string,
+    @Req() req: AuthRequest,
     @Body() dto: ReviewSubmissionDto,
   ) {
     const result = await this.submissionsService.reviewSubmission(
       assignmentId,
       studentId,
+      req.user.userId,
       dto,
     );
 
