@@ -12,7 +12,7 @@ import { User } from 'src/users/entities/user.entity';
 import { WorkspaceMember } from './workspace-member.entity';
 
 @Entity('workspaces')
-@Unique(['name', 'owner'])
+@Unique(['owner'])
 export class Workspace {
   @PrimaryGeneratedColumn('uuid')
   id: string;

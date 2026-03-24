@@ -155,7 +155,7 @@ describe('WorkspacesService', () => {
     );
   });
 
-  it('rejects duplicate workspace names for the same owner', async () => {
+  it('rejects creating a second workspace for the same teacher', async () => {
     userRepo.findOne.mockResolvedValue({
       id: 'teacher-1',
       accountType: AccountType.TEACHER,
@@ -165,7 +165,24 @@ describe('WorkspacesService', () => {
     await expect(
       service.createWorkspace({ name: 'English Center' }, 'teacher-1'),
     ).rejects.toThrow(
-      new BadRequestException('You already have a workspace with this name'),
+      new BadRequestException('Each teacher can own only one workspace'),
+    );
+  });
+
+  it('maps owner unique violation to a business error when concurrent create happens', async () => {
+    const teacher = {
+      id: 'teacher-1',
+      accountType: AccountType.TEACHER,
+    };
+
+    userRepo.findOne.mockResolvedValue(teacher);
+    workspaceRepo.findOne.mockResolvedValue(null);
+    workspaceRepo.save.mockRejectedValue({ code: '23505' });
+
+    await expect(
+      service.createWorkspace({ name: 'English Center' }, 'teacher-1'),
+    ).rejects.toThrow(
+      new BadRequestException('Each teacher can own only one workspace'),
     );
   });
 
@@ -282,5 +299,70 @@ describe('WorkspacesService', () => {
       studentCount: 28,
       classCount: 4,
     });
+  });
+
+  it('returns the current workspace detail using the owner membership first', async () => {
+    memberRepo.find.mockResolvedValue([
+      {
+        workspace: {
+          id: 'workspace-2',
+          name: 'Beta Center',
+        },
+        role: { name: 'teacher' },
+      },
+      {
+        workspace: {
+          id: 'workspace-1',
+          name: 'Alpha Center',
+        },
+        role: { name: 'owner' },
+      },
+    ]);
+
+    const getWorkspaceDetailSpy = jest
+      .spyOn(service, 'getWorkspaceDetail')
+      .mockResolvedValue({
+        id: 'workspace-1',
+        name: 'Alpha Center',
+        owner: {
+          id: 'teacher-1',
+          userName: 'teacher1',
+          fullName: 'Teacher One',
+          email: 'teacher@example.com',
+        },
+        isActive: true,
+        currentUserRole: 'owner',
+        studentCount: 10,
+        classCount: 2,
+      });
+
+    const result = await service.getMyWorkspace('teacher-1');
+
+    expect(getWorkspaceDetailSpy).toHaveBeenCalledWith(
+      'workspace-1',
+      'teacher-1',
+    );
+    expect(result).toEqual({
+      id: 'workspace-1',
+      name: 'Alpha Center',
+      owner: {
+        id: 'teacher-1',
+        userName: 'teacher1',
+        fullName: 'Teacher One',
+        email: 'teacher@example.com',
+      },
+      isActive: true,
+      currentUserRole: 'owner',
+      studentCount: 10,
+      classCount: 2,
+    });
+  });
+
+  it('throws when the current user does not belong to any workspace', async () => {
+    memberRepo.find.mockResolvedValue([]);
+
+    await expect(service.getMyWorkspace('teacher-1')).rejects.toThrow(
+      new BadRequestException('Current workspace not found'),
+    );
   });
 });

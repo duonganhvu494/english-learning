@@ -30,7 +30,6 @@ import { RequirePermission } from 'src/rbac/decorators/require-permission.decora
 import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 import { ApiBusinessErrorResponses, ApiEnvelopeResponse } from 'src/common/swagger/swagger-response.decorator';
 import { WorkspaceResponseDto } from './dto/workspace-response.dto';
-import { WorkspaceMembershipResponseDto } from './dto/workspace-membership-response.dto';
 import { WorkspaceDetailResponseDto } from './dto/workspace-detail-response.dto';
 import { WorkspaceStudentResponseDto } from './dto/workspace-student-response.dto';
 import { WorkspaceStudentListItemDto } from './dto/workspace-student-list-item.dto';
@@ -87,8 +86,8 @@ export class WorkspacesController {
     },
     {
       status: 400,
-      code: 'WORKSPACE_NAME_ALREADY_EXISTS',
-      message: 'You already have a workspace with this name',
+      code: 'WORKSPACE_OWNER_ALREADY_HAS_WORKSPACE',
+      message: 'Each teacher can own only one workspace',
     },
     {
       status: 400,
@@ -110,23 +109,31 @@ export class WorkspacesController {
 
   @Get('me')
   @ApiOperation({
-    summary: 'List my workspaces',
-    description: 'Returns all workspaces that the current user belongs to.',
+    summary: 'Get my current workspace',
+    description:
+      'Returns the current authenticated user workspace detail. This endpoint is intended for the single-workspace product flow.',
   })
   @ApiCookieAuth('cookieAuth')
   @ApiEnvelopeResponse({
     status: 200,
-    description: 'Workspaces retrieved successfully',
-    model: WorkspaceMembershipResponseDto,
-    isArray: true,
-    exampleMessage: 'Success',
-    exampleResult: [
-      {
-        workspaceId: '550e8400-e29b-41d4-a716-446655440100',
-        workspaceName: 'English Center Alpha',
-        role: 'owner',
+    description: 'Current workspace retrieved successfully',
+    model: WorkspaceDetailResponseDto,
+    exampleMessage: 'Current workspace retrieved',
+    exampleResult: {
+      id: '550e8400-e29b-41d4-a716-446655440100',
+      name: 'English Center Alpha',
+      owner: {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        userName: 'teacher01',
+        fullName: 'Duong Anh Vu',
+        email: 'duonganhvu@example.com',
+        mustChangePassword: false,
       },
-    ],
+      isActive: true,
+      currentUserRole: 'owner',
+      studentCount: 28,
+      classCount: 4,
+    },
   })
   @ApiUnauthorizedResponse({ description: 'User is not authenticated or must change password first' })
   @ApiBusinessErrorResponses([
@@ -136,12 +143,18 @@ export class WorkspacesController {
       code: 'AUTH_PASSWORD_CHANGE_REQUIRED',
       message: 'Password change is required before accessing this resource',
     },
+    {
+      status: 400,
+      code: 'WORKSPACE_CURRENT_NOT_FOUND',
+      message: 'Current workspace not found',
+    },
+    { status: 400, code: 'WORKSPACE_NOT_FOUND', message: 'Workspace not found' },
   ])
-  async myWorkspaces(@Req() req: AuthRequest) {
-    const result = await this.service.listMyWorkspaces(
+  async myWorkspace(@Req() req: AuthRequest) {
+    const result = await this.service.getMyWorkspace(
       req.user.userId,
     );
-    return ApiResponse.success(result);
+    return ApiResponse.success(result, 'Current workspace retrieved');
   }
 
   @Get(':id')

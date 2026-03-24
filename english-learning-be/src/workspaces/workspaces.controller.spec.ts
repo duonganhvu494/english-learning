@@ -10,7 +10,7 @@ describe('WorkspacesController', () => {
   let controller: WorkspacesController;
   let workspacesService: {
     createWorkspace: jest.Mock;
-    listMyWorkspaces: jest.Mock;
+    getMyWorkspace: jest.Mock;
     getWorkspaceDetail: jest.Mock;
     createStudentInWorkspace: jest.Mock;
     listWorkspaceStudents: jest.Mock;
@@ -21,7 +21,7 @@ describe('WorkspacesController', () => {
   beforeEach(async () => {
     workspacesService = {
       createWorkspace: jest.fn(),
-      listMyWorkspaces: jest.fn(),
+      getMyWorkspace: jest.fn(),
       getWorkspaceDetail: jest.fn(),
       createStudentInWorkspace: jest.fn(),
       listWorkspaceStudents: jest.fn(),
@@ -81,22 +81,26 @@ describe('WorkspacesController', () => {
     });
   });
 
-  it('returns the current user workspaces', async () => {
-    workspacesService.listMyWorkspaces.mockResolvedValue([
-      { workspaceId: 'workspace-1' },
-    ]);
+  it('returns the current user workspace detail', async () => {
+    workspacesService.getMyWorkspace.mockResolvedValue({
+      id: 'workspace-1',
+      currentUserRole: 'owner',
+    });
 
-    const result = await controller.myWorkspaces({
+    const result = await controller.myWorkspace({
       user: { userId: 'teacher-1' },
     } as never);
 
-    expect(workspacesService.listMyWorkspaces).toHaveBeenCalledWith(
+    expect(workspacesService.getMyWorkspace).toHaveBeenCalledWith(
       'teacher-1',
     );
     expect(result).toEqual({
       statusCode: 200,
-      message: 'Success',
-      result: [{ workspaceId: 'workspace-1' }],
+      message: 'Current workspace retrieved',
+      result: {
+        id: 'workspace-1',
+        currentUserRole: 'owner',
+      },
     });
   });
 
