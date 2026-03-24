@@ -35,6 +35,9 @@ const AUTH_ERROR_CODE_MAP = {
   CLASS_NAME_ALREADY_EXISTS: "classNameAlreadyExists",
   WORKSPACE_NOT_FOUND: "workspaceNotFound",
   AUTH_CSRF_INVALID: "csrfInvalid",
+  WORKSPACE_STUDENT_CREDENTIALS_ALREADY_EXIST: "credentialsAlreadyExist",
+  WORKSPACE_STUDENT_EMAIL_ALREADY_EXISTS: "credentialsAlreadyExist",
+  WORKSPACE_STUDENT_USERNAME_ALREADY_EXISTS: "credentialsAlreadyExist",
 } as const;
 
 function normalizeMessage(message: string) {

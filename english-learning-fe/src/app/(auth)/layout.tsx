@@ -1,4 +1,4 @@
-import { Header } from "@/components/layout/header";
+import { Header } from "@/components/layout/auth-header";
 import { RedirectIfAuthenticated } from "@/components/auth/route-guards";
 
 export const metadata = {

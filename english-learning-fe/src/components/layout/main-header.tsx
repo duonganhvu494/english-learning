@@ -20,6 +20,7 @@ import { useAppSettings } from "@/providers/app-settings-provider";
 import { useAuth } from "@/providers/auth-provider";
 import { LanguageSwitcher } from "@/components/common/language-switcher";
 import { ThemeToggle } from "@/components/common/theme-toggle";
+import { getInitials } from "@/utils/get-initials";
 import { useState } from "react";
 
 const navItems = [
@@ -44,13 +45,7 @@ export function DashboardHeader() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const displayName = user?.fullName || user?.userName || "Teacher";
   const displayContact = user?.email || user?.userName || "";
-  const initials =
-    displayName
-      .split(" ")
-      .filter((item) => item.length > 0)
-      .slice(0, 2)
-      .map((item) => item[0]?.toUpperCase() ?? "")
-      .join("") || "T";
+  const initials = getInitials(displayName, "T");
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
