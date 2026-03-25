@@ -1,17 +1,13 @@
 import { httpClient } from "@/api/core/http-client";
-
-type CreateClassRequest = {
-  className: string;
-  description?: string;
-};
-
-export type WorkspaceClass = {
-  id: string;
-  className: string;
-  description?: string | null;
-  workspaceId: string;
-  studentCount: number;
-};
+import type {
+  AddClassStudentsRequest,
+  ClassRosterResponse,
+  ClassStudentsResponse,
+  CreateClassRequest,
+  DeleteClassResponse,
+  UpdateClassRequest,
+  WorkspaceClass,
+} from "@/types/class";
 
 export const classesApi = {
   createClass: (workspaceId: string, payload: CreateClassRequest) =>
@@ -21,4 +17,18 @@ export const classesApi = {
     ),
   listClasses: (workspaceId: string) =>
     httpClient.get<WorkspaceClass[]>(`/workspaces/${workspaceId}/classes`),
+  getClassDetail: (classId: string) =>
+    httpClient.get<WorkspaceClass>(`/classes/${classId}`),
+  getClassStudents: (classId: string) =>
+    httpClient.get<ClassRosterResponse>(`/classes/${classId}/students`),
+  addStudents: (classId: string, payload: AddClassStudentsRequest) =>
+    httpClient.post<ClassStudentsResponse>(`/classes/${classId}/students`, payload),
+  removeStudent: (classId: string, studentId: string) =>
+    httpClient.remove<ClassStudentsResponse>(
+      `/classes/${classId}/students/${studentId}`,
+    ),
+  updateClass: (classId: string, payload: UpdateClassRequest) =>
+    httpClient.patch<WorkspaceClass>(`/classes/${classId}`, payload),
+  deleteClass: (classId: string) =>
+    httpClient.remove<DeleteClassResponse>(`/classes/${classId}`),
 };

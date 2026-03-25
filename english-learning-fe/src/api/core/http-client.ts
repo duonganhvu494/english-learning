@@ -5,7 +5,7 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 import { createApiError } from "@/api/core/api-error";
-import type { ApiResponse } from "@/api/core/api-types";
+import type { ApiResponse } from "@/types/api";
 
 type RequestOptions = Omit<AxiosRequestConfig, "url" | "method" | "data">;
 type RetryableConfig = InternalAxiosRequestConfig & {

@@ -23,10 +23,16 @@ import { ThemeToggle } from "@/components/common/theme-toggle";
 import { getInitials } from "@/utils/get-initials";
 import { useState } from "react";
 
+const TEACHER_BASE_PATH = "/teacher";
+
 const navItems = [
-  { path: "/dashboard", key: "dashboard", icon: LayoutDashboard },
-  { path: "/classes", key: "classes", icon: GraduationCap },
-  { path: "/students", key: "students", icon: Users },
+  {
+    path: `${TEACHER_BASE_PATH}/dashboard`,
+    key: "dashboard",
+    icon: LayoutDashboard,
+  },
+  { path: `${TEACHER_BASE_PATH}/classes`, key: "classes", icon: GraduationCap },
+  { path: `${TEACHER_BASE_PATH}/students`, key: "students", icon: Users },
 ];
 
 const userMenuItems = [
@@ -60,7 +66,10 @@ export function DashboardHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-app-border bg-app-surface">
       <div className="container mx-auto flex h-16 items-center gap-4 px-4">
-        <Link href="/" className="flex items-center gap-2 mr-6">
+        <Link
+          href={`${TEACHER_BASE_PATH}/dashboard`}
+          className="flex items-center gap-2 mr-6"
+        >
           <div className="w-8 h-8 bg-(--color-primary) rounded-lg flex items-center justify-center">
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
@@ -87,7 +96,7 @@ export function DashboardHeader() {
                   {item.key === "dashboard"
                     ? dictionary.dashboard.title
                     : item.key === "classes"
-                      ? dictionary.myCourse.sidebar.items.myClasses
+                      ? dictionary.classesPage.title
                       : dictionary.myCourse.overview.statsStudents}
                 </Button>
               </Link>
@@ -122,7 +131,7 @@ export function DashboardHeader() {
                         {item.key === "dashboard"
                           ? dictionary.dashboard.title
                           : item.key === "classes"
-                            ? dictionary.myCourse.sidebar.items.myClasses
+                            ? dictionary.classesPage.title
                             : dictionary.myCourse.overview.statsStudents}
                       </Button>
                     </Link>

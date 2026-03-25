@@ -44,7 +44,7 @@ export function LoginForm() {
         ),
       );
       setPassword("");
-      router.replace("/dashboard");
+      router.replace("/teacher/dashboard");
     } catch (apiError) {
       if (apiError instanceof ApiError) {
         notifyError(

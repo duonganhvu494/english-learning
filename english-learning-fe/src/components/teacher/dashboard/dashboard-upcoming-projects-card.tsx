@@ -1,7 +1,7 @@
 import { FileText } from "lucide-react";
 import type { Dictionary } from "@/i18n/types";
 import type { Class as DashboardClass, Project } from "@/types/types";
-import { Progress } from "@/components/dashboard/progress";
+import { Progress } from "@/components/teacher/dashboard/progress";
 import {
   Card,
   CardContent,
@@ -38,7 +38,9 @@ export function DashboardUpcomingProjectsCard({
           )}
 
           {projects.map((project) => {
-            const classItem = classes.find((item) => item.id === project.classId);
+            const classItem = classes.find(
+              (item) => item.id === project.classId,
+            );
             const submissionRate = Math.round(
               (project.submittedCount / project.totalStudents) * 100,
             );
@@ -77,7 +79,10 @@ export function DashboardUpcomingProjectsCard({
                   </div>
                 </div>
 
-                <Progress value={submissionRate} className="h-2 w-full md:w-24" />
+                <Progress
+                  value={submissionRate}
+                  className="h-2 w-full md:w-24"
+                />
               </div>
             );
           })}

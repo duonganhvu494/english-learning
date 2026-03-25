@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/dashboard/label";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -67,22 +67,30 @@ export function StudentFormDialog({
         <form onSubmit={onSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="student-full-name">{dictionary.fullNameLabel}</Label>
+              <Label htmlFor="student-full-name">
+                {dictionary.fullNameLabel}
+              </Label>
               <Input
                 id="student-full-name"
                 value={formData.fullName}
-                onChange={(event) => updateField("fullName", event.target.value)}
+                onChange={(event) =>
+                  updateField("fullName", event.target.value)
+                }
                 placeholder={dictionary.fullNamePlaceholder}
                 required
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="student-username">{dictionary.userNameLabel}</Label>
+              <Label htmlFor="student-username">
+                {dictionary.userNameLabel}
+              </Label>
               <Input
                 id="student-username"
                 value={formData.userName}
-                onChange={(event) => updateField("userName", event.target.value)}
+                onChange={(event) =>
+                  updateField("userName", event.target.value)
+                }
                 placeholder={dictionary.userNamePlaceholder}
                 required
               />
@@ -112,7 +120,9 @@ export function StudentFormDialog({
               {dictionary.cancel}
             </Button>
             <Button type="submit" className="w-auto" disabled={isSubmitting}>
-              {editingStudent ? dictionary.updateStudent : dictionary.addStudentSubmit}
+              {editingStudent
+                ? dictionary.updateStudent
+                : dictionary.addStudentSubmit}
             </Button>
           </DialogFooter>
         </form>

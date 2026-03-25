@@ -1,5 +1,5 @@
-import type { WorkspaceStudentListItem } from "@/api/workspaces/workspaces.api";
 import type { Dictionary } from "@/i18n/types";
+import type { WorkspaceStudentListItem } from "@/types/workspace";
 
 export type StudentsDictionary = Dictionary["studentsPage"];
 

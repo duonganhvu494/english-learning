@@ -82,7 +82,7 @@ export function PricingSection() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/dashboard">
+                <Link href="/teacher/dashboard">
                   <Button
                     className="w-full"
                     variant={plan.popular ? "primary" : "outline"}

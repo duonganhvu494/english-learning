@@ -15,7 +15,7 @@ export function CTASection() {
         <p className="text-xl text-(--color-primary-soft) mb-8">
           {dictionary.landing.cta.description}
         </p>
-        <Link href="/dashboard">
+        <Link href="/login">
           <Button
             size="lg"
             className="bg-(--color-text-inverse) text-(--color-primary) hover:bg-app-border text-lg"

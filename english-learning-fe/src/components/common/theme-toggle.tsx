@@ -18,9 +18,13 @@ export function ThemeToggle() {
       )}
       aria-label="Toggle theme"
     >
-      {isDark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-      <span className="hidden sm:inline">
-        {dictionary.options.themes[theme]}
+      <Sun className="w-4 h-4 dark:hidden" />
+      <Moon className="hidden w-4 h-4 dark:inline" />
+      <span className="hidden sm:inline dark:hidden">
+        {dictionary.options.themes.light}
+      </span>
+      <span className="hidden dark:sm:inline">
+        {dictionary.options.themes.dark}
       </span>
     </button>
   );

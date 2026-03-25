@@ -46,7 +46,7 @@ export function RequireAuth({
 
 export function RedirectIfAuthenticated({
   children,
-  redirectTo = "/dashboard",
+  redirectTo = "/teacher/dashboard",
   fallback = defaultFallback,
 }: RedirectIfAuthenticatedProps) {
   const router = useRouter();

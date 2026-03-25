@@ -28,7 +28,7 @@ export default function NotFound() {
               {dictionary.notFound.goHome}
             </Button>
           </Link>
-          <Link href="/dashboard">
+          <Link href="/teacher/dashboard">
             <Button variant="outline">
               <ArrowLeft className="w-4 h-4 mr-2" />
               {dictionary.notFound.backToDashboard}

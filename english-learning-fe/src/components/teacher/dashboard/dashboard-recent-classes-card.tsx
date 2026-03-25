@@ -44,7 +44,7 @@ export function DashboardRecentClassesCard({
         )}
 
         {classes.map((classItem) => (
-          <Link key={classItem.id} href={`/class/${classItem.id}`}>
+          <Link key={classItem.id} href={`/teacher/class/${classItem.id}`}>
             <div className="cursor-pointer rounded-lg p-3 transition-colors hover:bg-app-surface-2">
               <div className="flex items-start gap-4">
                 <div
@@ -79,7 +79,7 @@ export function DashboardRecentClassesCard({
         ))}
 
         <Link
-          href="/classes"
+          href="/teacher/classes"
           className="block w-full pt-2 text-center text-sm font-medium text-(--color-primary) hover:text-(--color-primary-active)"
         >
           {dashboardDictionary.viewAllClasses} -&gt;

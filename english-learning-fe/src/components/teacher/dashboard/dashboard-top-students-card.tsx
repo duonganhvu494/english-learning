@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { WorkspaceStudentListItem } from "@/api/workspaces/workspaces.api";
 import type { Dictionary } from "@/i18n/types";
+import type { WorkspaceStudentListItem } from "@/types/workspace";
 import { getInitials } from "@/utils/get-initials";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -81,7 +81,7 @@ export function DashboardTopStudentsCard({
         })}
 
         <Link
-          href="/students"
+          href="/teacher/students"
           className="block w-full pt-2 text-center text-sm font-medium text-(--color-primary) hover:text-(--color-primary-active)"
         >
           {dashboardDictionary.viewAllStudents} -&gt;

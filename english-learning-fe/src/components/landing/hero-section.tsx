@@ -19,7 +19,7 @@ export function HeroSection() {
             {dictionary.landing.hero.description}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/dashboard">
+            <Link href="/teacher/dashboard">
               <Button size="lg" className="text-lg">
                 {dictionary.landing.hero.startFree}
                 <ArrowRight className="w-5 h-5 ml-2" />

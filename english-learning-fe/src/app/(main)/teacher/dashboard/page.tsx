@@ -2,24 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { classesApi, workspacesApi } from "@/api";
-import type { WorkspaceStudentListItem } from "@/api/workspaces/workspaces.api";
 import { useSubscription } from "@/context/subscriptionContext";
 import { useData } from "@/mock-data/dataContext";
 import type { Dictionary } from "@/i18n/types";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { useAuth } from "@/providers/auth-provider";
 import type { Class as DashboardClass } from "@/types/types";
+import type { WorkspaceStudentListItem } from "@/types/workspace";
 import { FileText, GraduationCap, TrendingUp, Users } from "lucide-react";
 import { CreateClassDialog } from "@/components/common/create-class-dialog";
 import { UpgradePlanDialog } from "@/components/common/upgrade-plan-dialog";
-import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import { DashboardRecentClassesCard } from "@/components/dashboard/dashboard-recent-classes-card";
+import { DashboardPageHeader } from "@/components/teacher/dashboard/dashboard-page-header";
+import { DashboardRecentClassesCard } from "@/components/teacher/dashboard/dashboard-recent-classes-card";
 import {
   DashboardStatsGrid,
   type DashboardStatItem,
-} from "@/components/dashboard/dashboard-stats-grid";
-import { DashboardTopStudentsCard } from "@/components/dashboard/dashboard-top-students-card";
-import { DashboardUpcomingProjectsCard } from "@/components/dashboard/dashboard-upcoming-projects-card";
+} from "@/components/teacher/dashboard/dashboard-stats-grid";
+import { DashboardTopStudentsCard } from "@/components/teacher/dashboard/dashboard-top-students-card";
+import { DashboardUpcomingProjectsCard } from "@/components/teacher/dashboard/dashboard-upcoming-projects-card";
 
 const CLASS_COLORS = [
   "#8B5CF6",
@@ -123,7 +123,9 @@ export default function DashboardPage() {
     (student) => student.status.toLowerCase() === "active",
   ).length;
   const activeStudentsRate =
-    totalStudents > 0 ? Math.round((activeStudentsCount / totalStudents) * 100) : 0;
+    totalStudents > 0
+      ? Math.round((activeStudentsCount / totalStudents) * 100)
+      : 0;
   const pendingSubmissions = projects.reduce(
     (sum, project) => sum + (project.totalStudents - project.submittedCount),
     0,
@@ -215,7 +217,9 @@ export default function DashboardPage() {
         dictionary={dictionary.dashboard}
         planName={mapTierName(tier, dictionary)}
         classesCount={classes.length}
-        maxClassesLabel={maxClasses === Infinity ? "No limit" : String(maxClasses)}
+        maxClassesLabel={
+          maxClasses === Infinity ? "No limit" : String(maxClasses)
+        }
         onCreateClass={handleCreateClass}
       />
 

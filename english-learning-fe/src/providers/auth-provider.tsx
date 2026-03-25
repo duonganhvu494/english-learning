@@ -1,9 +1,12 @@
 "use client";
 
 import { authApi, workspacesApi } from "@/api";
-import type { ApiResponse } from "@/api/core/api-types";
-import type { WorkspaceMembership } from "@/api/workspaces/workspaces.api";
+import type { ApiResponse } from "@/types/api";
 import type { LoginRequest, MeResponse, UserProfile } from "@/types/auth";
+import type {
+  CurrentWorkspaceDetail,
+  WorkspaceMembership,
+} from "@/types/workspace";
 import {
   createContext,
   useCallback,
@@ -45,6 +48,46 @@ function mapToAuthUser(user: Partial<UserProfile | MeResponse>): AuthUser {
   };
 }
 
+function isWorkspaceMembership(item: unknown): item is WorkspaceMembership {
+  if (!item || typeof item !== "object") {
+    return false;
+  }
+
+  const candidate = item as Partial<WorkspaceMembership>;
+  return (
+    typeof candidate.workspaceId === "string" &&
+    typeof candidate.workspaceName === "string" &&
+    typeof candidate.role === "string"
+  );
+}
+
+function isCurrentWorkspaceDetail(item: unknown): item is CurrentWorkspaceDetail {
+  if (!item || typeof item !== "object") {
+    return false;
+  }
+
+  const candidate = item as Partial<CurrentWorkspaceDetail>;
+  return typeof candidate.id === "string" && typeof candidate.name === "string";
+}
+
+function normalizeWorkspaceMemberships(payload: unknown): WorkspaceMembership[] {
+  if (Array.isArray(payload)) {
+    return payload.filter(isWorkspaceMembership);
+  }
+
+  if (isCurrentWorkspaceDetail(payload)) {
+    return [
+      {
+        workspaceId: payload.id,
+        workspaceName: payload.name,
+        role: payload.currentUserRole ?? "",
+      },
+    ];
+  }
+
+  return [];
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
@@ -54,13 +97,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const applyWorkspaceState = useCallback((next: WorkspaceMembership[]) => {
-    setWorkspaces(next);
+    const safeWorkspaces = Array.isArray(next) ? next : [];
+    setWorkspaces(safeWorkspaces);
     setActiveWorkspaceId((current) => {
-      if (current && next.some((workspace) => workspace.workspaceId === current)) {
+      if (
+        current &&
+        safeWorkspaces.some((workspace) => workspace.workspaceId === current)
+      ) {
         return current;
       }
 
-      return next[0]?.workspaceId ?? null;
+      return safeWorkspaces[0]?.workspaceId ?? null;
     });
   }, []);
 
@@ -72,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const workspaceResponse = await workspacesApi.myWorkspaces();
-        memberships = workspaceResponse.result ?? [];
+        memberships = normalizeWorkspaceMemberships(workspaceResponse.result);
       } catch {
         memberships = [];
       }
@@ -100,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const workspaceResponse = await workspacesApi.myWorkspaces();
-      memberships = workspaceResponse.result ?? [];
+      memberships = normalizeWorkspaceMemberships(workspaceResponse.result);
     } catch {
       memberships = [];
     }

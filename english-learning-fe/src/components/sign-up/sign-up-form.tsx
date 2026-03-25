@@ -75,7 +75,7 @@ export function SignUpForm() {
       setEmail("");
       setPassword("");
       setConfirmPassword("");
-      router.replace("/dashboard");
+      router.replace("/teacher/dashboard");
     } catch (apiError) {
       if (apiError instanceof ApiError) {
         notifyError(

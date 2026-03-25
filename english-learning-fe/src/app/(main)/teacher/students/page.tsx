@@ -7,16 +7,16 @@ import { useAppSettings } from "@/providers/app-settings-provider";
 import { useAuth } from "@/providers/auth-provider";
 import { useNotification } from "@/providers/notification-provider";
 import { Card, CardContent } from "@/components/ui/card";
-import { StudentFormDialog } from "@/components/students/student-form-dialog";
-import { StudentsEmptyState } from "@/components/students/students-empty-state";
-import { StudentsMobileList } from "@/components/students/students-mobile-list";
-import { StudentsSearchStats } from "@/components/students/students-search-stats";
-import { StudentsTable } from "@/components/students/students-table";
+import { StudentFormDialog } from "@/components/teacher/students/student-form-dialog";
+import { StudentsEmptyState } from "@/components/teacher/students/students-empty-state";
+import { StudentsMobileList } from "@/components/teacher/students/students-mobile-list";
+import { StudentsSearchStats } from "@/components/teacher/students/students-search-stats";
+import { StudentsTable } from "@/components/teacher/students/students-table";
 import {
   EMPTY_STUDENT_FORM,
   type StudentFormData,
   type StudentItem,
-} from "@/components/students/types";
+} from "@/components/teacher/students/types";
 
 export default function StudentsPage() {
   const { dictionary } = useAppSettings();
@@ -27,7 +27,9 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<StudentItem | null>(null);
+  const [editingStudent, setEditingStudent] = useState<StudentItem | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState<StudentFormData>(EMPTY_STUDENT_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,7 +63,12 @@ export default function StudentsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeWorkspaceId, dictionary, notifyError, studentsDictionary.loadStudentsError]);
+  }, [
+    activeWorkspaceId,
+    dictionary,
+    notifyError,
+    studentsDictionary.loadStudentsError,
+  ]);
 
   useEffect(() => {
     void loadStudents();
@@ -198,7 +205,9 @@ export default function StudentsPage() {
           <h1 className="mb-2 text-3xl font-semibold text-app-text">
             {studentsDictionary.title}
           </h1>
-          <p className="text-app-text-muted">{studentsDictionary.description}</p>
+          <p className="text-app-text-muted">
+            {studentsDictionary.description}
+          </p>
         </div>
 
         <StudentFormDialog
