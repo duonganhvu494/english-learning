@@ -7,10 +7,17 @@ import {
   WorkspaceMember,
   WorkspaceMemberStatus,
 } from './entities/workspace-member.entity';
+import {
+  WorkspaceSubscriptionSource,
+  WorkspaceSubscription,
+  WorkspaceSubscriptionStatus,
+} from './entities/workspace-subscription.entity';
+import { Plan } from './entities/plan.entity';
 import { User, AccountType } from 'src/users/entities/user.entity';
 import { Role } from 'src/rbac/entities/role.entity';
 import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
 import { ClassEntity } from 'src/classes/entities/class.entity';
+import { WorkspaceEntitlementService } from './workspace-entitlement.service';
 
 describe('WorkspacesService', () => {
   let service: WorkspacesService;
@@ -34,11 +41,22 @@ describe('WorkspacesService', () => {
   const roleRepo = {
     findOne: jest.fn(),
   };
+  const planRepo = {
+    findOne: jest.fn(),
+  };
+  const workspaceSubscriptionRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    findOne: jest.fn(),
+  };
   const classRepo = {
     count: jest.fn(),
   };
   const workspaceAccessService = {
     getWorkspaceOrThrow: jest.fn(),
+  };
+  const workspaceEntitlementService = {
+    assertStudentQuotaAvailable: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -47,6 +65,9 @@ describe('WorkspacesService', () => {
       (input: Record<string, unknown>) => input,
     );
     memberRepo.create.mockImplementation(
+      (input: Record<string, unknown>) => input,
+    );
+    workspaceSubscriptionRepo.create.mockImplementation(
       (input: Record<string, unknown>) => input,
     );
     memberRepo.createQueryBuilder.mockReturnValue({
@@ -76,12 +97,24 @@ describe('WorkspacesService', () => {
           useValue: roleRepo,
         },
         {
+          provide: getRepositoryToken(Plan),
+          useValue: planRepo,
+        },
+        {
+          provide: getRepositoryToken(WorkspaceSubscription),
+          useValue: workspaceSubscriptionRepo,
+        },
+        {
           provide: getRepositoryToken(ClassEntity),
           useValue: classRepo,
         },
         {
           provide: WorkspaceAccessService,
           useValue: workspaceAccessService,
+        },
+        {
+          provide: WorkspaceEntitlementService,
+          useValue: workspaceEntitlementService,
         },
       ],
     }).compile();
@@ -102,6 +135,7 @@ describe('WorkspacesService', () => {
       accountType: AccountType.TEACHER,
     };
     const ownerRole = { id: 'role-owner', name: 'owner' };
+    const freePlan = { id: 'plan-free', code: 'free', name: 'Free' };
     const savedWorkspace = {
       id: 'workspace-1',
       name: 'English Center',
@@ -111,9 +145,11 @@ describe('WorkspacesService', () => {
 
     userRepo.findOne.mockResolvedValue(teacher);
     workspaceRepo.findOne.mockResolvedValue(null);
-    workspaceRepo.save.mockResolvedValue(savedWorkspace);
     roleRepo.findOne.mockResolvedValue(ownerRole);
+    planRepo.findOne.mockResolvedValue(freePlan);
+    workspaceRepo.save.mockResolvedValue(savedWorkspace);
     memberRepo.save.mockResolvedValue(undefined);
+    workspaceSubscriptionRepo.save.mockResolvedValue(undefined);
 
     const result = await service.createWorkspace(
       { name: 'English Center' },
@@ -130,6 +166,18 @@ describe('WorkspacesService', () => {
       user: teacher,
       role: ownerRole,
     });
+    expect(workspaceSubscriptionRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspace: savedWorkspace,
+        plan: freePlan,
+        status: WorkspaceSubscriptionStatus.ACTIVE,
+        startedAt: expect.any(Date),
+        endedAt: null,
+        source: WorkspaceSubscriptionSource.WORKSPACE_CREATION,
+        paymentTransactionId: null,
+        note: 'Assigned free plan on workspace creation',
+      }),
+    );
     expect(result).toEqual({
       id: 'workspace-1',
       name: 'English Center',
@@ -149,7 +197,10 @@ describe('WorkspacesService', () => {
     });
 
     await expect(
-      service.createWorkspace({ name: 'English Center' }, 'student-1'),
+      service.createWorkspace(
+        { name: 'English Center' },
+        'student-1',
+      ),
     ).rejects.toThrow(
       new ForbiddenException('Only teacher account can create workspace'),
     );
@@ -163,9 +214,41 @@ describe('WorkspacesService', () => {
     workspaceRepo.findOne.mockResolvedValue({ id: 'workspace-existing' });
 
     await expect(
-      service.createWorkspace({ name: 'English Center' }, 'teacher-1'),
+      service.createWorkspace(
+        { name: 'English Center' },
+        'teacher-1',
+      ),
     ).rejects.toThrow(
       new BadRequestException('Each teacher can own only one workspace'),
+    );
+  });
+
+  it('rejects workspace creation when the default plan is missing', async () => {
+    const teacher = {
+      id: 'teacher-1',
+      accountType: AccountType.TEACHER,
+    };
+    const ownerRole = { id: 'role-owner', name: 'owner' };
+    const savedWorkspace = {
+      id: 'workspace-1',
+      name: 'English Center',
+      owner: teacher,
+      isActive: true,
+    };
+
+    userRepo.findOne.mockResolvedValue(teacher);
+    workspaceRepo.findOne.mockResolvedValue(null);
+    workspaceRepo.save.mockResolvedValue(savedWorkspace);
+    roleRepo.findOne.mockResolvedValue(ownerRole);
+    planRepo.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.createWorkspace(
+        { name: 'English Center' },
+        'teacher-1',
+      ),
+    ).rejects.toThrow(
+      new BadRequestException('Default workspace plan not found'),
     );
   });
 
@@ -174,16 +257,126 @@ describe('WorkspacesService', () => {
       id: 'teacher-1',
       accountType: AccountType.TEACHER,
     };
+    const ownerRole = { id: 'role-owner', name: 'owner' };
+    const freePlan = { id: 'plan-free', code: 'free', name: 'Free' };
 
     userRepo.findOne.mockResolvedValue(teacher);
     workspaceRepo.findOne.mockResolvedValue(null);
+    roleRepo.findOne.mockResolvedValue(ownerRole);
+    planRepo.findOne.mockResolvedValue(freePlan);
     workspaceRepo.save.mockRejectedValue({ code: '23505' });
 
     await expect(
-      service.createWorkspace({ name: 'English Center' }, 'teacher-1'),
+      service.createWorkspace(
+        { name: 'English Center' },
+        'teacher-1',
+      ),
     ).rejects.toThrow(
       new BadRequestException('Each teacher can own only one workspace'),
     );
+  });
+
+  it('blocks student creation when the current plan has reached its student quota', async () => {
+    workspaceAccessService.getWorkspaceOrThrow.mockResolvedValue({
+      id: 'workspace-1',
+    });
+    workspaceEntitlementService.assertStudentQuotaAvailable.mockRejectedValue(
+      new ForbiddenException('Current workspace plan allows up to 30 students'),
+    );
+
+    await expect(
+      service.createStudentInWorkspace('workspace-1', {
+        fullName: 'Student One',
+        userName: 'student1',
+        email: 'student1@example.com',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(roleRepo.findOne).not.toHaveBeenCalled();
+  });
+
+  it('returns the current workspace subscription for the owning teacher', async () => {
+    const workspace = {
+      id: 'workspace-1',
+    };
+    const subscription = {
+      id: 'subscription-1',
+      workspace,
+      status: WorkspaceSubscriptionStatus.ACTIVE,
+      startedAt: new Date('2026-03-25T10:00:00.000Z'),
+      endedAt: null,
+      trialEndsAt: null,
+      cancelledAt: null,
+      source: WorkspaceSubscriptionSource.WORKSPACE_CREATION,
+      paymentTransactionId: null,
+      note: 'Assigned free plan on workspace creation',
+      plan: {
+        id: 'plan-free',
+        code: 'free',
+        name: 'Free',
+        description: 'Basic plan for small classes',
+        monthlyPriceCents: 0,
+        isPublic: true,
+        isActive: true,
+        sortOrder: 1,
+        features: [],
+      },
+    };
+
+    workspaceRepo.findOne.mockResolvedValue(workspace);
+    workspaceSubscriptionRepo.findOne.mockResolvedValue(subscription);
+
+    const result = await service.getMyWorkspaceSubscription('teacher-1');
+
+    expect(workspaceRepo.findOne).toHaveBeenCalledWith({
+      where: {
+        owner: { id: 'teacher-1' },
+      },
+    });
+    expect(workspaceSubscriptionRepo.findOne).toHaveBeenCalledWith({
+      where: [
+        {
+          workspace: { id: 'workspace-1' },
+          endedAt: expect.any(Object),
+        },
+        {
+          workspace: { id: 'workspace-1' },
+          endedAt: expect.any(Object),
+        },
+      ],
+      relations: {
+        workspace: true,
+        plan: {
+          features: true,
+        },
+      },
+      order: {
+        endedAt: 'DESC',
+      },
+    });
+    expect(result).toEqual({
+      id: 'subscription-1',
+      workspaceId: 'workspace-1',
+      status: WorkspaceSubscriptionStatus.ACTIVE,
+      startedAt: '2026-03-25T10:00:00.000Z',
+      endedAt: null,
+      trialEndsAt: null,
+      cancelledAt: null,
+      source: WorkspaceSubscriptionSource.WORKSPACE_CREATION,
+      paymentTransactionId: null,
+      note: 'Assigned free plan on workspace creation',
+      plan: {
+        id: 'plan-free',
+        code: 'free',
+        name: 'Free',
+        description: 'Basic plan for small classes',
+        monthlyPriceCents: 0,
+        isPublic: true,
+        isActive: true,
+        sortOrder: 1,
+        features: [],
+      },
+    });
   });
 
   it('updates a workspace student profile and returns the mapped roster item', async () => {

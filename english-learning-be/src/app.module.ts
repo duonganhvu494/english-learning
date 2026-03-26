@@ -29,6 +29,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AssignmentsModule } from './assignments/assignments.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { CsrfMiddleware } from './auth/middlewares/csrf.middleware';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { CsrfMiddleware } from './auth/middlewares/csrf.middleware';
     NotificationsModule,
     AssignmentsModule,
     SubmissionsModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

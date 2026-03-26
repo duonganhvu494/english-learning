@@ -18,10 +18,12 @@ import { ClassRolesController } from './class-roles.controller';
 import { SessionEntity } from 'src/sessions/entities/session.entity';
 import { LectureEntity } from 'src/lectures/entities/lecture.entity';
 import { Material } from 'src/materials/entities/material.entity';
+import { WorkspaceEntitlementModule } from 'src/workspaces/workspace-entitlement.module';
 
 @Module({
   controllers: [RbacController, ClassRolesController],
   imports: [
+    WorkspaceEntitlementModule,
     TypeOrmModule.forFeature([
       Role,
       Permission,

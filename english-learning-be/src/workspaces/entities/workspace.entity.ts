@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { WorkspaceMember } from './workspace-member.entity';
+import { WorkspaceSubscription } from './workspace-subscription.entity';
 
 @Entity('workspaces')
 @Unique(['owner'])
@@ -30,4 +31,10 @@ export class Workspace {
 
   @OneToMany(() => WorkspaceMember, (m: WorkspaceMember) => m.workspace)
   members: WorkspaceMember[];
+
+  @OneToMany(
+    () => WorkspaceSubscription,
+    (subscription: WorkspaceSubscription) => subscription.workspace,
+  )
+  subscriptions: WorkspaceSubscription[];
 }

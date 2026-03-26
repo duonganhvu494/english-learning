@@ -5,28 +5,37 @@ import { WorkspacesService } from './workspaces.service';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
 import { RbacService } from 'src/rbac/rbac.service';
 import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
+import { WorkspacePlansService } from './workspace-plans.service';
 
 describe('WorkspacesController', () => {
   let controller: WorkspacesController;
   let workspacesService: {
     createWorkspace: jest.Mock;
     getMyWorkspace: jest.Mock;
+    getMyWorkspaceSubscription: jest.Mock;
     getWorkspaceDetail: jest.Mock;
     createStudentInWorkspace: jest.Mock;
     listWorkspaceStudents: jest.Mock;
     updateWorkspaceStudent: jest.Mock;
     removeStudentFromWorkspace: jest.Mock;
   };
+  let workspacePlansService: {
+    listPublicPlans: jest.Mock;
+  };
 
   beforeEach(async () => {
     workspacesService = {
       createWorkspace: jest.fn(),
       getMyWorkspace: jest.fn(),
+      getMyWorkspaceSubscription: jest.fn(),
       getWorkspaceDetail: jest.fn(),
       createStudentInWorkspace: jest.fn(),
       listWorkspaceStudents: jest.fn(),
       updateWorkspaceStudent: jest.fn(),
       removeStudentFromWorkspace: jest.fn(),
+    };
+    workspacePlansService = {
+      listPublicPlans: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -35,6 +44,10 @@ describe('WorkspacesController', () => {
         {
           provide: WorkspacesService,
           useValue: workspacesService,
+        },
+        {
+          provide: WorkspacePlansService,
+          useValue: workspacePlansService,
         },
         {
           provide: RbacPermissionGuard,
@@ -81,6 +94,23 @@ describe('WorkspacesController', () => {
     });
   });
 
+  it('lists public workspace plans for the create-workspace flow', async () => {
+    workspacePlansService.listPublicPlans.mockResolvedValue([
+      { code: 'free' },
+      { code: 'starter' },
+      { code: 'pro' },
+    ]);
+
+    const result = await controller.listPlans();
+
+    expect(workspacePlansService.listPublicPlans).toHaveBeenCalled();
+    expect(result).toEqual({
+      statusCode: 200,
+      message: 'Workspace plans retrieved',
+      result: [{ code: 'free' }, { code: 'starter' }, { code: 'pro' }],
+    });
+  });
+
   it('returns the current user workspace detail', async () => {
     workspacesService.getMyWorkspace.mockResolvedValue({
       id: 'workspace-1',
@@ -100,6 +130,31 @@ describe('WorkspacesController', () => {
       result: {
         id: 'workspace-1',
         currentUserRole: 'owner',
+      },
+    });
+  });
+
+  it('returns the current user workspace subscription', async () => {
+    workspacesService.getMyWorkspaceSubscription.mockResolvedValue({
+      id: 'subscription-1',
+      status: 'active',
+      plan: { code: 'starter' },
+    });
+
+    const result = await controller.myWorkspaceSubscription({
+      user: { userId: 'teacher-1' },
+    } as never);
+
+    expect(workspacesService.getMyWorkspaceSubscription).toHaveBeenCalledWith(
+      'teacher-1',
+    );
+    expect(result).toEqual({
+      statusCode: 200,
+      message: 'Current workspace subscription retrieved',
+      result: {
+        id: 'subscription-1',
+        status: 'active',
+        plan: { code: 'starter' },
       },
     });
   });
@@ -142,7 +197,6 @@ describe('WorkspacesController', () => {
         email: 'student@example.com',
         userName: 'student1',
       },
-      { user: { userId: 'owner-1' } } as never,
     );
 
     expect(workspacesService.createStudentInWorkspace).toHaveBeenCalledWith(
@@ -168,10 +222,7 @@ describe('WorkspacesController', () => {
       { studentId: 'student-1' },
     ]);
 
-    const result = await controller.listStudents(
-      'workspace-1',
-      { user: { userId: 'owner-1' } } as never,
-    );
+    const result = await controller.listStudents('workspace-1');
 
     expect(workspacesService.listWorkspaceStudents).toHaveBeenCalledWith(
       'workspace-1',
@@ -193,7 +244,6 @@ describe('WorkspacesController', () => {
       'workspace-1',
       'student-1',
       { fullName: 'Updated Student' },
-      { user: { userId: 'owner-1' } } as never,
     );
 
     expect(workspacesService.updateWorkspaceStudent).toHaveBeenCalledWith(
@@ -217,11 +267,7 @@ describe('WorkspacesController', () => {
       studentId: 'student-1',
     });
 
-    const result = await controller.removeStudent(
-      'workspace-1',
-      'student-1',
-      { user: { userId: 'owner-1' } } as never,
-    );
+    const result = await controller.removeStudent('workspace-1', 'student-1');
 
     expect(workspacesService.removeStudentFromWorkspace).toHaveBeenCalledWith(
       'workspace-1',

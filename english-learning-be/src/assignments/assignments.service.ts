@@ -21,6 +21,8 @@ import { AssignmentMaterial } from './entities/assignment-material.entity';
 import { AssignmentQuizAttemptEntity } from './entities/assignment-quiz-attempt.entity';
 import { errorPayload } from 'src/common/utils/error-payload.util';
 import { resolveNextSequentialCode } from 'src/common/utils/sequential-code.util';
+import { WORKSPACE_PLAN_FEATURE_KEYS } from 'src/workspaces/constants/workspace-plan-feature-key.constants';
+import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
 
 @Injectable()
 export class AssignmentsService {
@@ -46,6 +48,7 @@ export class AssignmentsService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
 
+    private readonly workspaceEntitlementService: WorkspaceEntitlementService,
     private readonly s3StorageService: S3StorageService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
@@ -59,6 +62,12 @@ export class AssignmentsService {
       this.loadSessionOrThrow(sessionId),
       this.loadActorOrThrow(actorUserId),
     ]);
+    if (dto.type === AssignmentType.QUIZ) {
+      await this.workspaceEntitlementService.assertFeatureEnabled(
+        session.classEntity.workspace.id,
+        WORKSPACE_PLAN_FEATURE_KEYS.QUIZ_ASSIGNMENTS,
+      );
+    }
 
     const { timeStart, timeEnd } = this.parseAssignmentWindow(
       dto.timeStart,

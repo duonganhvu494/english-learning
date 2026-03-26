@@ -8,6 +8,7 @@ import { SessionEntity } from 'src/sessions/entities/session.entity';
 import { StorageModule } from 'src/storage/storage.module';
 import { SubmissionEntity } from 'src/submissions/entities/submission.entity';
 import { User } from 'src/users/entities/user.entity';
+import { WorkspaceEntitlementModule } from 'src/workspaces/workspace-entitlement.module';
 import { AssignmentsQuizService } from './assignments-quiz.service';
 import { AssignmentEntity } from './entities/assignment.entity';
 import { AssignmentMaterial } from './entities/assignment-material.entity';
@@ -22,6 +23,7 @@ import { AssignmentsService } from './assignments.service';
   imports: [
     EventEmitterModule,
     RbacModule,
+    WorkspaceEntitlementModule,
     StorageModule,
     TypeOrmModule.forFeature([
       AssignmentEntity,

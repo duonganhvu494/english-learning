@@ -34,17 +34,24 @@ import { WorkspaceDetailResponseDto } from './dto/workspace-detail-response.dto'
 import { WorkspaceStudentResponseDto } from './dto/workspace-student-response.dto';
 import { WorkspaceStudentListItemDto } from './dto/workspace-student-list-item.dto';
 import { RemoveWorkspaceStudentResponseDto } from './dto/remove-workspace-student-response.dto';
+import { WorkspacePlansService } from './workspace-plans.service';
+import { PlanResponseDto } from './dto/plan-response.dto';
+import { WorkspaceSubscriptionResponseDto } from './dto/workspace-subscription-response.dto';
 
 @ApiTags('Workspaces')
 @UseGuards(JwtAuthGuard)
 @Controller('workspaces')
 export class WorkspacesController {
-  constructor(private readonly service: WorkspacesService) {}
+  constructor(
+    private readonly service: WorkspacesService,
+    private readonly workspacePlansService: WorkspacePlansService,
+  ) {}
 
   @Post()
   @ApiOperation({
     summary: 'Create workspace',
-    description: 'Creates a new workspace for the authenticated teacher/owner.',
+    description:
+      'Creates a new workspace for the authenticated teacher/owner and assigns the default free plan.',
   })
   @ApiCookieAuth('cookieAuth')
   @ApiSecurity('csrfHeader')
@@ -88,6 +95,11 @@ export class WorkspacesController {
       status: 400,
       code: 'WORKSPACE_OWNER_ALREADY_HAS_WORKSPACE',
       message: 'Each teacher can own only one workspace',
+    },
+    {
+      status: 400,
+      code: 'WORKSPACE_DEFAULT_PLAN_NOT_FOUND',
+      message: 'Default workspace plan not found',
     },
     {
       status: 400,
@@ -155,6 +167,118 @@ export class WorkspacesController {
       req.user.userId,
     );
     return ApiResponse.success(result, 'Current workspace retrieved');
+  }
+
+  @Get('me/subscription')
+  @ApiOperation({
+    summary: 'Get my current workspace subscription',
+    description:
+      'Returns the current subscription and selected plan for the workspace owned by the authenticated teacher.',
+  })
+  @ApiCookieAuth('cookieAuth')
+  @ApiEnvelopeResponse({
+    status: 200,
+    description: 'Current workspace subscription retrieved successfully',
+    model: WorkspaceSubscriptionResponseDto,
+    exampleMessage: 'Current workspace subscription retrieved',
+    exampleResult: {
+      id: '550e8400-e29b-41d4-a716-446655440900',
+      workspaceId: '550e8400-e29b-41d4-a716-446655440100',
+      status: 'active',
+      startedAt: '2026-03-25T10:00:00.000Z',
+      endedAt: null,
+      trialEndsAt: null,
+      cancelledAt: null,
+      source: 'workspace_creation',
+      paymentTransactionId: null,
+      note: 'Assigned free plan on workspace creation',
+      plan: {
+        id: '550e8400-e29b-41d4-a716-446655440700',
+        code: 'free',
+        name: 'Free',
+        description: 'Basic plan for small classes',
+        monthlyPriceCents: 0,
+        isPublic: true,
+        isActive: true,
+        sortOrder: 1,
+        features: [
+          { featureKey: 'custom_roles', valueType: 'boolean', value: false },
+          { featureKey: 'max_students', valueType: 'number', value: 30 },
+        ],
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'User is not authenticated or must change password first' })
+  @ApiBusinessErrorResponses([
+    { status: 401, code: 'AUTH_UNAUTHORIZED', message: 'Unauthorized' },
+    {
+      status: 401,
+      code: 'AUTH_PASSWORD_CHANGE_REQUIRED',
+      message: 'Password change is required before accessing this resource',
+    },
+    {
+      status: 400,
+      code: 'WORKSPACE_CURRENT_NOT_FOUND',
+      message: 'Current workspace not found',
+    },
+    {
+      status: 400,
+      code: 'WORKSPACE_SUBSCRIPTION_NOT_FOUND',
+      message: 'Workspace subscription not found',
+    },
+  ])
+  async myWorkspaceSubscription(@Req() req: AuthRequest) {
+    const result = await this.service.getMyWorkspaceSubscription(
+      req.user.userId,
+    );
+    return ApiResponse.success(
+      result,
+      'Current workspace subscription retrieved',
+    );
+  }
+
+  @Get('plans')
+  @ApiOperation({
+    summary: 'List available workspace plans',
+    description:
+      'Returns public active workspace plans for billing and future upgrade flows.',
+  })
+  @ApiCookieAuth('cookieAuth')
+  @ApiEnvelopeResponse({
+    status: 200,
+    description: 'Workspace plans retrieved successfully',
+    model: PlanResponseDto,
+    isArray: true,
+    exampleMessage: 'Workspace plans retrieved',
+    exampleResult: [
+      {
+        id: '550e8400-e29b-41d4-a716-446655440700',
+        code: 'free',
+        name: 'Free',
+        description: 'Basic plan for small classes',
+        monthlyPriceCents: 0,
+        isPublic: true,
+        isActive: true,
+        sortOrder: 1,
+        features: [
+          { featureKey: 'custom_roles', valueType: 'boolean', value: false },
+          { featureKey: 'max_students', valueType: 'number', value: 30 },
+        ],
+      },
+    ],
+  })
+  @ApiUnauthorizedResponse({ description: 'User is not authenticated or must change password first' })
+  @ApiBusinessErrorResponses([
+    { status: 401, code: 'AUTH_UNAUTHORIZED', message: 'Unauthorized' },
+    {
+      status: 401,
+      code: 'AUTH_PASSWORD_CHANGE_REQUIRED',
+      message: 'Password change is required before accessing this resource',
+    },
+  ])
+  async listPlans() {
+    const result = await this.workspacePlansService.listPublicPlans();
+    return ApiResponse.success(result, 'Workspace plans retrieved');
   }
 
   @Get(':id')

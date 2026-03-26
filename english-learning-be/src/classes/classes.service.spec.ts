@@ -13,6 +13,7 @@ import { AccountType } from 'src/users/entities/user.entity';
 import { ClassesService } from './classes.service';
 import { ClassEntity } from './entities/class.entity';
 import { ClassStudent } from './entities/class-student.entity';
+import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
 
 describe('ClassesService', () => {
   let service: ClassesService;
@@ -43,6 +44,9 @@ describe('ClassesService', () => {
   const workspaceAccessService = {
     getWorkspaceOrThrow: jest.fn(),
     getClassOrThrow: jest.fn(),
+  };
+  const workspaceEntitlementService = {
+    assertClassQuotaAvailable: jest.fn(),
   };
   const rbacService = {
     ensureDefaultClassStudentRole: jest.fn(),
@@ -96,6 +100,10 @@ describe('ClassesService', () => {
           useValue: workspaceAccessService,
         },
         {
+          provide: WorkspaceEntitlementService,
+          useValue: workspaceEntitlementService,
+        },
+        {
           provide: RbacService,
           useValue: rbacService,
         },
@@ -117,6 +125,9 @@ describe('ClassesService', () => {
     workspaceAccessService.getWorkspaceOrThrow.mockResolvedValue({
       id: 'workspace-1',
     });
+    workspaceEntitlementService.assertClassQuotaAvailable.mockResolvedValue(
+      undefined,
+    );
     classRepo.findOne.mockResolvedValue(null);
     classRepo.save.mockResolvedValue({
       id: 'class-1',
@@ -142,6 +153,9 @@ describe('ClassesService', () => {
       description: 'Morning class',
       workspace: { id: 'workspace-1' },
     });
+    expect(
+      workspaceEntitlementService.assertClassQuotaAvailable,
+    ).toHaveBeenCalledWith('workspace-1');
     expect(rbacService.ensureDefaultClassStudentRole).toHaveBeenCalledWith(
       'class-1',
     );
