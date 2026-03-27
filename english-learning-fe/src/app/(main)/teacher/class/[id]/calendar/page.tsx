@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -8,6 +8,8 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { ApiError, sessionsApi } from "@/api";
+import { translateApiMessage } from "@/api/core/api-message-translator";
 import { useClassDetail } from "@/components/teacher/class-detail/class-detail-context";
 import {
   getDaysUntil,
@@ -27,96 +29,150 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useData } from "@/mock-data/dataContext";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { useNotification } from "@/providers/notification-provider";
-import type { CalendarEvent } from "@/types/types";
+import type { ClassSession } from "@/types/session";
 
-type EventFormData = {
-  title: string;
-  description: string;
+type SessionFormData = {
+  topic: string;
   date: string;
-  time: string;
-  type: CalendarEvent["type"];
+  startTime: string;
+  endTime: string;
 };
 
-const EMPTY_EVENT_FORM: EventFormData = {
-  title: "",
-  description: "",
+const EMPTY_SESSION_FORM: SessionFormData = {
+  topic: "",
   date: "",
-  time: "",
-  type: "Class",
+  startTime: "",
+  endTime: "",
 };
 
-const EVENT_COLORS: Record<CalendarEvent["type"], string> = {
-  Class: "#3B82F6",
-  "Assignment Due": "#EF4444",
-  Exam: "#F59E0B",
-  Event: "#10B981",
-};
+function formatDateInput(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatTimeInput(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${hours}:${minutes}`;
+}
+
+function buildIsoDateTime(date: string, time: string) {
+  if (!date || !time) {
+    return null;
+  }
+
+  const isoValue = new Date(`${date}T${time}:00`);
+  if (Number.isNaN(isoValue.getTime())) {
+    return null;
+  }
+
+  return isoValue.toISOString();
+}
 
 export default function ClassCalendarPage() {
   const { dictionary, locale } = useAppSettings();
-  const { success: notifySuccess } = useNotification();
-  const {
-    calendarEvents,
-    addCalendarEvent,
-    updateCalendarEvent,
-    deleteCalendarEvent,
-  } = useData();
+  const { success: notifySuccess, error: notifyError } = useNotification();
   const { classId, classItem } = useClassDetail();
   const classDetailDictionary = dictionary.classDetailPage;
   const localeTag = getLocaleTag(locale);
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [formData, setFormData] = useState<EventFormData>(EMPTY_EVENT_FORM);
+  const [editingSession, setEditingSession] = useState<ClassSession | null>(null);
+  const [formData, setFormData] = useState<SessionFormData>(EMPTY_SESSION_FORM);
+  const [sessions, setSessions] = useState<ClassSession[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
 
-  const classEvents = useMemo(
+  const loadSessions = useCallback(async () => {
+    if (!classId) {
+      setSessions([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await sessionsApi.listClassSessions(classId);
+      setSessions(response.result);
+    } catch (error) {
+      setSessions([]);
+      if (error instanceof ApiError) {
+        notifyError(
+          translateApiMessage(
+            error.details,
+            error.code,
+            dictionary,
+            classDetailDictionary.loadCalendarError,
+          ),
+        );
+      } else {
+        notifyError(classDetailDictionary.loadCalendarError);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    classDetailDictionary.loadCalendarError,
+    classId,
+    dictionary,
+    notifyError,
+  ]);
+
+  useEffect(() => {
+    void loadSessions();
+  }, [loadSessions]);
+
+  const classSessions = useMemo(
     () =>
-      [...calendarEvents]
-        .filter((event) => event.classId === classId)
-        .sort(
-          (eventA, eventB) =>
-            new Date(eventA.date).getTime() - new Date(eventB.date).getTime(),
-        ),
-    [calendarEvents, classId],
+      [...sessions].sort(
+        (sessionA, sessionB) =>
+          new Date(sessionA.timeStart).getTime() -
+          new Date(sessionB.timeStart).getTime(),
+      ),
+    [sessions],
   );
 
-  const upcomingEvents = useMemo(
+  const upcomingSessions = useMemo(
     () =>
-      classEvents.filter((event) => {
-        const daysUntil = getDaysUntil(event.date);
+      classSessions.filter((session) => {
+        const daysUntil = getDaysUntil(session.timeStart);
         return typeof daysUntil === "number" && daysUntil >= 0;
       }),
-    [classEvents],
+    [classSessions],
   );
 
-  const pastEvents = useMemo(
+  const pastSessions = useMemo(
     () =>
-      classEvents
-        .filter((event) => {
-          const daysUntil = getDaysUntil(event.date);
+      classSessions
+        .filter((session) => {
+          const daysUntil = getDaysUntil(session.timeStart);
           return typeof daysUntil === "number" && daysUntil < 0;
         })
         .slice(-5)
         .reverse(),
-    [classEvents],
+    [classSessions],
   );
 
-  const eventTypeOptions = [
-    { value: "Class" as const, label: classDetailDictionary.eventTypeClass },
-    {
-      value: "Assignment Due" as const,
-      label: classDetailDictionary.eventTypeAssignmentDue,
-    },
-    { value: "Exam" as const, label: classDetailDictionary.eventTypeExam },
-    { value: "Event" as const, label: classDetailDictionary.eventTypeEvent },
-  ];
-
   const resetForm = () => {
-    setEditingEvent(null);
-    setFormData(EMPTY_EVENT_FORM);
+    setEditingSession(null);
+    setFormData(EMPTY_SESSION_FORM);
   };
 
   const handleDialogOpenChange = (open: boolean) => {
@@ -131,45 +187,89 @@ export default function ClassCalendarPage() {
     setDialogOpen(true);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const payload = {
-      ...formData,
-      classId,
-      color: EVENT_COLORS[formData.type],
-    };
+    const timeStart = buildIsoDateTime(formData.date, formData.startTime);
+    const timeEnd = buildIsoDateTime(formData.date, formData.endTime);
 
-    if (editingEvent) {
-      updateCalendarEvent(editingEvent.id, payload);
-      notifySuccess(classDetailDictionary.eventUpdatedSuccess);
-    } else {
-      addCalendarEvent(payload);
-      notifySuccess(classDetailDictionary.eventCreatedSuccess);
+    if (!timeStart || !timeEnd || new Date(timeEnd) <= new Date(timeStart)) {
+      notifyError(classDetailDictionary.eventCreateError);
+      return;
     }
 
-    handleDialogOpenChange(false);
+    const payload = {
+      topic: formData.topic.trim(),
+      timeStart,
+      timeEnd,
+    };
+
+    setIsSubmitting(true);
+    try {
+      if (editingSession) {
+        await sessionsApi.updateSession(editingSession.id, payload);
+        notifySuccess(classDetailDictionary.eventUpdatedSuccess);
+      } else {
+        await sessionsApi.createSession(classId, payload);
+        notifySuccess(classDetailDictionary.eventCreatedSuccess);
+      }
+
+      await loadSessions();
+      handleDialogOpenChange(false);
+    } catch (error) {
+      const fallback = editingSession
+        ? classDetailDictionary.eventUpdateError
+        : classDetailDictionary.eventCreateError;
+
+      if (error instanceof ApiError) {
+        notifyError(
+          translateApiMessage(error.details, error.code, dictionary, fallback),
+        );
+      } else {
+        notifyError(fallback);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleEdit = (eventItem: CalendarEvent) => {
-    setEditingEvent(eventItem);
+  const handleEdit = (session: ClassSession) => {
+    setEditingSession(session);
     setFormData({
-      title: eventItem.title,
-      description: eventItem.description,
-      date: eventItem.date,
-      time: eventItem.time,
-      type: eventItem.type,
+      topic: session.topic,
+      date: formatDateInput(session.timeStart),
+      startTime: formatTimeInput(session.timeStart),
+      endTime: formatTimeInput(session.timeEnd),
     });
     setDialogOpen(true);
   };
 
-  const handleDelete = (eventId: string) => {
+  const handleDelete = async (sessionId: string) => {
     if (!window.confirm(classDetailDictionary.eventDeleteConfirm)) {
       return;
     }
 
-    deleteCalendarEvent(eventId);
-    notifySuccess(classDetailDictionary.eventDeletedSuccess);
+    setDeletingSessionId(sessionId);
+    try {
+      await sessionsApi.deleteSession(sessionId);
+      notifySuccess(classDetailDictionary.eventDeletedSuccess);
+      await loadSessions();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        notifyError(
+          translateApiMessage(
+            error.details,
+            error.code,
+            dictionary,
+            classDetailDictionary.eventDeleteError,
+          ),
+        );
+      } else {
+        notifyError(classDetailDictionary.eventDeleteError);
+      }
+    } finally {
+      setDeletingSessionId(null);
+    }
   };
 
   if (!classItem) {
@@ -197,20 +297,21 @@ export default function ClassCalendarPage() {
     return "";
   };
 
-  const getEventTypeLabel = (eventType: CalendarEvent["type"]) => {
-    if (eventType === "Class") {
-      return classDetailDictionary.eventTypeClass;
-    }
+  const renderSessionDate = (session: ClassSession) => {
+    const startDate = new Date(session.timeStart);
+    const endDate = new Date(session.timeEnd);
 
-    if (eventType === "Assignment Due") {
-      return classDetailDictionary.eventTypeAssignmentDue;
-    }
-
-    if (eventType === "Exam") {
-      return classDetailDictionary.eventTypeExam;
-    }
-
-    return classDetailDictionary.eventTypeEvent;
+    return `${startDate.toLocaleDateString(localeTag, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })} • ${startDate.toLocaleTimeString(localeTag, {
+      hour: "2-digit",
+      minute: "2-digit",
+    })} - ${endDate.toLocaleTimeString(localeTag, {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
   };
 
   return (
@@ -239,63 +340,51 @@ export default function ClassCalendarPage() {
           <CardTitle>{classDetailDictionary.upcomingEventsSection}</CardTitle>
         </CardHeader>
         <CardContent>
-          {upcomingEvents.length === 0 ? (
+          {isLoading ? (
+            <div className="rounded-xl border border-dashed border-app-border px-4 py-8 text-center text-app-text-muted">
+              {classDetailDictionary.loadingCalendar}
+            </div>
+          ) : upcomingSessions.length === 0 ? (
             <div className="rounded-xl border border-dashed border-app-border px-4 py-8 text-center text-app-text-muted">
               <CalendarIcon className="mx-auto mb-3 h-12 w-12" />
-              {classDetailDictionary.noUpcomingEvents}
+              {classSessions.length === 0
+                ? classDetailDictionary.noSessionsForCalendar
+                : classDetailDictionary.noUpcomingEvents}
             </div>
           ) : (
             <div className="space-y-3">
-              {upcomingEvents.map((eventItem) => {
+              {upcomingSessions.map((session) => {
                 const relativeDateLabel = renderRelativeDateLabel(
-                  eventItem.date,
+                  session.timeStart,
                 );
 
                 return (
                   <article
-                    key={eventItem.id}
+                    key={session.id}
                     className="rounded-xl border border-app-border bg-app-surface-2 p-4"
                   >
                     <div className="flex items-start gap-4">
-                      <div
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-(--color-text-inverse)"
-                        style={{ backgroundColor: eventItem.color }}
-                      >
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-(--color-primary) text-(--color-text-inverse)">
                         <CalendarIcon className="h-5 w-5" />
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-app-text">
-                            {eventItem.title}
+                            {session.topic}
                           </h3>
                           <Badge
                             variant="outline"
                             className="border-app-border bg-app-surface text-xs text-app-text-muted"
                           >
-                            {getEventTypeLabel(eventItem.type)}
+                            {classDetailDictionary.eventTypeClass}
                           </Badge>
                         </div>
-
-                        <p className="text-sm text-app-text-muted">
-                          {eventItem.description}
-                        </p>
 
                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-app-text-soft">
                           <span className="inline-flex items-center gap-1">
                             <CalendarIcon className="h-3.5 w-3.5" />
-                            {new Date(eventItem.date).toLocaleDateString(
-                              localeTag,
-                              {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              },
-                            )}
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            {eventItem.time}
+                            {renderSessionDate(session)}
                           </span>
                           {relativeDateLabel ? (
                             <span>{relativeDateLabel}</span>
@@ -307,17 +396,16 @@ export default function ClassCalendarPage() {
                         <Button
                           variant="outline"
                           className="h-9 w-9 px-0"
-                          onClick={() => handleEdit(eventItem)}
-                          aria-label={
-                            classDetailDictionary.editEventDialogTitle
-                          }
+                          onClick={() => handleEdit(session)}
+                          aria-label={classDetailDictionary.editEventDialogTitle}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="outline"
                           className="h-9 w-9 px-0 text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)]"
-                          onClick={() => handleDelete(eventItem.id)}
+                          onClick={() => handleDelete(session.id)}
+                          disabled={deletingSessionId === session.id}
                           aria-label={classDetailDictionary.eventDeleteConfirm}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -337,64 +425,45 @@ export default function ClassCalendarPage() {
           <CardTitle>{classDetailDictionary.pastEventsSection}</CardTitle>
         </CardHeader>
         <CardContent>
-          {pastEvents.length === 0 ? (
+          {pastSessions.length === 0 ? (
             <div className="rounded-xl border border-dashed border-app-border px-4 py-8 text-center text-app-text-muted">
               <CalendarIcon className="mx-auto mb-3 h-12 w-12" />
               {classDetailDictionary.noPastEvents}
             </div>
           ) : (
             <div className="space-y-3">
-              {pastEvents.map((eventItem) => (
+              {pastSessions.map((session) => (
                 <article
-                  key={eventItem.id}
+                  key={session.id}
                   className="rounded-xl border border-app-border bg-app-surface-2 p-4 opacity-75"
                 >
                   <div className="flex items-start gap-4">
-                    <div
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-(--color-text-inverse)"
-                      style={{ backgroundColor: eventItem.color }}
-                    >
-                      <CalendarIcon className="h-5 w-5" />
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-app-surface text-app-text">
+                      <Clock className="h-5 w-5" />
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="mb-1 flex flex-wrap items-center gap-2">
                         <h3 className="font-semibold text-app-text">
-                          {eventItem.title}
+                          {session.topic}
                         </h3>
                         <Badge
                           variant="outline"
                           className="border-app-border bg-app-surface text-xs text-app-text-muted"
                         >
-                          {getEventTypeLabel(eventItem.type)}
+                          {classDetailDictionary.eventTypeClass}
                         </Badge>
                       </div>
-                      <p className="text-sm text-app-text-muted">
-                        {eventItem.description}
+                      <p className="text-sm text-app-text-soft">
+                        {renderSessionDate(session)}
                       </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-app-text-soft">
-                        <span className="inline-flex items-center gap-1">
-                          <CalendarIcon className="h-3.5 w-3.5" />
-                          {new Date(eventItem.date).toLocaleDateString(
-                            localeTag,
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            },
-                          )}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {eventItem.time}
-                        </span>
-                      </div>
                     </div>
 
                     <Button
                       variant="outline"
                       className="h-9 w-9 shrink-0 px-0 text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)]"
-                      onClick={() => handleDelete(eventItem.id)}
+                      onClick={() => handleDelete(session.id)}
+                      disabled={deletingSessionId === session.id}
                       aria-label={classDetailDictionary.eventDeleteConfirm}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -411,12 +480,12 @@ export default function ClassCalendarPage() {
         <DialogContent className="max-w-2xl border-app-border bg-app-surface">
           <DialogHeader>
             <DialogTitle>
-              {editingEvent
+              {editingSession
                 ? classDetailDictionary.editEventDialogTitle
                 : classDetailDictionary.addEventDialogTitle}
             </DialogTitle>
             <DialogDescription>
-              {editingEvent
+              {editingSession
                 ? classDetailDictionary.editEventDialogDescription
                 : classDetailDictionary.addEventDialogDescription}
             </DialogDescription>
@@ -425,51 +494,31 @@ export default function ClassCalendarPage() {
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="event-title" className="text-app-text">
+                <Label htmlFor="session-topic" className="text-app-text">
                   {classDetailDictionary.eventTitleLabel}
                 </Label>
-                <Input
-                  id="event-title"
-                  value={formData.title}
+                <Textarea
+                  id="session-topic"
+                  value={formData.topic}
                   onChange={(event) =>
                     setFormData((prev) => ({
                       ...prev,
-                      title: event.target.value,
+                      topic: event.target.value,
                     }))
                   }
                   placeholder={classDetailDictionary.eventTitlePlaceholder}
+                  rows={2}
                   required
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="event-description" className="text-app-text">
-                  {classDetailDictionary.eventDescriptionLabel}
-                </Label>
-                <Textarea
-                  id="event-description"
-                  value={formData.description}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      description: event.target.value,
-                    }))
-                  }
-                  placeholder={
-                    classDetailDictionary.eventDescriptionPlaceholder
-                  }
-                  rows={4}
-                  required
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="event-date" className="text-app-text">
+                  <Label htmlFor="session-date" className="text-app-text">
                     {classDetailDictionary.eventDateLabel}
                   </Label>
                   <Input
-                    id="event-date"
+                    id="session-date"
                     type="date"
                     value={formData.date}
                     onChange={(event) =>
@@ -483,45 +532,40 @@ export default function ClassCalendarPage() {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="event-time" className="text-app-text">
-                    {classDetailDictionary.eventTimeLabel}
+                  <Label htmlFor="session-start-time" className="text-app-text">
+                    {classDetailDictionary.sessionStartTimeLabel}
                   </Label>
                   <Input
-                    id="event-time"
-                    value={formData.time}
+                    id="session-start-time"
+                    type="time"
+                    value={formData.startTime}
                     onChange={(event) =>
                       setFormData((prev) => ({
                         ...prev,
-                        time: event.target.value,
+                        startTime: event.target.value,
                       }))
                     }
-                    placeholder={classDetailDictionary.eventTimePlaceholder}
                     required
                   />
                 </div>
-              </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="event-type" className="text-app-text">
-                  {classDetailDictionary.eventTypeLabel}
-                </Label>
-                <select
-                  id="event-type"
-                  value={formData.type}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      type: event.target.value as CalendarEvent["type"],
-                    }))
-                  }
-                  className="h-10 rounded-md border border-app-border bg-app-surface px-3 text-sm text-app-text outline-none transition-colors focus:border-(--color-primary) focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_24%,transparent)]"
-                >
-                  {eventTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="grid gap-2">
+                  <Label htmlFor="session-end-time" className="text-app-text">
+                    {classDetailDictionary.sessionEndTimeLabel}
+                  </Label>
+                  <Input
+                    id="session-end-time"
+                    type="time"
+                    value={formData.endTime}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        endTime: event.target.value,
+                      }))
+                    }
+                    required
+                  />
+                </div>
               </div>
             </div>
 
@@ -531,11 +575,12 @@ export default function ClassCalendarPage() {
                 variant="outline"
                 className="w-auto"
                 onClick={() => handleDialogOpenChange(false)}
+                disabled={isSubmitting}
               >
                 {classDetailDictionary.cancel}
               </Button>
-              <Button type="submit" className="w-auto">
-                {editingEvent
+              <Button type="submit" className="w-auto" disabled={isSubmitting}>
+                {editingSession
                   ? classDetailDictionary.editEventDialogTitle
                   : classDetailDictionary.addEvent}
               </Button>

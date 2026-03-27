@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Award, Calendar, Edit, FileText, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Calendar, FileText, Plus, Trash2 } from "lucide-react";
+import { ApiError, assignmentsApi, sessionsApi } from "@/api";
+import { translateApiMessage } from "@/api/core/api-message-translator";
 import { useClassDetail } from "@/components/teacher/class-detail/class-detail-context";
 import {
   getDaysUntil,
   getLocaleTag,
 } from "@/components/teacher/class-detail/class-detail-utils";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/teacher/dashboard/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,134 +23,310 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useData } from "@/mock-data/dataContext";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { useNotification } from "@/providers/notification-provider";
-import type { Assignment } from "@/types/types";
+import type {
+  AssignmentType,
+  SessionAssignment,
+} from "@/types/assignment";
+import type { ClassSession } from "@/types/session";
 
 type AssignmentFormData = {
+  sessionId: string;
   title: string;
   description: string;
-  dueDate: string;
-  totalPoints: number;
-  status: Assignment["status"];
+  type: AssignmentType;
+  timeStart: string;
+  timeEnd: string;
 };
 
 const EMPTY_ASSIGNMENT_FORM: AssignmentFormData = {
+  sessionId: "",
   title: "",
   description: "",
-  dueDate: "",
-  totalPoints: 100,
-  status: "Draft",
+  type: "manual",
+  timeStart: "",
+  timeEnd: "",
 };
+
+function toLocalDateTimeInput(iso: string) {
+  const value = new Date(iso);
+  if (Number.isNaN(value.getTime())) {
+    return "";
+  }
+
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function toIsoDateTime(localDateTime: string) {
+  if (!localDateTime) {
+    return null;
+  }
+
+  const value = new Date(localDateTime);
+  if (Number.isNaN(value.getTime())) {
+    return null;
+  }
+
+  return value.toISOString();
+}
+
+function getDefaultDateRange() {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  const end = new Date(now);
+  end.setHours(end.getHours() + 1);
+
+  return {
+    timeStart: toLocalDateTimeInput(now.toISOString()),
+    timeEnd: toLocalDateTimeInput(end.toISOString()),
+  };
+}
 
 export default function ClassAssignmentsPage() {
   const { dictionary, locale } = useAppSettings();
-  const { success: notifySuccess } = useNotification();
-  const { assignments, addAssignment, updateAssignment, deleteAssignment } =
-    useData();
-  const { classId, classItem, enrolledStudents } = useClassDetail();
+  const { success: notifySuccess, error: notifyError } = useNotification();
+  const { classId, classItem } = useClassDetail();
   const classDetailDictionary = dictionary.classDetailPage;
   const localeTag = getLocaleTag(locale);
 
+  const [sessions, setSessions] = useState<ClassSession[]>([]);
+  const [assignments, setAssignments] = useState<SessionAssignment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(
-    null,
-  );
   const [formData, setFormData] = useState<AssignmentFormData>(
     EMPTY_ASSIGNMENT_FORM,
   );
-
-  const classAssignments = useMemo(
-    () => assignments.filter((assignment) => assignment.classId === classId),
-    [assignments, classId],
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingAssignmentId, setDeletingAssignmentId] = useState<string | null>(
+    null,
   );
 
-  const publishedAssignments = useMemo(
+  const loadAssignments = useCallback(async () => {
+    if (!classId) {
+      setSessions([]);
+      setAssignments([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const sessionResponse = await sessionsApi.listClassSessions(classId);
+      const classSessions = sessionResponse.result;
+      setSessions(classSessions);
+
+      if (classSessions.length === 0) {
+        setAssignments([]);
+        return;
+      }
+
+      const assignmentResponses = await Promise.all(
+        classSessions.map((session) =>
+          assignmentsApi.listSessionAssignments(session.id),
+        ),
+      );
+
+      const classAssignments = assignmentResponses.flatMap(
+        (response) => response.result,
+      );
+      setAssignments(classAssignments);
+    } catch (error) {
+      setSessions([]);
+      setAssignments([]);
+      if (error instanceof ApiError) {
+        notifyError(
+          translateApiMessage(
+            error.details,
+            error.code,
+            dictionary,
+            classDetailDictionary.loadAssignmentsError,
+          ),
+        );
+      } else {
+        notifyError(classDetailDictionary.loadAssignmentsError);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    classDetailDictionary.loadAssignmentsError,
+    classId,
+    dictionary,
+    notifyError,
+  ]);
+
+  useEffect(() => {
+    void loadAssignments();
+  }, [loadAssignments]);
+
+  const sessionMap = useMemo(
+    () => new Map(sessions.map((session) => [session.id, session])),
+    [sessions],
+  );
+
+  const sortedAssignments = useMemo(
     () =>
-      classAssignments.filter(
-        (assignment) => assignment.status === "Published",
+      [...assignments].sort(
+        (assignmentA, assignmentB) =>
+          new Date(assignmentA.timeStart).getTime() -
+          new Date(assignmentB.timeStart).getTime(),
       ),
-    [classAssignments],
+    [assignments],
   );
 
-  const draftAssignments = useMemo(
-    () =>
-      classAssignments.filter((assignment) => assignment.status === "Draft"),
-    [classAssignments],
+  const assignmentGroups = useMemo(
+    () => ({
+      open: sortedAssignments.filter((assignment) => assignment.status === "open"),
+      upcoming: sortedAssignments.filter(
+        (assignment) => assignment.status === "upcoming",
+      ),
+      closed: sortedAssignments.filter(
+        (assignment) => assignment.status === "closed",
+      ),
+    }),
+    [sortedAssignments],
   );
 
-  const resetForm = () => {
-    setEditingAssignment(null);
-    setFormData(EMPTY_ASSIGNMENT_FORM);
-  };
+  const resetForm = useCallback(() => {
+    const defaultRange = getDefaultDateRange();
+
+    setFormData({
+      ...EMPTY_ASSIGNMENT_FORM,
+      sessionId: sessions[0]?.id ?? "",
+      timeStart: defaultRange.timeStart,
+      timeEnd: defaultRange.timeEnd,
+    });
+  }, [sessions]);
 
   const handleDialogOpenChange = (open: boolean) => {
     setDialogOpen(open);
-    if (!open) {
+    if (open) {
       resetForm();
     }
   };
 
-  const handleCreateClick = () => {
-    resetForm();
-    setDialogOpen(true);
-  };
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateAssignment = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
 
-    if (editingAssignment) {
-      updateAssignment(editingAssignment.id, {
-        title: formData.title,
-        description: formData.description,
-        dueDate: formData.dueDate,
-        totalPoints: formData.totalPoints,
-        status: formData.status,
-      });
-      notifySuccess(classDetailDictionary.assignmentUpdatedSuccess);
-    } else {
-      addAssignment({
-        title: formData.title,
-        description: formData.description,
-        dueDate: formData.dueDate,
-        totalPoints: formData.totalPoints,
-        status: formData.status,
-        classId,
-        submissions: enrolledStudents.map((student) => ({
-          studentId: student.studentId,
-          status: "Not Submitted",
-        })),
-      });
-      notifySuccess(classDetailDictionary.assignmentCreatedSuccess);
+    if (!formData.sessionId) {
+      notifyError(classDetailDictionary.noSessionsForAssignments);
+      return;
     }
 
-    handleDialogOpenChange(false);
+    const timeStartIso = toIsoDateTime(formData.timeStart);
+    const timeEndIso = toIsoDateTime(formData.timeEnd);
+
+    if (
+      !timeStartIso ||
+      !timeEndIso ||
+      new Date(timeEndIso) <= new Date(timeStartIso)
+    ) {
+      notifyError(classDetailDictionary.assignmentCreateError);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await assignmentsApi.createAssignment(formData.sessionId, {
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        type: formData.type,
+        timeStart: timeStartIso,
+        timeEnd: timeEndIso,
+      });
+
+      notifySuccess(classDetailDictionary.assignmentCreatedSuccess);
+      setDialogOpen(false);
+      await loadAssignments();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        notifyError(
+          translateApiMessage(
+            error.details,
+            error.code,
+            dictionary,
+            classDetailDictionary.assignmentCreateError,
+          ),
+        );
+      } else {
+        notifyError(classDetailDictionary.assignmentCreateError);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleEdit = (assignment: Assignment) => {
-    setEditingAssignment(assignment);
-    setFormData({
-      title: assignment.title,
-      description: assignment.description,
-      dueDate: assignment.dueDate,
-      totalPoints: assignment.totalPoints,
-      status: assignment.status,
-    });
-    setDialogOpen(true);
-  };
-
-  const handleDelete = (assignmentId: string) => {
+  const handleDeleteAssignment = async (assignmentId: string) => {
     if (!window.confirm(classDetailDictionary.assignmentDeleteConfirm)) {
       return;
     }
 
-    deleteAssignment(assignmentId);
-    notifySuccess(classDetailDictionary.assignmentDeletedSuccess);
+    setDeletingAssignmentId(assignmentId);
+    try {
+      await assignmentsApi.deleteAssignment(assignmentId);
+      notifySuccess(classDetailDictionary.assignmentDeletedSuccess);
+      await loadAssignments();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        notifyError(
+          translateApiMessage(
+            error.details,
+            error.code,
+            dictionary,
+            classDetailDictionary.assignmentDeleteError,
+          ),
+        );
+      } else {
+        notifyError(classDetailDictionary.assignmentDeleteError);
+      }
+    } finally {
+      setDeletingAssignmentId(null);
+    }
   };
 
-  const renderDueLabel = (dueDate: string) => {
-    const daysUntil = getDaysUntil(dueDate);
+  const getAssignmentTypeLabel = (type: AssignmentType) => {
+    if (type === "quiz") {
+      return classDetailDictionary.assignmentTypeQuiz;
+    }
+
+    return classDetailDictionary.assignmentTypeManual;
+  };
+
+  const getAssignmentStatusLabel = (status: SessionAssignment["status"]) => {
+    if (status === "open") {
+      return classDetailDictionary.assignmentStatusOpen;
+    }
+
+    if (status === "upcoming") {
+      return classDetailDictionary.assignmentStatusUpcoming;
+    }
+
+    return classDetailDictionary.assignmentStatusClosed;
+  };
+
+  const getAssignmentStatusClassName = (status: SessionAssignment["status"]) => {
+    if (status === "open") {
+      return "border-[color-mix(in_srgb,var(--color-success)_35%,var(--color-border)_65%)] bg-[color-mix(in_srgb,var(--color-success-soft)_75%,var(--color-surface)_25%)] text-(--color-success)";
+    }
+
+    if (status === "upcoming") {
+      return "border-[color-mix(in_srgb,var(--color-warning)_35%,var(--color-border)_65%)] bg-[color-mix(in_srgb,var(--color-warning-soft)_75%,var(--color-surface)_25%)] text-(--color-warning)";
+    }
+
+    return "border-app-border bg-app-surface-2 text-app-text-muted";
+  };
+
+  const renderDueLabel = (timeEnd: string) => {
+    const daysUntil = getDaysUntil(timeEnd);
 
     if (daysUntil === 0) {
       return classDetailDictionary.dueToday;
@@ -171,25 +348,11 @@ export default function ClassAssignmentsPage() {
     return "";
   };
 
-  const renderAssignmentCard = (assignment: Assignment) => {
-    const submittedCount = assignment.submissions.filter(
-      (submission) => submission.status !== "Not Submitted",
-    ).length;
-    const gradedCount = assignment.submissions.filter(
-      (submission) => submission.status === "Graded",
-    ).length;
-    const totalStudents = enrolledStudents.length;
-    const submissionRate =
-      totalStudents > 0
-        ? Math.round((submittedCount / totalStudents) * 100)
-        : 0;
-    const dueLabel = renderDueLabel(assignment.dueDate);
+  const renderAssignmentCard = (assignment: SessionAssignment) => {
+    const session = sessionMap.get(assignment.sessionId);
 
     return (
-      <Card
-        key={assignment.id}
-        className="border-app-border bg-app-surface transition-shadow hover:shadow-md"
-      >
+      <Card key={assignment.id} className="border-app-border bg-app-surface">
         <CardContent className="space-y-4 p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -201,77 +364,59 @@ export default function ClassAssignmentsPage() {
                   variant="outline"
                   className="border-app-border bg-app-surface text-xs text-app-text-muted"
                 >
-                  {assignment.status === "Published"
-                    ? classDetailDictionary.assignmentStatusPublished
-                    : assignment.status === "Draft"
-                      ? classDetailDictionary.assignmentStatusDraft
-                      : classDetailDictionary.unknownStatus}
+                  {getAssignmentTypeLabel(assignment.type)}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={getAssignmentStatusClassName(assignment.status)}
+                >
+                  {getAssignmentStatusLabel(assignment.status)}
                 </Badge>
               </div>
 
-              <p className="text-sm text-app-text-muted">
-                {assignment.description}
-              </p>
+              {assignment.description ? (
+                <p className="text-sm text-app-text-muted">
+                  {assignment.description}
+                </p>
+              ) : null}
 
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-app-text-soft">
-                <span className="inline-flex items-center gap-1">
+              <div className="mt-3 space-y-1 text-sm text-app-text-soft">
+                <p className="inline-flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  {classDetailDictionary.dueDatePrefix}:{" "}
-                  {new Date(assignment.dueDate).toLocaleDateString(localeTag, {
+                  {new Date(assignment.timeStart).toLocaleString(localeTag, {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  -{" "}
+                  {new Date(assignment.timeEnd).toLocaleString(localeTag, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Award className="h-4 w-4" />
-                  {assignment.totalPoints} {classDetailDictionary.pointsLabel}
-                </span>
-                {dueLabel ? <span>{dueLabel}</span> : null}
+                </p>
+                {session ? (
+                  <p>
+                    {classDetailDictionary.assignmentSessionLabel}: {session.topic}
+                  </p>
+                ) : null}
+                <p>{renderDueLabel(assignment.timeEnd)}</p>
               </div>
             </div>
 
-            <div className="flex shrink-0 gap-2">
-              <Button
-                variant="outline"
-                className="h-9 w-9 px-0"
-                onClick={() => handleEdit(assignment)}
-                aria-label={classDetailDictionary.editAssignmentTitle}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="h-9 w-9 px-0 text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)]"
-                onClick={() => handleDelete(assignment.id)}
-                aria-label={classDetailDictionary.assignmentDeleteConfirm}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-3 border-t border-app-border pt-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-app-text-muted">
-                {classDetailDictionary.submissionProgress}
-              </span>
-              <span className="font-medium text-app-text">
-                {submittedCount}/{totalStudents}{" "}
-                {classDetailDictionary.submittedLabel} ({submissionRate}%)
-              </span>
-            </div>
-            <Progress value={submissionRate} className="h-2" />
-            <div className="flex items-center justify-between text-sm text-app-text-muted">
-              <span>
-                {classDetailDictionary.gradedLabel}: {gradedCount}/
-                {totalStudents}
-              </span>
-              <span>
-                {classDetailDictionary.pendingLabel}:{" "}
-                {Math.max(submittedCount - gradedCount, 0)}
-              </span>
-            </div>
+            <Button
+              variant="outline"
+              className="h-9 w-9 shrink-0 px-0 text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)]"
+              onClick={() => handleDeleteAssignment(assignment.id)}
+              disabled={deletingAssignmentId === assignment.id}
+              aria-label={classDetailDictionary.assignmentDeleteConfirm}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -297,7 +442,11 @@ export default function ClassAssignmentsPage() {
           </p>
         </div>
 
-        <Button className="w-auto" onClick={handleCreateClick}>
+        <Button
+          className="w-auto"
+          onClick={() => handleDialogOpenChange(true)}
+          disabled={sessions.length === 0}
+        >
           <Plus className="mr-2 h-4 w-4" />
           {classDetailDictionary.createAssignment}
         </Button>
@@ -312,7 +461,7 @@ export default function ClassAssignmentsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-app-text">
-              {classAssignments.length}
+              {assignments.length}
             </p>
           </CardContent>
         </Card>
@@ -320,12 +469,12 @@ export default function ClassAssignmentsPage() {
         <Card className="border-app-border bg-app-surface">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-app-text-muted">
-              {classDetailDictionary.assignmentStatusPublished}
+              {classDetailDictionary.assignmentStatusOpen}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-app-text">
-              {publishedAssignments.length}
+              {assignmentGroups.open.length}
             </p>
           </CardContent>
         </Card>
@@ -333,40 +482,36 @@ export default function ClassAssignmentsPage() {
         <Card className="border-app-border bg-app-surface">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-app-text-muted">
-              {classDetailDictionary.assignmentStatusDraft}
+              {classDetailDictionary.assignmentStatusUpcoming}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold text-app-text">
-              {draftAssignments.length}
+              {assignmentGroups.upcoming.length}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {publishedAssignments.length > 0 ? (
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold text-app-text">
-            {classDetailDictionary.publishedAssignments}
-          </h2>
-          <div className="grid gap-4 xl:grid-cols-2">
-            {publishedAssignments.map(renderAssignmentCard)}
-          </div>
-        </section>
-      ) : null}
-
-      {draftAssignments.length > 0 ? (
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold text-app-text">
-            {classDetailDictionary.draftAssignments}
-          </h2>
-          <div className="grid gap-4 xl:grid-cols-2">
-            {draftAssignments.map(renderAssignmentCard)}
-          </div>
-        </section>
-      ) : null}
-
-      {classAssignments.length === 0 ? (
+      {isLoading ? (
+        <Card className="border-app-border bg-app-surface">
+          <CardContent className="py-14 text-center text-app-text-muted">
+            {classDetailDictionary.loadingAssignments}
+          </CardContent>
+        </Card>
+      ) : sessions.length === 0 ? (
+        <Card className="border-app-border bg-app-surface px-6 py-12">
+          <CardContent className="p-0 text-center">
+            <FileText className="mx-auto mb-4 h-16 w-16 text-app-text-soft" />
+            <h3 className="mb-2 text-xl font-medium text-app-text">
+              {classDetailDictionary.noAssignmentsYet}
+            </h3>
+            <p className="text-app-text-muted">
+              {classDetailDictionary.noSessionsForAssignments}
+            </p>
+          </CardContent>
+        </Card>
+      ) : assignments.length === 0 ? (
         <Card className="border-app-border bg-app-surface px-6 py-12">
           <CardContent className="p-0 text-center">
             <FileText className="mx-auto mb-4 h-16 w-16 text-app-text-soft" />
@@ -376,31 +521,59 @@ export default function ClassAssignmentsPage() {
             <p className="mb-4 text-app-text-muted">
               {classDetailDictionary.noAssignmentsFullHint}
             </p>
-            <Button className="mx-auto w-auto" onClick={handleCreateClick}>
+            <Button
+              className="mx-auto w-auto"
+              onClick={() => handleDialogOpenChange(true)}
+            >
               <Plus className="mr-2 h-4 w-4" />
               {classDetailDictionary.createFirstAssignment}
             </Button>
           </CardContent>
         </Card>
-      ) : null}
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {sortedAssignments.map(renderAssignmentCard)}
+        </div>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="max-w-2xl border-app-border bg-app-surface">
           <DialogHeader>
-            <DialogTitle>
-              {editingAssignment
-                ? classDetailDictionary.editAssignmentTitle
-                : classDetailDictionary.createAssignmentTitle}
-            </DialogTitle>
+            <DialogTitle>{classDetailDictionary.createAssignmentTitle}</DialogTitle>
             <DialogDescription>
-              {editingAssignment
-                ? classDetailDictionary.editAssignmentDescription
-                : classDetailDictionary.createAssignmentDescription}
+              {classDetailDictionary.createAssignmentDescription}
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleCreateAssignment}>
             <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="assignment-session" className="text-app-text">
+                  {classDetailDictionary.assignmentSessionLabel}
+                </Label>
+                <select
+                  id="assignment-session"
+                  value={formData.sessionId}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      sessionId: event.target.value,
+                    }))
+                  }
+                  className="h-10 rounded-md border border-app-border bg-app-surface px-3 text-sm text-app-text outline-none transition-colors focus:border-(--color-primary) focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_24%,transparent)]"
+                  required
+                >
+                  <option value="">
+                    {classDetailDictionary.assignmentSessionPlaceholder}
+                  </option>
+                  {sessions.map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {session.topic}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid gap-2">
                 <Label htmlFor="assignment-title" className="text-app-text">
                   {classDetailDictionary.assignmentTitleLabel}
@@ -439,26 +612,25 @@ export default function ClassAssignmentsPage() {
                     classDetailDictionary.assignmentDescriptionPlaceholder
                   }
                   rows={4}
-                  required
                 />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
                   <Label
-                    htmlFor="assignment-due-date"
+                    htmlFor="assignment-start-time"
                     className="text-app-text"
                   >
-                    {classDetailDictionary.assignmentDueDateLabel}
+                    {classDetailDictionary.assignmentStartTimeLabel}
                   </Label>
                   <Input
-                    id="assignment-due-date"
-                    type="date"
-                    value={formData.dueDate}
+                    id="assignment-start-time"
+                    type="datetime-local"
+                    value={formData.timeStart}
                     onChange={(event) =>
                       setFormData((prev) => ({
                         ...prev,
-                        dueDate: event.target.value,
+                        timeStart: event.target.value,
                       }))
                     }
                     required
@@ -466,21 +638,17 @@ export default function ClassAssignmentsPage() {
                 </div>
 
                 <div className="grid gap-2">
-                  <Label
-                    htmlFor="assignment-total-points"
-                    className="text-app-text"
-                  >
-                    {classDetailDictionary.assignmentPointsLabel}
+                  <Label htmlFor="assignment-end-time" className="text-app-text">
+                    {classDetailDictionary.assignmentEndTimeLabel}
                   </Label>
                   <Input
-                    id="assignment-total-points"
-                    type="number"
-                    min={0}
-                    value={formData.totalPoints}
+                    id="assignment-end-time"
+                    type="datetime-local"
+                    value={formData.timeEnd}
                     onChange={(event) =>
                       setFormData((prev) => ({
                         ...prev,
-                        totalPoints: Number(event.target.value) || 0,
+                        timeEnd: event.target.value,
                       }))
                     }
                     required
@@ -489,25 +657,25 @@ export default function ClassAssignmentsPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="assignment-status" className="text-app-text">
-                  {classDetailDictionary.assignmentStatusLabel}
+                <Label htmlFor="assignment-type" className="text-app-text">
+                  {classDetailDictionary.assignmentTypeLabel}
                 </Label>
                 <select
-                  id="assignment-status"
-                  value={formData.status}
+                  id="assignment-type"
+                  value={formData.type}
                   onChange={(event) =>
                     setFormData((prev) => ({
                       ...prev,
-                      status: event.target.value as Assignment["status"],
+                      type: event.target.value as AssignmentType,
                     }))
                   }
                   className="h-10 rounded-md border border-app-border bg-app-surface px-3 text-sm text-app-text outline-none transition-colors focus:border-(--color-primary) focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_24%,transparent)]"
                 >
-                  <option value="Draft">
-                    {classDetailDictionary.assignmentStatusDraft}
+                  <option value="manual">
+                    {classDetailDictionary.assignmentTypeManual}
                   </option>
-                  <option value="Published">
-                    {classDetailDictionary.assignmentStatusPublished}
+                  <option value="quiz">
+                    {classDetailDictionary.assignmentTypeQuiz}
                   </option>
                 </select>
               </div>
@@ -518,14 +686,13 @@ export default function ClassAssignmentsPage() {
                 type="button"
                 variant="outline"
                 className="w-auto"
-                onClick={() => handleDialogOpenChange(false)}
+                onClick={() => setDialogOpen(false)}
+                disabled={isSubmitting}
               >
                 {classDetailDictionary.cancel}
               </Button>
-              <Button type="submit" className="w-auto">
-                {editingAssignment
-                  ? classDetailDictionary.editAssignmentTitle
-                  : classDetailDictionary.createAssignment}
+              <Button type="submit" className="w-auto" disabled={isSubmitting}>
+                {classDetailDictionary.createAssignment}
               </Button>
             </DialogFooter>
           </form>

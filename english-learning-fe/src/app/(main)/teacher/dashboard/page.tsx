@@ -19,7 +19,6 @@ import {
   type DashboardStatItem,
 } from "@/components/teacher/dashboard/dashboard-stats-grid";
 import { DashboardTopStudentsCard } from "@/components/teacher/dashboard/dashboard-top-students-card";
-import { DashboardUpcomingProjectsCard } from "@/components/teacher/dashboard/dashboard-upcoming-projects-card";
 
 const CLASS_COLORS = [
   "#8B5CF6",
@@ -52,7 +51,7 @@ function mapTierName(
 }
 
 export default function DashboardPage() {
-  const { dictionary, locale } = useAppSettings();
+  const { dictionary } = useAppSettings();
   const { activeWorkspaceId } = useAuth();
   const { projects } = useData();
   const { tier, maxClasses, upgradeTier } = useSubscription();
@@ -241,12 +240,12 @@ export default function DashboardPage() {
         />
       </div>
 
-      <DashboardUpcomingProjectsCard
+      {/* <DashboardUpcomingProjectsCard
         projects={projects}
         classes={classes}
         locale={locale}
         dashboardDictionary={dictionary.dashboard}
-      />
+      /> */}
 
       <CreateClassDialog
         open={createClassDialogOpen}

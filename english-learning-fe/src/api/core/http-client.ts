@@ -1,4 +1,3 @@
-import { env } from "@/config/env";
 import axios, {
   AxiosHeaders,
   type AxiosRequestConfig,
@@ -31,7 +30,7 @@ let csrfTokenPromise: Promise<string | null> | null = null;
 let refreshPromise: Promise<void> | null = null;
 
 const apiClient = axios.create({
-  baseURL: env.apiBaseUrl,
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
   withCredentials: true,
 });
 
@@ -54,7 +53,7 @@ function getPathname(path: string | undefined) {
   }
 
   try {
-    return new URL(path, env.apiBaseUrl).pathname;
+    return new URL(path, process.env.NEXT_PUBLIC_API_BASE_URL).pathname;
   } catch {
     return path;
   }
@@ -241,7 +240,8 @@ apiClient.interceptors.response.use(undefined, async (error: unknown) => {
   }
 
   if (status !== undefined) {
-    const fallback = error.response?.statusText || error.message || "Request failed";
+    const fallback =
+      error.response?.statusText || error.message || "Request failed";
     throw createApiError(status, readMessage(payload, fallback), code);
   }
 
