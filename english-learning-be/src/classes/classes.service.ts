@@ -27,6 +27,7 @@ import { ClassStudent } from './entities/class-student.entity';
 import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
 import { errorPayload } from 'src/common/utils/error-payload.util';
 import { ClassStudentsAddedEvent } from './events/class-students-added.event';
+import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
 
 @Injectable()
 export class ClassesService {
@@ -44,6 +45,7 @@ export class ClassesService {
     private readonly memberRepo: Repository<WorkspaceMember>,
 
     private readonly workspaceAccessService: WorkspaceAccessService,
+    private readonly workspaceEntitlementService: WorkspaceEntitlementService,
     private readonly rbacService: RbacService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
@@ -54,6 +56,9 @@ export class ClassesService {
   ): Promise<ClassResponseDto> {
     const workspace =
       await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
+    await this.workspaceEntitlementService.assertClassQuotaAvailable(
+      workspaceId,
+    );
 
     const normalizedClassName = dto.className.trim();
     const existedClass = await this.classRepo.findOne({

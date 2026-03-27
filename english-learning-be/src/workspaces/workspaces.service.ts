@@ -5,13 +5,19 @@ import {
   Injectable,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, IsNull, Repository } from "typeorm";
+import { In, IsNull, MoreThan, Repository } from "typeorm";
 import * as bcrypt from 'bcrypt';
 import { Workspace } from "./entities/workspace.entity";
 import {
   WorkspaceMember,
   WorkspaceMemberStatus,
 } from "./entities/workspace-member.entity";
+import {
+  WorkspaceSubscription,
+  WorkspaceSubscriptionSource,
+  WorkspaceSubscriptionStatus,
+} from './entities/workspace-subscription.entity';
+import { Plan } from './entities/plan.entity';
 import { CreateWorkspaceDto } from "./dto/create-workspace.dto";
 import { CreateStudentDto } from "src/users/dto/create-student.dto";
 import { UpdateWorkspaceStudentDto } from "./dto/update-workspace-student.dto";
@@ -27,9 +33,13 @@ import { WorkspaceAccessService } from "src/rbac/workspace-access.service";
 import { ClassEntity } from "src/classes/entities/class.entity";
 import { ClassStudent } from "src/classes/entities/class-student.entity";
 import { errorPayload } from 'src/common/utils/error-payload.util';
+import { WorkspaceEntitlementService } from './workspace-entitlement.service';
+import { WorkspaceSubscriptionResponseDto } from './dto/workspace-subscription-response.dto';
 
 @Injectable()
 export class WorkspacesService {
+  private readonly defaultWorkspacePlanCode = 'free';
+
   constructor(
     @InjectRepository(Workspace)
     private readonly workspaceRepo: Repository<Workspace>,
@@ -43,10 +53,17 @@ export class WorkspacesService {
     @InjectRepository(Role)
     private readonly roleRepo: Repository<Role>,
 
+    @InjectRepository(Plan)
+    private readonly planRepo: Repository<Plan>,
+
+    @InjectRepository(WorkspaceSubscription)
+    private readonly workspaceSubscriptionRepo: Repository<WorkspaceSubscription>,
+
     @InjectRepository(ClassEntity)
     private readonly classRepo: Repository<ClassEntity>,
 
     private readonly workspaceAccessService: WorkspaceAccessService,
+    private readonly workspaceEntitlementService: WorkspaceEntitlementService,
   ) {}
 
   private generateRandomPassword(length = 10): string {
@@ -101,6 +118,35 @@ export class WorkspacesService {
       );
     }
 
+    const ownerRole = await this.roleRepo.findOne({
+      where: {
+        name: "owner",
+        isSystem: true,
+        workspaceId: IsNull(),
+      },
+    });
+    if (!ownerRole) {
+      throw new BadRequestException(
+        errorPayload('Owner role not found', 'WORKSPACE_OWNER_ROLE_NOT_FOUND'),
+      );
+    }
+
+    const defaultPlan = await this.planRepo.findOne({
+      where: {
+        code: this.defaultWorkspacePlanCode,
+        isPublic: true,
+        isActive: true,
+      },
+    });
+    if (!defaultPlan) {
+      throw new BadRequestException(
+        errorPayload(
+          'Default workspace plan not found',
+          'WORKSPACE_DEFAULT_PLAN_NOT_FOUND',
+        ),
+      );
+    }
+
     const workspace = this.workspaceRepo.create({
       name: dto.name,
       owner: user,
@@ -122,19 +168,6 @@ export class WorkspacesService {
 
       throw error;
     }
-    
-    const ownerRole = await this.roleRepo.findOne({
-      where: {
-        name: "owner",
-        isSystem: true,
-        workspaceId: IsNull(),
-      },
-    });
-    if (!ownerRole) {
-      throw new BadRequestException(
-        errorPayload('Owner role not found', 'WORKSPACE_OWNER_ROLE_NOT_FOUND'),
-      );
-    }
 
     const member = this.memberRepo.create({
       workspace: savedWorkspace,
@@ -143,6 +176,22 @@ export class WorkspacesService {
     });
 
     await this.memberRepo.save(member);
+
+    const startedAt = new Date();
+
+    const subscription = this.workspaceSubscriptionRepo.create({
+      workspace: savedWorkspace,
+      plan: defaultPlan,
+      status: WorkspaceSubscriptionStatus.ACTIVE,
+      startedAt,
+      endedAt: null,
+      trialEndsAt: null,
+      cancelledAt: null,
+      source: WorkspaceSubscriptionSource.WORKSPACE_CREATION,
+      paymentTransactionId: null,
+      note: `Assigned ${defaultPlan.code} plan on workspace creation`,
+    });
+    await this.workspaceSubscriptionRepo.save(subscription);
 
     return WorkspaceResponseDto.fromEntity(savedWorkspace);
   }
@@ -211,8 +260,11 @@ export class WorkspacesService {
     workspaceId: string,
     dto: CreateStudentDto,
   ) {
-    const workspace =
-      await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
+    const workspace = await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
+    
+    await this.workspaceEntitlementService.assertStudentQuotaAvailable(
+      workspaceId,
+    );
 
     const studentRole = await this.roleRepo.findOne({
       where: {
@@ -447,5 +499,55 @@ export class WorkspacesService {
     })[0];
 
     return this.getWorkspaceDetail(currentMembership.workspace.id, userId);
+  }
+
+  async getMyWorkspaceSubscription(
+    userId: string,
+  ): Promise<WorkspaceSubscriptionResponseDto> {
+    const workspace = await this.workspaceRepo.findOne({
+      where: {
+        owner: { id: userId },
+      },
+    });
+    if (!workspace) {
+      throw new BadRequestException(
+        errorPayload(
+          'Current workspace not found',
+          'WORKSPACE_CURRENT_NOT_FOUND',
+        ),
+      );
+    }
+
+    const subscription = await this.workspaceSubscriptionRepo.findOne({
+      where: [
+        {
+          workspace: { id: workspace.id },
+          endedAt: IsNull(),
+        },
+        {
+          workspace: { id: workspace.id },
+          endedAt: MoreThan(new Date()),
+        },
+      ],
+      relations: {
+        workspace: true,
+        plan: {
+          features: true,
+        },
+      },
+      order: {
+        endedAt: 'DESC',
+      },
+    });
+    if (!subscription) {
+      throw new BadRequestException(
+        errorPayload(
+          'Workspace subscription not found',
+          'WORKSPACE_SUBSCRIPTION_NOT_FOUND',
+        ),
+      );
+    }
+
+    return WorkspaceSubscriptionResponseDto.fromEntity(subscription);
   }
 }

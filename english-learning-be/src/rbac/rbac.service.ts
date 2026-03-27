@@ -25,6 +25,8 @@ import { Role } from './entities/role.entity';
 import { RbacScopeType } from './interfaces/scope-options.interface';
 import { WorkspaceAccessService } from './workspace-access.service';
 import { errorPayload } from 'src/common/utils/error-payload.util';
+import { WORKSPACE_PLAN_FEATURE_KEYS } from 'src/workspaces/constants/workspace-plan-feature-key.constants';
+import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
 
 interface PermissionCheckInput {
   userId: string;
@@ -194,6 +196,7 @@ export class RbacService implements OnModuleInit {
     private readonly userRepo: Repository<User>,
 
     private readonly workspaceAccessService: WorkspaceAccessService,
+    private readonly workspaceEntitlementService: WorkspaceEntitlementService,
   ) {}
 
   async onModuleInit() {
@@ -408,6 +411,10 @@ export class RbacService implements OnModuleInit {
     dto: CreateCustomRoleDto,
   ): Promise<CustomRoleResponseDto> {
     await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
+    await this.workspaceEntitlementService.assertFeatureEnabled(
+      workspaceId,
+      WORKSPACE_PLAN_FEATURE_KEYS.CUSTOM_ROLES,
+    );
 
     const normalizedName = dto.name.trim();
     const normalizedDescription = dto.description?.trim() || undefined;
@@ -609,7 +616,13 @@ export class RbacService implements OnModuleInit {
     classId: string,
     dto: CreateClassRoleDto,
   ): Promise<CustomRoleResponseDto> {
-    await this.workspaceAccessService.getClassOrThrow(classId);
+    const classEntity = await this.workspaceAccessService.getClassOrThrow(
+      classId,
+    );
+    await this.workspaceEntitlementService.assertFeatureEnabled(
+      classEntity.workspace.id,
+      WORKSPACE_PLAN_FEATURE_KEYS.CUSTOM_ROLES,
+    );
 
     const normalizedName = dto.name.trim();
     const normalizedDescription = dto.description?.trim() || undefined;

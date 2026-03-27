@@ -16,6 +16,7 @@ import {
 import { AssignmentQuizAttemptEntity } from './entities/assignment-quiz-attempt.entity';
 import { AssignmentMaterial } from './entities/assignment-material.entity';
 import { AssignmentsService } from './assignments.service';
+import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
 
 describe('AssignmentsService', () => {
   let service: AssignmentsService;
@@ -50,6 +51,9 @@ describe('AssignmentsService', () => {
   };
   let eventEmitter: {
     emit: jest.Mock;
+  };
+  let workspaceEntitlementService: {
+    assertFeatureEnabled: jest.Mock;
   };
   let assignmentRepoInTransaction: {
     create: jest.Mock;
@@ -140,6 +144,9 @@ describe('AssignmentsService', () => {
     eventEmitter = {
       emit: jest.fn(),
     };
+    workspaceEntitlementService = {
+      assertFeatureEnabled: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -163,6 +170,10 @@ describe('AssignmentsService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: userRepo,
+        },
+        {
+          provide: WorkspaceEntitlementService,
+          useValue: workspaceEntitlementService,
         },
         {
           provide: getRepositoryToken(SubmissionEntity),
@@ -233,6 +244,9 @@ describe('AssignmentsService', () => {
       'teacher-1',
     );
 
+    expect(
+      workspaceEntitlementService.assertFeatureEnabled,
+    ).not.toHaveBeenCalled();
     expect(assignmentRepoInTransaction.create).toHaveBeenCalledWith(
       expect.objectContaining({
         session: expect.objectContaining({ id: 'session-1' }),
@@ -301,6 +315,10 @@ describe('AssignmentsService', () => {
       'teacher-1',
     );
 
+    expect(workspaceEntitlementService.assertFeatureEnabled).toHaveBeenCalledWith(
+      'workspace-1',
+      'quiz_assignments',
+    );
     expect(assignmentRepoInTransaction.create).toHaveBeenCalledWith(
       expect.objectContaining({
         code: 'ASM-001',
