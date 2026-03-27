@@ -32,6 +32,7 @@ import {
 import { RequirePermission } from 'src/rbac/decorators/require-permission.decorator';
 import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
 import { AssignmentsQuizService } from './assignments-quiz.service';
 import { AssignmentsService } from './assignments.service';
 import { AssignmentDeleteResponseDto } from './dto/assignment-delete-response.dto';
@@ -59,7 +60,7 @@ export class AssignmentsController {
   ) {}
 
   @Post('sessions/:sessionId/assignments')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'session',
@@ -129,7 +130,7 @@ export class AssignmentsController {
   }
 
   @Get('sessions/:sessionId/assignments')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -193,7 +194,7 @@ export class AssignmentsController {
   }
 
   @Get('assignments/:assignmentId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -255,7 +256,7 @@ export class AssignmentsController {
   }
 
   @Get('assignments/:assignmentId/quiz/manage')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -324,7 +325,7 @@ export class AssignmentsController {
   }
 
   @Get('assignments/:assignmentId/quiz')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -400,7 +401,7 @@ export class AssignmentsController {
   }
 
   @Post('assignments/:assignmentId/quiz/questions')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -446,7 +447,7 @@ export class AssignmentsController {
   }
 
   @Patch('assignments/:assignmentId/quiz/questions/:questionId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -493,7 +494,7 @@ export class AssignmentsController {
   }
 
   @Delete('assignments/:assignmentId/quiz/questions/:questionId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -537,7 +538,7 @@ export class AssignmentsController {
   }
 
   @Post('assignments/:assignmentId/quiz/questions/:questionId/options')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -584,7 +585,7 @@ export class AssignmentsController {
   }
 
   @Patch('assignments/:assignmentId/quiz/options/:optionId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -631,7 +632,7 @@ export class AssignmentsController {
   }
 
   @Delete('assignments/:assignmentId/quiz/options/:optionId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -677,7 +678,7 @@ export class AssignmentsController {
   @Get(
     'assignments/:assignmentId/quiz/questions/:questionId/materials/:materialId/download',
   )
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -729,7 +730,7 @@ export class AssignmentsController {
   }
 
   @Post('assignments/:assignmentId/quiz/attempts/me/start')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequirePermission('read', 'assignment', {
     scopeType: 'class',
     scopeResourceType: 'assignment',
@@ -789,7 +790,7 @@ export class AssignmentsController {
   }
 
   @Get('assignments/:assignmentId/quiz/attempts/me')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequirePermission('read', 'assignment', {
     scopeType: 'class',
     scopeResourceType: 'assignment',
@@ -841,7 +842,7 @@ export class AssignmentsController {
   }
 
   @Post('assignments/:assignmentId/quiz/attempts/me/submit')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequirePermission('read', 'assignment', {
     scopeType: 'class',
     scopeResourceType: 'assignment',
@@ -896,7 +897,7 @@ export class AssignmentsController {
   }
 
   @Get('assignments/:assignmentId/quiz/attempts')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -940,7 +941,7 @@ export class AssignmentsController {
   }
 
   @Get('assignments/:assignmentId/quiz/attempts/:studentId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -985,7 +986,7 @@ export class AssignmentsController {
   }
 
   @Get('assignments/:assignmentId/materials/:materialId/download')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -1033,7 +1034,7 @@ export class AssignmentsController {
   }
 
   @Delete('assignments/:assignmentId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',

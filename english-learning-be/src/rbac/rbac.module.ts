@@ -19,6 +19,7 @@ import { SessionEntity } from 'src/sessions/entities/session.entity';
 import { LectureEntity } from 'src/lectures/entities/lecture.entity';
 import { Material } from 'src/materials/entities/material.entity';
 import { WorkspaceEntitlementModule } from 'src/workspaces/workspace-entitlement.module';
+import { WorkspacePlanGuard } from './guards/workspace-plan.guard';
 
 @Module({
   controllers: [RbacController, ClassRolesController],
@@ -39,11 +40,17 @@ import { WorkspaceEntitlementModule } from 'src/workspaces/workspace-entitlement
       Material,
     ]),
   ],
-  providers: [RbacService, RbacPermissionGuard, WorkspaceAccessService],
+  providers: [
+    RbacService,
+    RbacPermissionGuard,
+    WorkspacePlanGuard,
+    WorkspaceAccessService,
+  ],
   exports: [
     TypeOrmModule,
     RbacService,
     RbacPermissionGuard,
+    WorkspacePlanGuard,
     WorkspaceAccessService,
   ],
 })

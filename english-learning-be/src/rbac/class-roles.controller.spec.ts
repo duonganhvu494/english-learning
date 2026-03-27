@@ -1,9 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
 import { RbacPermissionGuard } from './guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from './guards/workspace-plan.guard';
 import { RbacService } from './rbac.service';
 import { WorkspaceAccessService } from './workspace-access.service';
 import { ClassRolesController } from './class-roles.controller';
+import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
 
 describe('ClassRolesController', () => {
   let controller: ClassRolesController;
@@ -19,6 +21,14 @@ describe('ClassRolesController', () => {
         {
           provide: RbacPermissionGuard,
           useValue: { canActivate: () => true },
+        },
+        {
+          provide: WorkspacePlanGuard,
+          useValue: { canActivate: () => true },
+        },
+        {
+          provide: WorkspaceEntitlementService,
+          useValue: { assertWorkspaceHasUsablePlan: jest.fn() },
         },
         {
           provide: Reflector,

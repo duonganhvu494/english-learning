@@ -3,6 +3,8 @@ import { Reflector } from '@nestjs/core';
 import { WorkspacesController } from './workspaces.controller';
 import { WorkspacesService } from './workspaces.service';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
+import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
 import { RbacService } from 'src/rbac/rbac.service';
 import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
 import { WorkspacePlansService } from './workspace-plans.service';
@@ -52,6 +54,14 @@ describe('WorkspacesController', () => {
         {
           provide: RbacPermissionGuard,
           useValue: { canActivate: () => true },
+        },
+        {
+          provide: WorkspacePlanGuard,
+          useValue: { canActivate: () => true },
+        },
+        {
+          provide: WorkspaceEntitlementService,
+          useValue: { assertWorkspaceHasUsablePlan: jest.fn() },
         },
         {
           provide: RbacService,

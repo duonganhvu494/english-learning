@@ -32,6 +32,7 @@ import { SignMaterialUploadPartDto } from 'src/materials/dto/sign-material-uploa
 import { RequirePermission } from 'src/rbac/decorators/require-permission.decorator';
 import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
 import { InitSubmissionUploadDto } from './dto/init-submission-upload.dto';
 import { ReviewSubmissionDto } from './dto/review-submission.dto';
 import { SubmissionResponseDto } from './dto/submission-response.dto';
@@ -44,7 +45,7 @@ export class SubmissionsController {
   constructor(private readonly submissionsService: SubmissionsService) {}
 
   @Post('assignments/:assignmentId/submissions/me/upload-init')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequirePermission('read', 'assignment', {
     scopeType: 'class',
     scopeResourceType: 'assignment',
@@ -104,7 +105,7 @@ export class SubmissionsController {
   }
 
   @Post('assignments/:assignmentId/submissions/me/upload-sign-part')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequirePermission('read', 'assignment', {
     scopeType: 'class',
     scopeResourceType: 'assignment',
@@ -143,7 +144,7 @@ export class SubmissionsController {
   }
 
   @Post('assignments/:assignmentId/submissions/me/upload-complete')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequirePermission('read', 'assignment', {
     scopeType: 'class',
     scopeResourceType: 'assignment',
@@ -196,7 +197,7 @@ export class SubmissionsController {
   }
 
   @Post('assignments/:assignmentId/submissions/me/upload-abort')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequirePermission('read', 'assignment', {
     scopeType: 'class',
     scopeResourceType: 'assignment',
@@ -236,7 +237,7 @@ export class SubmissionsController {
   }
 
   @Get('assignments/:assignmentId/submissions/me/download')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequirePermission('read', 'assignment', {
     scopeType: 'class',
     scopeResourceType: 'assignment',
@@ -277,7 +278,7 @@ export class SubmissionsController {
   }
 
   @Get('assignments/:assignmentId/submissions/me')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequirePermission('read', 'assignment', {
     scopeType: 'class',
     scopeResourceType: 'assignment',
@@ -327,7 +328,7 @@ export class SubmissionsController {
   }
 
   @Get('assignments/:assignmentId/submissions')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -376,7 +377,7 @@ export class SubmissionsController {
   }
 
   @Get('assignments/:assignmentId/submissions/:studentId/download')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -417,7 +418,7 @@ export class SubmissionsController {
   }
 
   @Get('assignments/:assignmentId/submissions/:studentId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',
@@ -467,7 +468,7 @@ export class SubmissionsController {
   }
 
   @Patch('assignments/:assignmentId/submissions/:studentId/review')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'assignment',

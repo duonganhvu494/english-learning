@@ -24,6 +24,7 @@ import type { AuthRequest } from 'src/auth/interfaces/auth-request.interface';
 import { ApiResponse } from 'src/common/dto/api-response.dto';
 import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
 import { AbortMaterialUploadDto } from './dto/abort-material-upload.dto';
 import { CompleteMaterialUploadDto } from './dto/complete-material-upload.dto';
 import { InitMaterialUploadDto } from './dto/init-material-upload.dto';
@@ -43,7 +44,7 @@ export class MaterialsController {
   constructor(private readonly materialsService: MaterialsService) {}
 
   @Post('workspaces/:workspaceId/materials/upload-init')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -102,7 +103,7 @@ export class MaterialsController {
   }
 
   @Post('workspaces/:workspaceId/materials/upload-sign-part')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -153,7 +154,7 @@ export class MaterialsController {
   }
 
   @Post('workspaces/:workspaceId/materials/upload-complete')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -214,7 +215,7 @@ export class MaterialsController {
   }
 
   @Post('workspaces/:workspaceId/materials/upload-abort')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -266,7 +267,7 @@ export class MaterialsController {
   }
 
   @Get('workspaces/:workspaceId/materials')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -321,7 +322,7 @@ export class MaterialsController {
   }
 
   @Get('materials/:materialId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'material',
@@ -371,7 +372,7 @@ export class MaterialsController {
   }
 
   @Get('materials/:materialId/download')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'material',
@@ -406,7 +407,7 @@ export class MaterialsController {
   }
 
   @Delete('materials/:materialId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'material',

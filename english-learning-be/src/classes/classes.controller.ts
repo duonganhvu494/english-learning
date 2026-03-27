@@ -20,6 +20,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { ApiResponse } from 'src/common/dto/api-response.dto';
 import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
 import { AddClassStudentsDto } from './dto/add-class-students.dto';
 import { ApiBusinessErrorResponses, ApiEnvelopeResponse } from 'src/common/swagger/swagger-response.decorator';
 import { CreateClassDto } from './dto/create-class.dto';
@@ -39,7 +40,7 @@ export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 
   @Post('workspaces/:workspaceId/classes')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -90,7 +91,7 @@ export class ClassesController {
   }
 
   @Get('workspaces/:workspaceId/classes')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -139,7 +140,7 @@ export class ClassesController {
   }
 
   @Get('classes/:classId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'class',
@@ -184,7 +185,7 @@ export class ClassesController {
   }
 
   @Get('classes/:classId/students')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'class',
@@ -235,7 +236,7 @@ export class ClassesController {
   }
 
   @Post('classes/:classId/students')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'class',
@@ -286,7 +287,7 @@ export class ClassesController {
   }
 
   @Patch('classes/:classId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'class',
@@ -338,7 +339,7 @@ export class ClassesController {
   }
 
   @Delete('classes/:classId/students/:studentId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'class',
@@ -387,7 +388,7 @@ export class ClassesController {
   }
 
   @Delete('classes/:classId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'class',
@@ -429,7 +430,7 @@ export class ClassesController {
   }
 
   @Patch('classes/:classId/students/:studentId/role')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'class',

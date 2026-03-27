@@ -25,6 +25,7 @@ import {
 } from 'src/rbac/decorators/require-any-access.decorator';
 import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionDto } from './dto/update-session.dto';
 import { SessionsService } from './sessions.service';
@@ -39,7 +40,7 @@ export class SessionsController {
   constructor(private readonly sessionsService: SessionsService) {}
 
   @Post('classes/:classId/sessions')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'class',
@@ -98,7 +99,7 @@ export class SessionsController {
   }
 
   @Get('classes/:classId/sessions')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -156,7 +157,7 @@ export class SessionsController {
   }
 
   @Get('sessions/:sessionId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -212,7 +213,7 @@ export class SessionsController {
   }
 
   @Patch('sessions/:sessionId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'session',
@@ -271,7 +272,7 @@ export class SessionsController {
   }
 
   @Delete('sessions/:sessionId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'session',

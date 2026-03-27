@@ -57,6 +57,10 @@ export class WorkspaceEntitlementService {
     }
   }
 
+  async assertWorkspaceHasUsablePlan(workspaceId: string): Promise<void> {
+    await this.getCurrentSubscriptionOrThrow(workspaceId);
+  }
+
   async assertStudentQuotaAvailable(workspaceId: string): Promise<void> {
     const studentLimit = await this.getNumberFeatureOrThrow(
       workspaceId,

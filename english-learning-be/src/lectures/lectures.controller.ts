@@ -31,6 +31,7 @@ import {
 } from 'src/rbac/decorators/require-any-access.decorator';
 import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
 import { CreateLectureDto } from './dto/create-lecture.dto';
 import { LectureDeleteResponseDto } from './dto/lecture-delete-response.dto';
 import { LectureResponseDto } from './dto/lecture-response.dto';
@@ -44,7 +45,7 @@ export class LecturesController {
   constructor(private readonly lecturesService: LecturesService) {}
 
   @Post('sessions/:sessionId/lectures')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'session',
@@ -118,7 +119,7 @@ export class LecturesController {
   }
 
   @Get('sessions/:sessionId/lectures')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -176,7 +177,7 @@ export class LecturesController {
   }
 
   @Get('lectures/:lectureId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -232,7 +233,7 @@ export class LecturesController {
   }
 
   @Get('lectures/:lectureId/materials/:materialId/download')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -280,7 +281,7 @@ export class LecturesController {
   }
 
   @Patch('lectures/:lectureId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'lecture',
@@ -343,7 +344,7 @@ export class LecturesController {
   }
 
   @Delete('lectures/:lectureId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeResourceType: 'lecture',

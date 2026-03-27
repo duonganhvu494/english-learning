@@ -26,6 +26,7 @@ import {
   requireRoleAccess,
 } from 'src/rbac/decorators/require-any-access.decorator';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
 import { AttendancesService } from './attendances.service';
 import { AttendanceSelfResponseDto } from './dto/attendance-self-response.dto';
 import { AttendanceUpdateResponseDto } from './dto/attendance-update-response.dto';
@@ -39,7 +40,7 @@ export class AttendancesController {
   constructor(private readonly attendancesService: AttendancesService) {}
 
   @Get('sessions/:sessionId/attendances')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',
@@ -160,7 +161,7 @@ export class AttendancesController {
   }
 
   @Patch('sessions/:sessionId/attendances/:studentId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
     requireRoleAccess(['owner'], {
       scopeType: 'workspace',

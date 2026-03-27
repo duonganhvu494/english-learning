@@ -26,6 +26,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import type { AuthRequest } from 'src/auth/interfaces/auth-request.interface';
 import { ApiResponse } from 'src/common/dto/api-response.dto';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
 import { RequirePermission } from 'src/rbac/decorators/require-permission.decorator';
 import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 import { ApiBusinessErrorResponses, ApiEnvelopeResponse } from 'src/common/swagger/swagger-response.decorator';
@@ -282,7 +283,7 @@ export class WorkspacesController {
   }
 
   @Get(':id')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequirePermission('read', 'workspace', {
     scopeType: 'workspace',
     scopeIdParam: 'id',
@@ -338,7 +339,7 @@ export class WorkspacesController {
   }
 
   @Post(':id/students')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], { scopeType: 'workspace', scopeIdParam: 'id' })
   @ApiOperation({
     summary: 'Create workspace student',
@@ -404,7 +405,7 @@ export class WorkspacesController {
   }
 
   @Get(':id/students')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], { scopeType: 'workspace', scopeIdParam: 'id' })
   @ApiOperation({
     summary: 'List workspace students',
@@ -450,7 +451,7 @@ export class WorkspacesController {
   }
 
   @Patch(':id/students/:studentId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], { scopeType: 'workspace', scopeIdParam: 'id' })
   @ApiOperation({
     summary: 'Update workspace student',
@@ -514,7 +515,7 @@ export class WorkspacesController {
   }
 
   @Delete(':id/students/:studentId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], { scopeType: 'workspace', scopeIdParam: 'id' })
   @ApiOperation({
     summary: 'Remove workspace student',

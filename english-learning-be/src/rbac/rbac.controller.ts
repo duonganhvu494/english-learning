@@ -26,6 +26,7 @@ import { DeleteRoleResponseDto } from './dto/delete-role-response.dto';
 import { PermissionResponseDto } from './dto/permission-response.dto';
 import { UpdateCustomRoleDto } from './dto/update-custom-role.dto';
 import { RbacPermissionGuard } from './guards/rbac-permission.guard';
+import { WorkspacePlanGuard } from './guards/workspace-plan.guard';
 import { RbacService } from './rbac.service';
 
 @ApiTags('Workspace Roles')
@@ -35,7 +36,7 @@ export class RbacController {
   constructor(private readonly rbacService: RbacService) {}
 
   @Get('permissions')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -82,7 +83,7 @@ export class RbacController {
   }
 
   @Get()
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -139,7 +140,7 @@ export class RbacController {
   }
 
   @Post()
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -216,7 +217,7 @@ export class RbacController {
   }
 
   @Patch(':roleId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
@@ -304,7 +305,7 @@ export class RbacController {
   }
 
   @Delete(':roleId')
-  @UseGuards(RbacPermissionGuard)
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireRoles(['owner'], {
     scopeType: 'workspace',
     scopeIdParam: 'workspaceId',
