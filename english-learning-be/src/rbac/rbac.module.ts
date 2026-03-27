@@ -48,6 +48,7 @@ import { WorkspacePlanGuard } from './guards/workspace-plan.guard';
   ],
   exports: [
     TypeOrmModule,
+    WorkspaceEntitlementModule,
     RbacService,
     RbacPermissionGuard,
     WorkspacePlanGuard,
