@@ -16,6 +16,7 @@ describe('ClassesController', () => {
     getClassDetail: jest.Mock;
     getClassStudents: jest.Mock;
     addStudentsToClass: jest.Mock;
+    createStudentForClass: jest.Mock;
     updateClass: jest.Mock;
     removeStudentFromClass: jest.Mock;
     deleteClass: jest.Mock;
@@ -29,6 +30,7 @@ describe('ClassesController', () => {
       getClassDetail: jest.fn(),
       getClassStudents: jest.fn(),
       addStudentsToClass: jest.fn(),
+      createStudentForClass: jest.fn(),
       updateClass: jest.fn(),
       removeStudentFromClass: jest.fn(),
       deleteClass: jest.fn(),
@@ -174,6 +176,50 @@ describe('ClassesController', () => {
       result: {
         classId: 'class-1',
         studentIds: ['student-1'],
+      },
+    });
+  });
+
+  it('creates a student and adds the student to a class', async () => {
+    classesService.createStudentForClass.mockResolvedValue({
+      classId: 'class-1',
+      workspaceId: 'workspace-1',
+      workspaceRole: 'student',
+      classRoleId: 'role-student',
+      classRoleName: 'student',
+      plainPassword: 'temp-pass-493',
+      user: { id: 'student-1' },
+    });
+
+    const result = await controller.createStudentForClass(
+      'class-1',
+      {
+        fullName: 'Student One',
+        email: 'student@example.com',
+        userName: 'student1',
+      },
+      { user: { userId: 'owner-1' } } as never,
+    );
+
+    expect(classesService.createStudentForClass).toHaveBeenCalledWith(
+      'class-1',
+      {
+        fullName: 'Student One',
+        email: 'student@example.com',
+        userName: 'student1',
+      },
+    );
+    expect(result).toEqual({
+      statusCode: 201,
+      message: 'Student created and added to class',
+      result: {
+        classId: 'class-1',
+        workspaceId: 'workspace-1',
+        workspaceRole: 'student',
+        classRoleId: 'role-student',
+        classRoleName: 'student',
+        plainPassword: 'temp-pass-493',
+        user: { id: 'student-1' },
       },
     });
   });

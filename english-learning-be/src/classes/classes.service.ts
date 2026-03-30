@@ -8,6 +8,8 @@ import { In, Repository } from 'typeorm';
 import { RbacService } from 'src/rbac/rbac.service';
 import { Role } from 'src/rbac/entities/role.entity';
 import { AccountType, User } from 'src/users/entities/user.entity';
+import { CreateStudentDto } from 'src/users/dto/create-student.dto';
+import { UserProfileResponse } from 'src/users/dto/user-profile-response.dto';
 import {
   WorkspaceMember,
   WorkspaceMemberStatus,
@@ -19,6 +21,7 @@ import { ClassResponseDto } from './dto/class-response.dto';
 import { ClassStudentListItemDto } from './dto/class-student-list-item.dto';
 import { ClassStudentRoleResponseDto } from './dto/class-student-role-response.dto';
 import { ClassStudentsResponseDto } from './dto/class-students-response.dto';
+import { CreateClassStudentResponseDto } from './dto/create-class-student-response.dto';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassStudentRoleDto } from './dto/update-class-student-role.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
@@ -28,6 +31,7 @@ import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
 import { errorPayload } from 'src/common/utils/error-payload.util';
 import { ClassStudentsAddedEvent } from './events/class-students-added.event';
 import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
+import { WorkspaceStudentsService } from 'src/workspaces/workspace-students.service';
 
 @Injectable()
 export class ClassesService {
@@ -46,6 +50,7 @@ export class ClassesService {
 
     private readonly workspaceAccessService: WorkspaceAccessService,
     private readonly workspaceEntitlementService: WorkspaceEntitlementService,
+    private readonly workspaceStudentsService: WorkspaceStudentsService,
     private readonly rbacService: RbacService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
@@ -283,6 +288,54 @@ export class ClassesService {
     return ClassStudentsResponseDto.fromData({
       classId,
       studentIds: finalAssignments.map((assignment) => assignment.student.id),
+    });
+  }
+
+  async createStudentForClass(
+    classId: string,
+    dto: CreateStudentDto,
+  ): Promise<CreateClassStudentResponseDto> {
+    const classEntity = await this.workspaceAccessService.getClassOrThrow(
+      classId,
+    );
+    await this.workspaceEntitlementService.assertStudentQuotaAvailable(
+      classEntity.workspace.id,
+    );
+
+    const defaultClassStudentRole =
+      await this.rbacService.ensureDefaultClassStudentRole(classId);
+    const createdStudent =
+      await this.workspaceStudentsService.provisionWorkspaceStudent(
+        classEntity.workspace,
+        dto,
+      );
+
+    await this.classStudentRepo.save(
+      this.classStudentRepo.create({
+        classEntity,
+        student: createdStudent.user,
+        role: defaultClassStudentRole,
+      }),
+    );
+
+    this.eventEmitter.emit(
+      ClassStudentsAddedEvent.eventName,
+      new ClassStudentsAddedEvent(
+        classEntity.workspace.id,
+        classId,
+        [createdStudent.user.id],
+        new Date().toISOString(),
+      ),
+    );
+
+    return CreateClassStudentResponseDto.fromData({
+      classId,
+      workspaceId: classEntity.workspace.id,
+      workspaceRole: createdStudent.workspaceRole.name,
+      classRoleId: defaultClassStudentRole.id,
+      classRoleName: defaultClassStudentRole.name,
+      plainPassword: createdStudent.plainPassword,
+      user: UserProfileResponse.fromEntity(createdStudent.user),
     });
   }
 

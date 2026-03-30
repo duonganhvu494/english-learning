@@ -18,6 +18,7 @@ import { Role } from 'src/rbac/entities/role.entity';
 import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
 import { ClassEntity } from 'src/classes/entities/class.entity';
 import { WorkspaceEntitlementService } from './workspace-entitlement.service';
+import { WorkspaceStudentsService } from './workspace-students.service';
 
 describe('WorkspacesService', () => {
   let service: WorkspacesService;
@@ -57,6 +58,9 @@ describe('WorkspacesService', () => {
   };
   const workspaceEntitlementService = {
     assertStudentQuotaAvailable: jest.fn(),
+  };
+  const workspaceStudentsService = {
+    provisionWorkspaceStudent: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -115,6 +119,10 @@ describe('WorkspacesService', () => {
         {
           provide: WorkspaceEntitlementService,
           useValue: workspaceEntitlementService,
+        },
+        {
+          provide: WorkspaceStudentsService,
+          useValue: workspaceStudentsService,
         },
       ],
     }).compile();
@@ -292,7 +300,7 @@ describe('WorkspacesService', () => {
       }),
     ).rejects.toThrow(ForbiddenException);
 
-    expect(roleRepo.findOne).not.toHaveBeenCalled();
+    expect(workspaceStudentsService.provisionWorkspaceStudent).not.toHaveBeenCalled();
   });
 
   it('returns the current workspace subscription for the owning teacher', async () => {

@@ -15,6 +15,7 @@ import { Role } from 'src/rbac/entities/role.entity';
 import { RbacModule } from 'src/rbac/rbac.module';
 import { ClassEntity } from 'src/classes/entities/class.entity';
 import { ClassStudent } from 'src/classes/entities/class-student.entity';
+import { WorkspaceStudentsService } from './workspace-students.service';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ClassStudent } from 'src/classes/entities/class-student.entity';
     ]),
   ],
   controllers: [WorkspacesController],
-  providers: [WorkspacesService, WorkspacePlansService],
+  providers: [WorkspacesService, WorkspacePlansService, WorkspaceStudentsService],
+  exports: [WorkspaceStudentsService],
 })
 export class WorkspacesModule {}

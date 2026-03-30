@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+ 
 // src/rbac/entities/role.entity.ts
 import {
   Entity,

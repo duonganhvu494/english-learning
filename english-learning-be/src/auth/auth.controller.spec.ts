@@ -243,8 +243,8 @@ describe('AuthController', () => {
     });
   });
 
-  it('returns the authenticated user profile', async () => {
-    const result = await controller.getMe({
+  it('returns the authenticated user profile', () => {
+    const result = controller.getMe({
       user: {
         userId: 'user-1',
         userName: 'teacher1',

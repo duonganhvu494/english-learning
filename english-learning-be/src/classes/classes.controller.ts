@@ -21,9 +21,11 @@ import { ApiResponse } from 'src/common/dto/api-response.dto';
 import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
 import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
+import { CreateStudentDto } from 'src/users/dto/create-student.dto';
 import { AddClassStudentsDto } from './dto/add-class-students.dto';
 import { ApiBusinessErrorResponses, ApiEnvelopeResponse } from 'src/common/swagger/swagger-response.decorator';
 import { CreateClassDto } from './dto/create-class.dto';
+import { CreateClassStudentResponseDto } from './dto/create-class-student-response.dto';
 import { UpdateClassStudentRoleDto } from './dto/update-class-student-role.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { ClassesService } from './classes.service';
@@ -284,6 +286,76 @@ export class ClassesController {
     );
 
     return ApiResponse.success(result, 'Students added to class');
+  }
+
+  @Post('classes/:classId/students/create')
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
+  @RequireRoles(['owner'], {
+    scopeType: 'workspace',
+    scopeResourceType: 'class',
+    scopeResourceIdParam: 'classId',
+  })
+  @ApiOperation({
+    summary: 'Create student and add to class',
+    description:
+      'Creates a brand-new student account, adds the student to the workspace, and assigns the student to the class. Owner access required.',
+  })
+  @ApiCookieAuth('cookieAuth')
+  @ApiSecurity('csrfHeader')
+  @ApiEnvelopeResponse({
+    status: 201,
+    description: 'Student created and added to class successfully',
+    model: CreateClassStudentResponseDto,
+    exampleMessage: 'Student created and added to class',
+    exampleResult: {
+      classId: '550e8400-e29b-41d4-a716-446655440200',
+      workspaceId: '550e8400-e29b-41d4-a716-446655440100',
+      workspaceRole: 'student',
+      classRoleId: '550e8400-e29b-41d4-a716-446655440300',
+      classRoleName: 'student',
+      plainPassword: 'temp-pass-493',
+      user: {
+        id: '550e8400-e29b-41d4-a716-446655440010',
+        fullName: 'Nguyen Van A',
+        userName: 'student01',
+        email: 'student01@example.com',
+        mustChangePassword: true,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'User is not authenticated or must change password first' })
+  @ApiForbiddenResponse({ description: 'Owner role is required' })
+  @ApiBusinessErrorResponses([
+    { status: 401, code: 'AUTH_UNAUTHORIZED', message: 'Unauthorized' },
+    {
+      status: 401,
+      code: 'AUTH_PASSWORD_CHANGE_REQUIRED',
+      message: 'Password change is required before accessing this resource',
+    },
+    { status: 403, code: 'RBAC_ROLE_DENIED', message: 'Role access denied' },
+    { status: 400, code: 'CLASS_NOT_FOUND', message: 'Class not found' },
+    {
+      status: 400,
+      code: 'WORKSPACE_STUDENT_ROLE_NOT_FOUND',
+      message: 'Student role not found',
+    },
+    {
+      status: 400,
+      code: 'WORKSPACE_STUDENT_CREDENTIALS_ALREADY_EXIST',
+      message: 'Email or username already exists',
+    },
+    { status: 400, code: 'VALIDATION_ERROR', message: 'Validation failed' },
+  ])
+  async createStudentForClass(
+    @Param('classId') classId: string,
+    @Body() dto: CreateStudentDto,
+  ) {
+    const result = await this.classesService.createStudentForClass(
+      classId,
+      dto,
+    );
+
+    return ApiResponse.success(result, 'Student created and added to class', 201);
   }
 
   @Patch('classes/:classId')
