@@ -1,5 +1,7 @@
 import { httpClient } from "@/api/core/http-client";
 import type {
+  ChangePasswordRequest,
+  ChangePasswordResponse,
   LoginRequest,
   MeResponse,
   RegisterRequest,
@@ -14,4 +16,6 @@ export const authApi = {
   refresh: () => httpClient.post<null>("/auth/refresh"),
   logout: () => httpClient.post<null>("/auth/logout"),
   me: () => httpClient.get<MeResponse>("/auth/me"),
+  changePassword: (payload: ChangePasswordRequest) =>
+    httpClient.post<ChangePasswordResponse>("/auth/change-password", payload),
 };

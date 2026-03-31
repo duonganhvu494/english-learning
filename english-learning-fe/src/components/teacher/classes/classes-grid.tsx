@@ -5,7 +5,10 @@ import { Calendar, Edit, GraduationCap, Trash2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ClassItem, ClassesDictionary } from "@/components/classes/types";
+import type {
+  ClassItem,
+  ClassesDictionary,
+} from "@/components/teacher/classes/types";
 import { cn } from "@/utils/cn";
 
 type ClassesGridProps = {

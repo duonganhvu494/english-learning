@@ -1,5 +1,9 @@
 import { httpClient } from "@/api/core/http-client";
 import type {
+  WorkspacePlan,
+  WorkspaceSubscription,
+} from "@/types/billing";
+import type {
   CreateWorkspaceRequest,
   CreateWorkspaceResponse,
   CreateWorkspaceStudentRequest,
@@ -14,6 +18,9 @@ export const workspacesApi = {
   createWorkspace: (payload: CreateWorkspaceRequest) =>
     httpClient.post<CreateWorkspaceResponse>("/workspaces", payload),
   myWorkspaces: () => httpClient.get<MyWorkspacesResult>("/workspaces/me"),
+  getMySubscription: () =>
+    httpClient.get<WorkspaceSubscription>("/workspaces/me/subscription"),
+  listPlans: () => httpClient.get<WorkspacePlan[]>("/workspaces/plans"),
   createStudent: (workspaceId: string, payload: CreateWorkspaceStudentRequest) =>
     httpClient.post<CreateWorkspaceStudentResponse>(
       `/workspaces/${workspaceId}/students`,

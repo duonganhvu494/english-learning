@@ -3,6 +3,10 @@
 import { useMemo, useState } from "react";
 import { Mail, Plus, Search, UserMinus, Users } from "lucide-react";
 import { useClassDetail } from "@/components/teacher/class-detail/class-detail-context";
+import {
+  EMPTY_STUDENT_FORM,
+  type StudentFormData,
+} from "@/components/teacher/students/types";
 import { buildClassStudentMetric } from "@/components/teacher/class-detail/class-detail-utils";
 import { Progress } from "@/components/teacher/dashboard/progress";
 import { useData } from "@/mock-data/dataContext";
@@ -19,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -36,15 +41,20 @@ export default function ClassStudentsPage() {
     classItem,
     enrolledStudents,
     availableStudents,
-    enrollStudent,
+    enrollStudents,
+    createStudentForClass,
     unenrollStudent,
   } = useClassDetail();
   const classDetailDictionary = dictionary.classDetailPage;
+  const studentsDictionary = dictionary.studentsPage;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
-  const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [studentFormData, setStudentFormData] =
+    useState<StudentFormData>(EMPTY_STUDENT_FORM);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [isCreatingStudent, setIsCreatingStudent] = useState(false);
   const [removingStudentId, setRemovingStudentId] = useState<string | null>(
     null,
   );
@@ -87,19 +97,54 @@ export default function ClassStudentsPage() {
     return Math.round(total / enrolledStudents.length);
   }, [enrolledStudents, metricByStudentId]);
 
+  const resetDialogForm = () => {
+    setStudentFormData(EMPTY_STUDENT_FORM);
+    setSelectedStudentIds([]);
+  };
+
+  const handleEnrollDialogOpenChange = (open: boolean) => {
+    setEnrollDialogOpen(open);
+    if (!open) {
+      resetDialogForm();
+    }
+  };
+
   const handleEnrollStudent = async () => {
-    if (!selectedStudentId) {
+    if (selectedStudentIds.length === 0) {
       return;
     }
 
     setIsEnrolling(true);
-    const isSuccess = await enrollStudent(selectedStudentId);
+    const isSuccess = await enrollStudents(selectedStudentIds);
     setIsEnrolling(false);
 
     if (isSuccess) {
-      setEnrollDialogOpen(false);
-      setSelectedStudentId("");
+      handleEnrollDialogOpenChange(false);
     }
+  };
+
+  const handleCreateStudent = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    setIsCreatingStudent(true);
+    const isSuccess = await createStudentForClass(studentFormData);
+    setIsCreatingStudent(false);
+
+    if (isSuccess) {
+      handleEnrollDialogOpenChange(false);
+    }
+  };
+
+  const toggleStudentSelection = (studentId: string) => {
+    setSelectedStudentIds((current) => {
+      if (current.includes(studentId)) {
+        return current.filter((id) => id !== studentId);
+      }
+
+      return [...current, studentId];
+    });
   };
 
   const handleUnenrollStudent = async (studentId: string) => {
@@ -133,8 +178,7 @@ export default function ClassStudentsPage() {
 
         <Button
           className="w-auto"
-          onClick={() => setEnrollDialogOpen(true)}
-          disabled={availableStudents.length === 0}
+          onClick={() => handleEnrollDialogOpenChange(true)}
         >
           <Plus className="mr-2 h-4 w-4" />
           {classDetailDictionary.enrollStudent}
@@ -187,14 +231,16 @@ export default function ClassStudentsPage() {
                   ? dictionary.studentsPage.tryAdjustingSearch
                   : classDetailDictionary.enrolledStudentsHint}
               </p>
-              {!searchQuery && availableStudents.length > 0 ? (
-                <Button
-                  className="w-auto"
-                  onClick={() => setEnrollDialogOpen(true)}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  {classDetailDictionary.enrollFirstStudent}
-                </Button>
+              {!searchQuery ? (
+                <div className="flex flex-col items-center justify-center gap-2 sm:flex-row">
+                  <Button
+                    className="w-auto"
+                    onClick={() => handleEnrollDialogOpenChange(true)}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {classDetailDictionary.enrollFirstStudent}
+                  </Button>
+                </div>
               ) : null}
             </div>
           ) : (
@@ -346,7 +392,7 @@ export default function ClassStudentsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={enrollDialogOpen} onOpenChange={setEnrollDialogOpen}>
+      <Dialog open={enrollDialogOpen} onOpenChange={handleEnrollDialogOpenChange}>
         <DialogContent className="max-w-lg border-app-border bg-app-surface">
           <DialogHeader>
             <DialogTitle>{classDetailDictionary.enrollStudent}</DialogTitle>
@@ -355,49 +401,150 @@ export default function ClassStudentsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-2 py-4">
-            <label
-              htmlFor="enroll-student-select"
-              className="text-sm font-medium text-app-text"
-            >
-              {classDetailDictionary.selectStudent}
-            </label>
-            <select
-              id="enroll-student-select"
-              value={selectedStudentId}
-              onChange={(event) => setSelectedStudentId(event.target.value)}
-              className="h-10 rounded-md border border-app-border bg-app-surface px-3 text-sm text-app-text"
-            >
-              <option value="">
-                {classDetailDictionary.selectStudentPlaceholder}
-              </option>
-              {availableStudents.map((student) => (
-                <option key={student.studentId} value={student.studentId}>
-                  {student.fullName} - {student.email}
-                </option>
-              ))}
-            </select>
-          </div>
+          {availableStudents.length > 0 ? (
+            <>
+              <div className="grid gap-2 py-4">
+                <p className="text-sm font-medium text-app-text">
+                  {classDetailDictionary.selectStudent}
+                </p>
+                <div className="max-h-80 space-y-2 overflow-y-auto rounded-xl border border-app-border bg-app-surface-2 p-2">
+                  {availableStudents.map((student) => {
+                    const isChecked = selectedStudentIds.includes(
+                      student.studentId,
+                    );
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-auto"
-              onClick={() => setEnrollDialogOpen(false)}
-              disabled={isEnrolling}
-            >
-              {classDetailDictionary.cancel}
-            </Button>
-            <Button
-              type="button"
-              className="w-auto"
-              onClick={handleEnrollStudent}
-              disabled={isEnrolling || !selectedStudentId}
-            >
-              {classDetailDictionary.confirmEnroll}
-            </Button>
-          </DialogFooter>
+                    return (
+                      <label
+                        key={student.studentId}
+                        className="flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-app-surface"
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 rounded border-app-border"
+                          checked={isChecked}
+                          onChange={() => toggleStudentSelection(student.studentId)}
+                        />
+                        <div className="min-w-0">
+                          <p className="font-medium text-app-text">
+                            {student.fullName}
+                          </p>
+                          <p className="text-sm text-app-text-muted">
+                            @{student.userName}
+                          </p>
+                          <p className="text-sm text-app-text-muted">
+                            {student.email}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-auto"
+                  onClick={() => handleEnrollDialogOpenChange(false)}
+                  disabled={isEnrolling}
+                >
+                  {classDetailDictionary.cancel}
+                </Button>
+                <Button
+                  type="button"
+                  className="w-auto"
+                  onClick={handleEnrollStudent}
+                  disabled={isEnrolling || selectedStudentIds.length === 0}
+                >
+                  {classDetailDictionary.confirmEnroll}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <form onSubmit={handleCreateStudent}>
+              <div className="grid gap-4 py-4">
+                <div className="rounded-xl border border-dashed border-app-border bg-app-surface-2 px-4 py-3 text-sm text-app-text-muted">
+                  <p>{classDetailDictionary.noAvailableStudents}</p>
+                  <p className="mt-1">{studentsDictionary.addStudentDescription}</p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="class-student-full-name">
+                    {studentsDictionary.fullNameLabel}
+                  </Label>
+                  <Input
+                    id="class-student-full-name"
+                    value={studentFormData.fullName}
+                    onChange={(event) =>
+                      setStudentFormData((current) => ({
+                        ...current,
+                        fullName: event.target.value,
+                      }))
+                    }
+                    placeholder={studentsDictionary.fullNamePlaceholder}
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="class-student-username">
+                    {studentsDictionary.userNameLabel}
+                  </Label>
+                  <Input
+                    id="class-student-username"
+                    value={studentFormData.userName}
+                    onChange={(event) =>
+                      setStudentFormData((current) => ({
+                        ...current,
+                        userName: event.target.value,
+                      }))
+                    }
+                    placeholder={studentsDictionary.userNamePlaceholder}
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="class-student-email">
+                    {studentsDictionary.emailLabel}
+                  </Label>
+                  <Input
+                    id="class-student-email"
+                    type="email"
+                    value={studentFormData.email}
+                    onChange={(event) =>
+                      setStudentFormData((current) => ({
+                        ...current,
+                        email: event.target.value,
+                      }))
+                    }
+                    placeholder={studentsDictionary.emailPlaceholder}
+                    required
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-auto"
+                  onClick={() => handleEnrollDialogOpenChange(false)}
+                  disabled={isCreatingStudent}
+                >
+                  {classDetailDictionary.cancel}
+                </Button>
+                <Button
+                  type="submit"
+                  className="w-auto"
+                  disabled={isCreatingStudent}
+                >
+                  {studentsDictionary.addStudentSubmit}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

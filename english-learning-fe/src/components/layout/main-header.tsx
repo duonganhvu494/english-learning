@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { useAuth } from "@/providers/auth-provider";
+import { useNotificationsRealtime } from "@/providers/notifications-realtime-provider";
 import { LanguageSwitcher } from "@/components/common/language-switcher";
 import { ThemeToggle } from "@/components/common/theme-toggle";
 import { getInitials } from "@/utils/get-initials";
@@ -36,22 +37,37 @@ const navItems = [
 ];
 
 const userMenuItems = [
-  { key: "menuProfile", icon: UserIcon },
-  { key: "menuSettings", icon: Settings },
-  { key: "menuBilling", icon: CreditCard },
-  { key: "menuNotification", icon: Bell },
-  { key: "menuHelp", icon: CircleHelp },
+  { key: "menuProfile", icon: UserIcon, path: `${TEACHER_BASE_PATH}/profile` },
+  {
+    key: "menuSettings",
+    icon: Settings,
+    path: `${TEACHER_BASE_PATH}/settings`,
+  },
+  {
+    key: "menuBilling",
+    icon: CreditCard,
+    path: `${TEACHER_BASE_PATH}/dashboard?panel=billing`,
+  },
+  {
+    key: "menuNotification",
+    icon: Bell,
+    path: `${TEACHER_BASE_PATH}/notifications`,
+  },
+  { key: "menuHelp", icon: CircleHelp, path: `${TEACHER_BASE_PATH}/help` },
 ] as const;
 
 export function DashboardHeader() {
   const { dictionary } = useAppSettings();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotificationsRealtime();
   const pathname = usePathname();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const displayName = user?.fullName || user?.userName || "Teacher";
   const displayContact = user?.email || user?.userName || "";
   const initials = getInitials(displayName, "T");
+  const hasUnreadNotifications = unreadCount > 0;
+  const unreadLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -145,6 +161,20 @@ export function DashboardHeader() {
         <div className="hidden md:flex items-center gap-2 ml-auto">
           <LanguageSwitcher />
           <ThemeToggle />
+          <Link
+            href={`${TEACHER_BASE_PATH}/notifications`}
+            className="relative"
+            aria-label={dictionary.dashboard.menuNotification}
+          >
+            <Button variant="outline" className="h-10 w-10 p-0">
+              <Bell className="h-5 w-5" />
+            </Button>
+            {hasUnreadNotifications ? (
+              <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-(--color-error) px-1.5 text-[10px] font-bold text-(--color-text-inverse)">
+                {unreadLabel}
+              </span>
+            ) : null}
+          </Link>
 
           <div className="relative group">
             <button
@@ -173,14 +203,21 @@ export function DashboardHeader() {
                   {userMenuItems.map((item) => {
                     const Icon = item.icon;
                     return (
-                      <button
+                      <Link
                         key={item.key}
-                        type="button"
-                        className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-app-text transition-colors hover:bg-app-surface-2"
+                        className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-3 py-2 text-sm text-app-text transition-colors hover:bg-app-surface-2"
+                        href={item.path}
                       >
-                        <Icon className="h-4 w-4 text-app-text-muted" />
-                        {dictionary.dashboard[item.key]}
-                      </button>
+                        <span className="flex items-center gap-2">
+                          <Icon className="h-4 w-4 text-app-text-muted" />
+                          {dictionary.dashboard[item.key]}
+                        </span>
+                        {item.key === "menuNotification" && hasUnreadNotifications ? (
+                          <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-(--color-error) px-1.5 text-[10px] font-bold text-(--color-text-inverse)">
+                            {unreadLabel}
+                          </span>
+                        ) : null}
+                      </Link>
                     );
                   })}
                 </div>

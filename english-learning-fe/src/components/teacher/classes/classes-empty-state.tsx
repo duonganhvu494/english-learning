@@ -1,7 +1,7 @@
 import { GraduationCap, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { ClassesDictionary } from "@/components/classes/types";
+import type { ClassesDictionary } from "@/components/teacher/classes/types";
 
 type ClassesEmptyStateProps = {
   dictionary: ClassesDictionary;
