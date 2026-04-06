@@ -7,11 +7,15 @@ import { useData } from "@/mock-data/dataContext";
 import type { Dictionary } from "@/i18n/types";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { useAuth } from "@/providers/auth-provider";
+import { useNotification } from "@/providers/notification-provider";
 import type { Class as DashboardClass } from "@/types/types";
-import type { WorkspaceStudentListItem } from "@/types/workspace";
+import type {
+  WorkspaceStudentListItem,
+  WorkspaceSubscription,
+} from "@/types/workspace";
 import { FileText, GraduationCap, TrendingUp, Users } from "lucide-react";
 import { CreateClassDialog } from "@/components/common/create-class-dialog";
-import { UpgradePlanDialog } from "@/components/common/upgrade-plan-dialog";
+import { PlanUpgradeDialog } from "@/components/common/plan-upgrade-dialog";
 import { DashboardPageHeader } from "@/components/teacher/dashboard/dashboard-page-header";
 import { DashboardRecentClassesCard } from "@/components/teacher/dashboard/dashboard-recent-classes-card";
 import {
@@ -30,6 +34,7 @@ const CLASS_COLORS = [
   "#14B8A6",
   "#6366F1",
 ];
+const MAX_CLASSES_FEATURE_KEY = "max_classes";
 
 function mapClassColor(index: number) {
   return CLASS_COLORS[index % CLASS_COLORS.length];
@@ -50,17 +55,40 @@ function mapTierName(
   return dictionary.landing.pricing.plans.enterprise.name;
 }
 
+function resolveMaxClassesFromSubscription(
+  subscription: WorkspaceSubscription,
+  fallbackLimit: number,
+) {
+  const maxClassesFeature = subscription.plan.features.find(
+    (feature) =>
+      feature.featureKey === MAX_CLASSES_FEATURE_KEY &&
+      feature.valueType === "number" &&
+      typeof feature.value === "number" &&
+      Number.isFinite(feature.value),
+  );
+
+  if (maxClassesFeature && typeof maxClassesFeature.value === "number") {
+    return Math.max(0, maxClassesFeature.value);
+  }
+
+  return fallbackLimit;
+}
+
 export default function DashboardPage() {
   const { dictionary } = useAppSettings();
   const { activeWorkspaceId } = useAuth();
   const { projects } = useData();
   const { tier, maxClasses, upgradeTier } = useSubscription();
+  const { error: notifyError } = useNotification();
   const [classes, setClasses] = useState<DashboardClass[]>([]);
   const [students, setStudents] = useState<WorkspaceStudentListItem[]>([]);
   const [isClassesLoading, setIsClassesLoading] = useState(true);
   const [isStudentsLoading, setIsStudentsLoading] = useState(true);
   const [createClassDialogOpen, setCreateClassDialogOpen] = useState(false);
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+  const [upgradeDialogLimit, setUpgradeDialogLimit] = useState(
+    Number.isFinite(maxClasses) ? maxClasses : 3,
+  );
 
   const loadClasses = useCallback(async () => {
     if (!activeWorkspaceId) {
@@ -183,13 +211,42 @@ export default function DashboardPage() {
     },
   ];
 
-  const handleCreateClass = () => {
+  const handleOpenUpgradeDialog = useCallback(
+    (limit: number) => {
+      setUpgradeDialogLimit(limit);
+      notifyError(
+        dictionary.dashboard.upgradeAlert.replace(
+          "{maxClasses}",
+          String(limit),
+        ),
+      );
+      setUpgradeDialogOpen(true);
+    },
+    [dictionary.dashboard.upgradeAlert, notifyError],
+  );
+
+  const handleCreateClass = async () => {
     if (!activeWorkspaceId) {
       return;
     }
 
-    if (classes.length >= maxClasses) {
-      setUpgradeDialogOpen(true);
+    let effectiveMaxClasses = maxClasses;
+    try {
+      const subscriptionResponse =
+        await workspacesApi.myWorkspaceSubscription();
+      effectiveMaxClasses = resolveMaxClassesFromSubscription(
+        subscriptionResponse.result,
+        maxClasses,
+      );
+    } catch {
+      // Keep local subscription values as a fallback when refresh fails.
+    }
+
+    if (
+      Number.isFinite(effectiveMaxClasses) &&
+      classes.length >= effectiveMaxClasses
+    ) {
+      handleOpenUpgradeDialog(effectiveMaxClasses);
       return;
     }
 
@@ -210,6 +267,16 @@ export default function DashboardPage() {
     void loadClasses();
   };
 
+  const handlePlanLimitReached = useCallback(
+    (limit: number | null) => {
+      const effectiveLimit =
+        limit ?? (Number.isFinite(maxClasses) ? maxClasses : 3);
+      setCreateClassDialogOpen(false);
+      handleOpenUpgradeDialog(effectiveLimit);
+    },
+    [handleOpenUpgradeDialog, maxClasses],
+  );
+
   return (
     <div className="space-y-6">
       <DashboardPageHeader
@@ -217,7 +284,9 @@ export default function DashboardPage() {
         planName={mapTierName(tier, dictionary)}
         classesCount={classes.length}
         maxClassesLabel={
-          maxClasses === Infinity ? "No limit" : String(maxClasses)
+          maxClasses === Infinity
+            ? dictionary.billingPage.unlimitedSymbol
+            : String(maxClasses)
         }
         onCreateClass={handleCreateClass}
       />
@@ -229,6 +298,7 @@ export default function DashboardPage() {
           classes={recentClasses}
           isLoading={isClassesLoading}
           dashboardDictionary={dictionary.dashboard}
+          classesDictionary={dictionary.classesPage}
           studentsLabel={dictionary.myCourse.overview.statsStudents}
         />
 
@@ -250,14 +320,44 @@ export default function DashboardPage() {
       <CreateClassDialog
         open={createClassDialogOpen}
         onOpenChange={setCreateClassDialogOpen}
+        onPlanLimitReached={handlePlanLimitReached}
         onCreate={handleAddClass}
       />
 
-      <UpgradePlanDialog
+      <PlanUpgradeDialog
         open={upgradeDialogOpen}
         onOpenChange={setUpgradeDialogOpen}
         onUpgrade={upgradeTier}
-        maxClasses={maxClasses === Infinity ? 999 : maxClasses}
+        currentTier={tier}
+        title={dictionary.dashboard.upgradeDialogTitle}
+        description={dictionary.dashboard.upgradeDialogDescription.replace(
+          "{maxClasses}",
+          String(upgradeDialogLimit),
+        )}
+        cancelLabel={dictionary.dashboard.createDialogCancel}
+        proPlan={{
+          name: dictionary.dashboard.proPlanTitle,
+          price: dictionary.dashboard.planPrice,
+          period: dictionary.dashboard.planPeriod,
+          features: [
+            dictionary.dashboard.upgradeBenefit1,
+            dictionary.dashboard.upgradeBenefit2,
+            dictionary.dashboard.upgradeBenefit3,
+          ],
+          ctaLabel: dictionary.dashboard.upgradeProCta,
+          badgeLabel: dictionary.landing.pricing.mostPopular,
+        }}
+        enterprisePlan={{
+          name: dictionary.dashboard.enterprisePlanTitle,
+          price: dictionary.dashboard.enterprisePlanPrice,
+          period: dictionary.dashboard.planPeriod,
+          features: [
+            dictionary.dashboard.enterpriseBenefit1,
+            dictionary.dashboard.enterpriseBenefit2,
+            dictionary.dashboard.enterpriseBenefit3,
+          ],
+          ctaLabel: dictionary.dashboard.upgradeEnterpriseCta,
+        }}
       />
     </div>
   );

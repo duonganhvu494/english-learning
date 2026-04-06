@@ -32,6 +32,7 @@ export type ClassFormData = {
 type CreateClassDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onPlanLimitReached?: (limit: number | null) => void;
   onCreate: (classData: {
     id: string;
     name: string;
@@ -43,6 +44,29 @@ type CreateClassDialogProps = {
     studentCount: number;
   }) => void;
 };
+
+const MAX_CLASSES_REACHED_CODE = "WORKSPACE_PLAN_MAX_CLASSES_REACHED";
+
+function parseClassLimitFromError(
+  details: string | string[] | undefined,
+): number | null {
+  const source = Array.isArray(details) ? details.join(" ") : details;
+  if (typeof source !== "string") {
+    return null;
+  }
+
+  const matched = source.match(/\bup to\s+(\d+)\s+classes\b/i);
+  if (!matched) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(matched[1] ?? "", 10);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return parsed;
+}
 
 const COLORS = [
   "#8B5CF6",
@@ -58,6 +82,7 @@ const COLORS = [
 export function CreateClassDialog({
   open,
   onOpenChange,
+  onPlanLimitReached,
   onCreate,
 }: CreateClassDialogProps) {
   const { dictionary } = useAppSettings();
@@ -123,6 +148,11 @@ export function CreateClassDialog({
       handleClose();
     } catch (error) {
       if (error instanceof ApiError) {
+        if (error.code === MAX_CLASSES_REACHED_CODE) {
+          onPlanLimitReached?.(parseClassLimitFromError(error.details));
+          return;
+        }
+
         const message = translateApiMessage(
           error.details,
           error.code,
@@ -151,26 +181,21 @@ export function CreateClassDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-2">
-            <Label htmlFor="name">
-              {dictionary.dashboard.nameLabel ?? "Class Name"}
-            </Label>
+            <Label htmlFor="name">{dictionary.dashboard.nameLabel}</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              placeholder={
-                dictionary.dashboard.namePlaceholder ??
-                "e.g., Advanced Prototyping"
-              }
+              placeholder={dictionary.dashboard.namePlaceholder}
               required
             />
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="description">
-              {dictionary.dashboard.descriptionLabel ?? "Description"}
+              {dictionary.dashboard.descriptionLabel}
             </Label>
             <Textarea
               id="description"
@@ -178,37 +203,14 @@ export function CreateClassDialog({
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              placeholder={
-                dictionary.dashboard.descriptionPlaceholder ??
-                "Brief description of the class"
-              }
-              required
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="schedule">
-              {dictionary.dashboard.scheduleLabel ?? "Schedule"}
-            </Label>
-            <Input
-              id="schedule"
-              value={formData.schedule}
-              onChange={(e) =>
-                setFormData({ ...formData, schedule: e.target.value })
-              }
-              placeholder={
-                dictionary.dashboard.schedulePlaceholder ??
-                "e.g., Mon & Wed, 10:00 AM"
-              }
+              placeholder={dictionary.dashboard.descriptionPlaceholder}
               required
             />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="level">
-                {dictionary.dashboard.levelLabel ?? "Level"}
-              </Label>
+              <Label htmlFor="level">{dictionary.dashboard.levelLabel}</Label>
               <select
                 id="level"
                 value={formData.level}
@@ -220,15 +222,19 @@ export function CreateClassDialog({
                 }
                 className="h-10 rounded-md border border-app-border px-3 text-app-text"
               >
-                <option>Beginner</option>
-                <option>Intermediate</option>
-                <option>Advanced</option>
+                <option value="Beginner">
+                  {dictionary.classesPage.levelBeginner}
+                </option>
+                <option value="Intermediate">
+                  {dictionary.classesPage.levelIntermediate}
+                </option>
+                <option value="Advanced">
+                  {dictionary.classesPage.levelAdvanced}
+                </option>
               </select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="status">
-                {dictionary.dashboard.statusLabel ?? "Status"}
-              </Label>
+              <Label htmlFor="status">{dictionary.dashboard.statusLabel}</Label>
               <select
                 id="status"
                 value={formData.status}
@@ -240,29 +246,35 @@ export function CreateClassDialog({
                 }
                 className="h-10 rounded-md border border-app-border px-3 text-app-text"
               >
-                <option>Active</option>
-                <option>Draft</option>
-                <option>Completed</option>
+                <option value="Active">
+                  {dictionary.classesPage.statusActive}
+                </option>
+                <option value="Draft">{dictionary.classesPage.statusDraft}</option>
+                <option value="Completed">
+                  {dictionary.classesPage.statusCompleted}
+                </option>
               </select>
             </div>
           </div>
 
           <div className="grid gap-2">
-            <Label>{dictionary.dashboard.colorLabel ?? "Color Theme"}</Label>
+            <Label>{dictionary.dashboard.colorLabel}</Label>
             <div className="flex flex-wrap gap-2">
               {COLORS.map((color) => (
-                <button
+                <Button
                   key={color}
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   className={cn(
-                    "w-10 h-10 rounded-lg border-2 transition-all",
+                    "h-10 w-10 rounded-lg border-2 bg-transparent p-0 transition-all",
                     formData.color === color
                       ? "border-app-text scale-110"
                       : "border-transparent",
                   )}
                   style={{ backgroundColor: color }}
                   onClick={() => setFormData({ ...formData, color })}
-                  aria-label={`Choose color ${color}`}
+                  aria-label={`${dictionary.dashboard.colorLabel} ${color}`}
                 />
               ))}
             </div>

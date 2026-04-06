@@ -152,12 +152,14 @@ export function ClassFormDialog({
             <Label>{dictionary.colorThemeLabel}</Label>
             <div className="flex flex-wrap gap-2">
               {CLASS_COLORS.map((color) => (
-                <button
+                <Button
                   key={color}
                   type="button"
                   onClick={() => onFormDataChange({ ...formData, color })}
+                  variant="secondary"
+                  size="sm"
                   className={cn(
-                    "h-10 w-10 rounded-lg border-2 transition-transform",
+                    "h-10 w-10 rounded-lg border-2 bg-transparent p-0 transition-transform",
                     formData.color === color
                       ? "scale-110 border-app-text"
                       : "border-transparent",

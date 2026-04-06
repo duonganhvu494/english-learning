@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -97,23 +98,27 @@ export function StudentsTable({
 
               <TableCell className="px-4">
                 <div className="flex justify-end gap-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => onEdit(student)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-app-border bg-app-surface text-app-text-muted transition-colors hover:bg-app-surface-2 hover:text-app-text hover:cursor-pointer"
+                    className="h-9 w-9 border-app-border bg-app-surface px-0 text-app-text-muted hover:bg-app-surface-2 hover:text-app-text"
                     aria-label={dictionary.editAction}
                   >
                     <Edit className="h-4 w-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => onDelete(student.studentId)}
                     disabled={deletingId === student.studentId}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--color-error)_45%,var(--color-border)_55%)] bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)] text-(--color-error) transition-colors hover:bg-[color-mix(in_srgb,var(--color-error-soft)_84%,var(--color-surface)_16%)] hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+                    className="h-9 w-9 border-[color-mix(in_srgb,var(--color-error)_45%,var(--color-border)_55%)] bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)] px-0 text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_84%,var(--color-surface)_16%)]"
                     aria-label={dictionary.deleteAction}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               </TableCell>
             </TableRow>

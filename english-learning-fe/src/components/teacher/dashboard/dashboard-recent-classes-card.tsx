@@ -15,13 +15,34 @@ type DashboardRecentClassesCardProps = {
   classes: DashboardClass[];
   isLoading: boolean;
   dashboardDictionary: Dictionary["dashboard"];
+  classesDictionary: Dictionary["classesPage"];
   studentsLabel: string;
 };
+
+function getLevelLabel(
+  level: DashboardClass["level"],
+  classesDictionary: Dictionary["classesPage"],
+) {
+  if (level === "Beginner") {
+    return classesDictionary.levelBeginner;
+  }
+
+  if (level === "Intermediate") {
+    return classesDictionary.levelIntermediate;
+  }
+
+  if (level === "Advanced") {
+    return classesDictionary.levelAdvanced;
+  }
+
+  return level;
+}
 
 export function DashboardRecentClassesCard({
   classes,
   isLoading,
   dashboardDictionary,
+  classesDictionary,
   studentsLabel,
 }: DashboardRecentClassesCardProps) {
   return (
@@ -60,7 +81,7 @@ export function DashboardRecentClassesCard({
                       {classItem.name}
                     </h3>
                     <Badge variant="outline" className="text-xs">
-                      {classItem.level}
+                      {getLevelLabel(classItem.level, classesDictionary)}
                     </Badge>
                   </div>
 

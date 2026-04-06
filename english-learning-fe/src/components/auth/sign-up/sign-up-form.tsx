@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 export function SignUpForm() {
   const router = useRouter();
   const { dictionary } = useAppSettings();
-  const { login, refreshUser } = useAuth();
+  const { login, refreshUser, homePath } = useAuth();
   const { success: notifySuccess, error: notifyError } = useNotification();
 
   const [fullName, setFullName] = useState("");
@@ -63,7 +63,10 @@ export function SignUpForm() {
       });
 
       await workspacesApi.createWorkspace({
-        name: `${nextFullName} Workspace`,
+        name: dictionary.signUp.workspaceNameTemplate.replace(
+          "{name}",
+          nextFullName,
+        ),
       });
 
       await refreshUser();
@@ -75,7 +78,7 @@ export function SignUpForm() {
       setEmail("");
       setPassword("");
       setConfirmPassword("");
-      router.replace("/teacher/dashboard");
+      router.replace(homePath);
     } catch (apiError) {
       if (apiError instanceof ApiError) {
         notifyError(
@@ -135,14 +138,16 @@ export function SignUpForm() {
             label={dictionary.signUp.passwordLabel}
             icon={<Lock className="h-5 w-5" />}
             suffix={
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="text-(--color-text-soft) transition-colors hover:text-(--color-text)"
-                aria-label="Toggle password visibility"
+                className="h-auto min-h-0 w-auto border-0 bg-transparent p-0 text-(--color-text-soft) normal-case font-medium tracking-normal transition-colors hover:bg-transparent hover:text-(--color-text)"
+                aria-label={dictionary.signUp.togglePasswordVisibilityAria}
               >
                 <Eye className="h-5 w-5" />
-              </button>
+              </Button>
             }
             type={showPassword ? "text" : "password"}
             placeholder={dictionary.signUp.passwordPlaceholder}
@@ -155,14 +160,18 @@ export function SignUpForm() {
             label={dictionary.signUp.confirmPasswordLabel}
             icon={<Lock className="h-5 w-5" />}
             suffix={
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowConfirmPassword((prev) => !prev)}
-                className="text-(--color-text-soft) transition-colors hover:text-(--color-text)"
-                aria-label="Toggle confirm password visibility"
+                className="h-auto min-h-0 w-auto border-0 bg-transparent p-0 text-(--color-text-soft) normal-case font-medium tracking-normal transition-colors hover:bg-transparent hover:text-(--color-text)"
+                aria-label={
+                  dictionary.signUp.toggleConfirmPasswordVisibilityAria
+                }
               >
                 <Eye className="h-5 w-5" />
-              </button>
+              </Button>
             }
             type={showConfirmPassword ? "text" : "password"}
             placeholder={dictionary.signUp.confirmPasswordPlaceholder}
@@ -174,7 +183,7 @@ export function SignUpForm() {
           <Button
             type="submit"
             disabled={isSubmitting || !isFormValid}
-            className="disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting
               ? dictionary.signUp.submitLoading

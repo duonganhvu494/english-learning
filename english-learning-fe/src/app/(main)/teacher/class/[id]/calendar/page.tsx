@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -361,8 +362,13 @@ export default function ClassCalendarPage() {
                 return (
                   <article
                     key={session.id}
-                    className="rounded-xl border border-app-border bg-app-surface-2 p-4"
+                    className="relative rounded-xl border border-app-border bg-app-surface-2 p-4 transition-colors hover:border-(--color-primary)"
                   >
+                    <Link
+                      href={"/teacher/class/" + classId + "/calendar/" + session.id}
+                      className="absolute inset-0 z-10 rounded-xl transition-colors hover:bg-[color-mix(in_srgb,var(--color-primary-soft)_30%,transparent)]"
+                      aria-label={session.topic}
+                    />
                     <div className="flex items-start gap-4">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-(--color-primary) text-(--color-text-inverse)">
                         <CalendarIcon className="h-5 w-5" />
@@ -370,9 +376,9 @@ export default function ClassCalendarPage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex flex-wrap items-center gap-2">
-                          <h3 className="font-semibold text-app-text">
+                          <p className="font-semibold text-app-text">
                             {session.topic}
-                          </h3>
+                          </p>
                           <Badge
                             variant="outline"
                             className="border-app-border bg-app-surface text-xs text-app-text-muted"
@@ -392,7 +398,7 @@ export default function ClassCalendarPage() {
                         </div>
                       </div>
 
-                      <div className="flex shrink-0 gap-2">
+                      <div className="relative z-20 flex shrink-0 gap-2">
                         <Button
                           variant="outline"
                           className="h-9 w-9 px-0"
@@ -435,8 +441,13 @@ export default function ClassCalendarPage() {
               {pastSessions.map((session) => (
                 <article
                   key={session.id}
-                  className="rounded-xl border border-app-border bg-app-surface-2 p-4 opacity-75"
+                  className="relative rounded-xl border border-app-border bg-app-surface-2 p-4 opacity-75 transition-colors hover:border-(--color-primary)"
                 >
+                  <Link
+                    href={"/teacher/class/" + classId + "/calendar/" + session.id}
+                    className="absolute inset-0 z-10 rounded-xl transition-colors hover:bg-[color-mix(in_srgb,var(--color-primary-soft)_30%,transparent)]"
+                    aria-label={session.topic}
+                  />
                   <div className="flex items-start gap-4">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-app-surface text-app-text">
                       <Clock className="h-5 w-5" />
@@ -444,9 +455,9 @@ export default function ClassCalendarPage() {
 
                     <div className="min-w-0 flex-1">
                       <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold text-app-text">
+                        <p className="font-semibold text-app-text">
                           {session.topic}
-                        </h3>
+                        </p>
                         <Badge
                           variant="outline"
                           className="border-app-border bg-app-surface text-xs text-app-text-muted"
@@ -461,7 +472,7 @@ export default function ClassCalendarPage() {
 
                     <Button
                       variant="outline"
-                      className="h-9 w-9 shrink-0 px-0 text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)]"
+                      className="relative z-20 h-9 w-9 shrink-0 px-0 text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)]"
                       onClick={() => handleDelete(session.id)}
                       disabled={deletingSessionId === session.id}
                       aria-label={classDetailDictionary.eventDeleteConfirm}

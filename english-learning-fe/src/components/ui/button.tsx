@@ -33,7 +33,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex w-full items-center justify-center rounded-xl font-bold uppercase tracking-[0.08em] transition hover:cursor-pointer",
+        "inline-flex cursor-pointer items-center justify-center whitespace-nowrap rounded-xl font-bold uppercase tracking-[0.08em] transition disabled:cursor-not-allowed",
         variantClass[variant],
         sizeClass[size],
         className,

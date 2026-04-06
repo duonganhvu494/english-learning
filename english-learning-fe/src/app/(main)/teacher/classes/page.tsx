@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, classesApi } from "@/api";
 import { translateApiMessage } from "@/api/core/api-message-translator";
+import { useSubscription } from "@/context/subscriptionContext";
+import { UpgradePlanDialog } from "@/components/common/upgrade-plan-dialog";
 import { ClassesEmptyState } from "@/components/teacher/classes/classes-empty-state";
 import { ClassesGrid } from "@/components/teacher/classes/classes-grid";
 import { ClassFormDialog } from "@/components/teacher/classes/class-form-dialog";
@@ -19,10 +21,32 @@ import { useNotification } from "@/providers/notification-provider";
 import type { WorkspaceClass } from "@/types/class";
 
 type ClassMetadataMap = Record<string, ClassMetadata>;
+const MAX_CLASSES_REACHED_CODE = "WORKSPACE_PLAN_MAX_CLASSES_REACHED";
+
+function parseClassLimitFromError(
+  details: string | string[] | undefined,
+): number | null {
+  if (typeof details !== "string") {
+    return null;
+  }
+
+  const matched = details.match(/\bup to\s+(\d+)\s+classes\b/i);
+  if (!matched) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(matched[1] ?? "", 10);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return parsed;
+}
 
 export default function ClassesPage() {
   const { dictionary } = useAppSettings();
   const { activeWorkspaceId } = useAuth();
+  const { maxClasses, upgradeTier } = useSubscription();
   const { success: notifySuccess, error: notifyError } = useNotification();
   const classesDictionary = dictionary.classesPage;
 
@@ -36,6 +60,7 @@ export default function ClassesPage() {
   const [formData, setFormData] = useState<ClassFormData>(EMPTY_CLASS_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
 
   const loadClasses = useCallback(async () => {
     if (!activeWorkspaceId) {
@@ -105,6 +130,18 @@ export default function ClassesPage() {
     setDialogOpen(true);
   };
 
+  const handleOpenUpgradeDialog = (limit: number) => {
+    notifyError(
+      dictionary.dashboard.upgradeAlert.replace("{maxClasses}", String(limit)),
+    );
+    setUpgradeDialogOpen(true);
+  };
+
+  const handleUpgrade = (tier: "pro" | "enterprise") => {
+    upgradeTier(tier);
+    window.location.assign("/#pricing");
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -119,6 +156,15 @@ export default function ClassesPage() {
       status: formData.status,
       color: formData.color,
     };
+
+    if (
+      !editingClass &&
+      Number.isFinite(maxClasses) &&
+      workspaceClasses.length >= maxClasses
+    ) {
+      handleOpenUpgradeDialog(maxClasses);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -150,6 +196,14 @@ export default function ClassesPage() {
       handleDialogOpenChange(false);
     } catch (error) {
       if (error instanceof ApiError) {
+        if (error.code === MAX_CLASSES_REACHED_CODE) {
+          const parsedLimit = parseClassLimitFromError(error.details);
+          const effectiveLimit =
+            parsedLimit ?? (Number.isFinite(maxClasses) ? maxClasses : 3);
+          handleOpenUpgradeDialog(effectiveLimit);
+          return;
+        }
+
         notifyError(
           translateApiMessage(
             error.details,
@@ -241,6 +295,13 @@ export default function ClassesPage() {
           onCreateFirstClass={() => setDialogOpen(true)}
         />
       )}
+
+      <UpgradePlanDialog
+        open={upgradeDialogOpen}
+        onOpenChange={setUpgradeDialogOpen}
+        onUpgrade={handleUpgrade}
+        maxClasses={Number.isFinite(maxClasses) ? maxClasses : 999}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { buildClassStudentMetric } from "@/components/teacher/class-detail/class
 import { Progress } from "@/components/teacher/dashboard/progress";
 import { useData } from "@/mock-data/dataContext";
 import { useAppSettings } from "@/providers/app-settings-provider";
+import { useNotification } from "@/providers/notification-provider";
 import { getInitials } from "@/utils/get-initials";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -39,6 +41,7 @@ export default function ClassStudentsPage() {
     enrollStudent,
     unenrollStudent,
   } = useClassDetail();
+  const { info: notifyInfo } = useNotification();
   const classDetailDictionary = dictionary.classDetailPage;
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -115,6 +118,18 @@ export default function ClassStudentsPage() {
     setRemovingStudentId(null);
   };
 
+  function handleOpenEnrollDialog() {
+    if (availableStudents.length === 0) {
+      notifyInfo(
+        classDetailDictionary.enrollStudent,
+        classDetailDictionary.noAvailableStudents,
+      );
+      return;
+    }
+
+    setEnrollDialogOpen(true);
+  }
+
   if (!classItem) {
     return null;
   }
@@ -133,8 +148,7 @@ export default function ClassStudentsPage() {
 
         <Button
           className="w-auto"
-          onClick={() => setEnrollDialogOpen(true)}
-          disabled={availableStudents.length === 0}
+          onClick={handleOpenEnrollDialog}
         >
           <Plus className="mr-2 h-4 w-4" />
           {classDetailDictionary.enrollStudent}
@@ -142,13 +156,12 @@ export default function ClassStudentsPage() {
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-app-text-soft" />
+        <div className="flex-1">
           <Input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder={classDetailDictionary.searchStudentsPlaceholder}
-            className="pl-10"
+            icon={<Search className="h-4 w-4 text-app-text-soft" />}
           />
         </div>
 
@@ -190,7 +203,7 @@ export default function ClassStudentsPage() {
               {!searchQuery && availableStudents.length > 0 ? (
                 <Button
                   className="w-auto"
-                  onClick={() => setEnrollDialogOpen(true)}
+                  onClick={handleOpenEnrollDialog}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   {classDetailDictionary.enrollFirstStudent}
@@ -242,15 +255,17 @@ export default function ClassStudentsPage() {
                         {completedProjects}
                       </p>
 
-                      <button
+                      <Button
                         type="button"
-                        className="inline-flex h-9 items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--color-error)_45%,var(--color-border)_55%)] bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)] px-3 text-xs font-semibold uppercase tracking-[0.08em] text-(--color-error) transition-colors hover:bg-[color-mix(in_srgb,var(--color-error-soft)_84%,var(--color-surface)_16%)] disabled:cursor-not-allowed disabled:opacity-70"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 border-[color-mix(in_srgb,var(--color-error)_45%,var(--color-border)_55%)] bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)] px-3 text-xs text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_84%,var(--color-surface)_16%)]"
                         onClick={() => handleUnenrollStudent(student.studentId)}
                         disabled={removingStudentId === student.studentId}
                       >
                         <UserMinus className="mr-1 h-4 w-4" />
                         {classDetailDictionary.removeStudentAriaLabel}
-                      </button>
+                      </Button>
                     </article>
                   );
                 })}
@@ -321,9 +336,11 @@ export default function ClassStudentsPage() {
                             {completedProjects}
                           </TableCell>
                           <TableCell className="px-4 text-right">
-                            <button
+                            <Button
                               type="button"
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--color-error)_45%,var(--color-border)_55%)] bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)] text-(--color-error) transition-colors hover:bg-[color-mix(in_srgb,var(--color-error-soft)_84%,var(--color-surface)_16%)] disabled:cursor-not-allowed disabled:opacity-70"
+                              variant="outline"
+                              size="sm"
+                              className="h-9 w-9 border-[color-mix(in_srgb,var(--color-error)_45%,var(--color-border)_55%)] bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)] px-0 text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_84%,var(--color-surface)_16%)]"
                               onClick={() =>
                                 handleUnenrollStudent(student.studentId)
                               }
@@ -333,7 +350,7 @@ export default function ClassStudentsPage() {
                               }
                             >
                               <UserMinus className="h-4 w-4" />
-                            </button>
+                            </Button>
                           </TableCell>
                         </TableRow>
                       );
@@ -356,12 +373,12 @@ export default function ClassStudentsPage() {
           </DialogHeader>
 
           <div className="grid gap-2 py-4">
-            <label
+            <Label
               htmlFor="enroll-student-select"
-              className="text-sm font-medium text-app-text"
+              className="text-app-text"
             >
               {classDetailDictionary.selectStudent}
-            </label>
+            </Label>
             <select
               id="enroll-student-select"
               value={selectedStudentId}

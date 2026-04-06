@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { DICTIONARIES } from "@/i18n";
 import { AppSettingsProvider } from "@/providers/app-settings-provider";
 import { NotificationProvider } from "@/providers/notification-provider";
 import { AuthProvider } from "@/providers/auth-provider";
@@ -18,10 +19,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const metadataDictionary = DICTIONARIES.vi;
+
 export const metadata: Metadata = {
-  title: "English Learning FE",
-  description:
-    "Frontend foundation with theme tokens and locale-ready architecture.",
+  title: metadataDictionary.appName,
+  description: metadataDictionary.home.description,
 };
 
 export default function RootLayout({

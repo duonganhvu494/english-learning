@@ -8,6 +8,11 @@ import type {
   WorkspaceMembership,
 } from "@/types/workspace";
 import {
+  getDashboardPathByRole,
+  resolveAppRoleFromWorkspaceRole,
+  type AppRole,
+} from "@/utils/app-routes";
+import {
   createContext,
   useCallback,
   useContext,
@@ -30,6 +35,8 @@ type AuthContextType = {
   user: AuthUser | null;
   status: AuthStatus;
   isAuthenticated: boolean;
+  appRole: AppRole;
+  homePath: string;
   workspaces: WorkspaceMembership[];
   activeWorkspaceId: string | null;
   login: (payload: LoginRequest) => Promise<ApiResponse<UserProfile>>;
@@ -169,16 +176,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applyWorkspaceState]);
 
   const value = useMemo<AuthContextType>(
-    () => ({
-      user,
-      status,
-      isAuthenticated: status === "authenticated" && user !== null,
-      workspaces,
-      activeWorkspaceId,
-      login,
-      logout,
-      refreshUser,
-    }),
+    () => {
+      const activeMembership =
+        workspaces.find(
+          (workspace) => workspace.workspaceId === activeWorkspaceId,
+        ) ?? workspaces[0];
+      const appRole = resolveAppRoleFromWorkspaceRole(activeMembership?.role);
+
+      return {
+        user,
+        status,
+        isAuthenticated: status === "authenticated" && user !== null,
+        appRole,
+        homePath: getDashboardPathByRole(appRole),
+        workspaces,
+        activeWorkspaceId,
+        login,
+        logout,
+        refreshUser,
+      };
+    },
     [
       activeWorkspaceId,
       login,

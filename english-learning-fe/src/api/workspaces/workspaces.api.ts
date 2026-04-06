@@ -5,6 +5,8 @@ import type {
   CreateWorkspaceStudentRequest,
   CreateWorkspaceStudentResponse,
   MyWorkspacesResult,
+  WorkspacePlan,
+  WorkspaceSubscription,
   RemoveWorkspaceStudentResponse,
   UpdateWorkspaceStudentRequest,
   WorkspaceStudentListItem,
@@ -14,6 +16,9 @@ export const workspacesApi = {
   createWorkspace: (payload: CreateWorkspaceRequest) =>
     httpClient.post<CreateWorkspaceResponse>("/workspaces", payload),
   myWorkspaces: () => httpClient.get<MyWorkspacesResult>("/workspaces/me"),
+  myWorkspaceSubscription: () =>
+    httpClient.get<WorkspaceSubscription>("/workspaces/me/subscription"),
+  listPlans: () => httpClient.get<WorkspacePlan[]>("/workspaces/plans"),
   createStudent: (workspaceId: string, payload: CreateWorkspaceStudentRequest) =>
     httpClient.post<CreateWorkspaceStudentResponse>(
       `/workspaces/${workspaceId}/students`,

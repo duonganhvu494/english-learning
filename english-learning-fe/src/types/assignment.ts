@@ -40,3 +40,30 @@ export type CreateSessionAssignmentRequest = {
 export type DeleteAssignmentResponse = {
   assignmentId: string;
 };
+
+export type AssignmentQuizAttemptStatus =
+  | "in_progress"
+  | "submitted"
+  | "cancelled"
+  | string;
+
+export type AssignmentQuizAttemptAnswer = {
+  questionId: string;
+  selectedOptionId: string | null;
+  isCorrect: boolean | null;
+  awardedPoints: number | null;
+};
+
+export type AssignmentQuizAttempt = {
+  assignmentId: string;
+  studentId: string;
+  status: AssignmentQuizAttemptStatus;
+  attemptId: string;
+  startedAt: string;
+  submittedAt: string | null;
+  score: number | null;
+  maxScore: number | null;
+  correctCount: number;
+  totalQuestions: number;
+  answers: AssignmentQuizAttemptAnswer[];
+};

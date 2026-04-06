@@ -16,6 +16,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 
 type NotificationType = "success" | "error" | "warning" | "info";
@@ -248,17 +249,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                     </p>
                   ) : null}
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => remove(notification.id)}
                   className={cn(
-                    "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors",
+                    "h-6 w-6 shrink-0 border-0 bg-transparent p-0 normal-case tracking-normal transition-colors",
                     colorScheme.closeButton,
                   )}
                   aria-label="Close notification"
                 >
                   <X className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </div>
           );

@@ -1,8 +1,11 @@
+import { DICTIONARIES } from "@/i18n";
 import { Header } from "@/components/layout/auth-header";
 import { RedirectIfAuthenticated } from "@/components/auth/route-guards";
 
+const metadataDictionary = DICTIONARIES.vi;
+
 export const metadata = {
-  title: "Đăng nhập / Đăng ký - English Learning",
+  title: `${metadataDictionary.login.formTitle} / ${metadataDictionary.signUp.formTitle} - ${metadataDictionary.appName}`,
 };
 
 export default function AuthLayout({

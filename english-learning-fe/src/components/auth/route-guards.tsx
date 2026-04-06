@@ -46,17 +46,17 @@ export function RequireAuth({
 
 export function RedirectIfAuthenticated({
   children,
-  redirectTo = "/teacher/dashboard",
+  redirectTo,
   fallback = defaultFallback,
 }: RedirectIfAuthenticatedProps) {
   const router = useRouter();
-  const { isAuthenticated, status } = useAuth();
+  const { isAuthenticated, status, homePath } = useAuth();
 
   useEffect(() => {
     if (status === "authenticated" && isAuthenticated) {
-      router.replace(redirectTo);
+      router.replace(redirectTo ?? homePath);
     }
-  }, [isAuthenticated, redirectTo, router, status]);
+  }, [homePath, isAuthenticated, redirectTo, router, status]);
 
   if (status === "loading") {
     return <>{fallback}</>;

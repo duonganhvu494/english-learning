@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Calendar, FileText, Plus, Trash2 } from "lucide-react";
 import { ApiError, assignmentsApi, sessionsApi } from "@/api";
 import { translateApiMessage } from "@/api/core/api-message-translator";
@@ -352,14 +353,22 @@ export default function ClassAssignmentsPage() {
     const session = sessionMap.get(assignment.sessionId);
 
     return (
-      <Card key={assignment.id} className="border-app-border bg-app-surface">
-        <CardContent className="space-y-4 p-6">
+      <Card
+        key={assignment.id}
+        className="border-app-border bg-app-surface transition-colors hover:border-(--color-primary)"
+      >
+        <CardContent className="relative space-y-4 p-6">
+          <Link
+            href={"/teacher/class/" + classId + "/assignments/" + assignment.id}
+            className="absolute inset-0 z-10 rounded-xl transition-colors hover:bg-[color-mix(in_srgb,var(--color-primary-soft)_30%,transparent)]"
+            aria-label={assignment.title}
+          />
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex flex-wrap items-center gap-2">
-                <h3 className="text-lg font-semibold text-app-text">
+                <p className="text-lg font-semibold text-app-text">
                   {assignment.title}
-                </h3>
+                </p>
                 <Badge
                   variant="outline"
                   className="border-app-border bg-app-surface text-xs text-app-text-muted"
@@ -410,7 +419,7 @@ export default function ClassAssignmentsPage() {
 
             <Button
               variant="outline"
-              className="h-9 w-9 shrink-0 px-0 text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)]"
+              className="relative z-20 h-9 w-9 shrink-0 px-0 text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)]"
               onClick={() => handleDeleteAssignment(assignment.id)}
               disabled={deletingAssignmentId === assignment.id}
               aria-label={classDetailDictionary.assignmentDeleteConfirm}

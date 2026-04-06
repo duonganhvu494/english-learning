@@ -12,11 +12,12 @@ import { useNotification } from "@/providers/notification-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/section-card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
   const router = useRouter();
   const { dictionary } = useAppSettings();
-  const { login } = useAuth();
+  const { login, homePath } = useAuth();
   const { success: notifySuccess, error: notifyError } = useNotification();
   const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
@@ -44,7 +45,7 @@ export function LoginForm() {
         ),
       );
       setPassword("");
-      router.replace("/teacher/dashboard");
+      router.replace(homePath);
     } catch (apiError) {
       if (apiError instanceof ApiError) {
         notifyError(
@@ -84,14 +85,16 @@ export function LoginForm() {
             label={dictionary.login.passwordLabel}
             icon={<Lock className="h-5 w-5" />}
             suffix={
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="text-(--color-text-soft) transition-colors hover:text-(--color-text)"
-                aria-label="Toggle password visibility"
+                className="h-auto min-h-0 w-auto border-0 bg-transparent p-0 text-(--color-text-soft) normal-case font-medium tracking-normal transition-colors hover:bg-transparent hover:text-(--color-text)"
+                aria-label={dictionary.login.togglePasswordVisibilityAria}
               >
                 <Eye className="h-5 w-5" />
-              </button>
+              </Button>
             }
             type={showPassword ? "text" : "password"}
             placeholder={dictionary.login.passwordPlaceholder}
@@ -101,17 +104,21 @@ export function LoginForm() {
           />
 
           <div className="flex items-center justify-between gap-4 pt-1">
-            <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-(--color-text-muted)">
+            <div className="inline-flex items-center gap-2">
               <input
+                id="remember-me"
                 type="checkbox"
                 checked={remember}
                 onChange={(event) => setRemember(event.target.checked)}
                 className="h-4 w-4 rounded border border-(--color-border-strong) accent-(--color-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-primary) focus-visible:ring-offset-2 focus-visible:ring-offset-(--color-bg)"
               />
-              <span className="whitespace-nowrap">
+              <Label
+                htmlFor="remember-me"
+                className="cursor-pointer text-sm font-medium text-(--color-text-muted)"
+              >
                 {dictionary.login.rememberMe}
-              </span>
-            </label>
+              </Label>
+            </div>
 
             <a
               href="#"
@@ -124,7 +131,7 @@ export function LoginForm() {
           <Button
             type="submit"
             disabled={isSubmitting || !userName || !password}
-            className="disabled:cursor-not-allowed disabled:opacity-70 sm:h-14 sm:text-base"
+            className="w-full disabled:cursor-not-allowed disabled:opacity-70 sm:h-14 sm:text-base"
           >
             {isSubmitting
               ? dictionary.login.submitLoading
@@ -140,21 +147,23 @@ export function LoginForm() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button
+            <Button
               type="button"
-              className="inline-flex h-12 items-center justify-center gap-3 rounded-xl border border-(--color-border) bg-(--color-surface) px-4 text-sm font-semibold text-(--color-text-muted) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text)"
+              variant="secondary"
+              className="h-12 justify-center gap-3 rounded-xl border-(--color-border) bg-(--color-surface) px-4 text-sm font-semibold text-(--color-text-muted) normal-case tracking-normal hover:bg-(--color-surface-2) hover:text-(--color-text)"
             >
               <span className="text-red-500">G</span>
               <span>{dictionary.login.loginWithGoogle}</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
-              className="inline-flex h-12 items-center justify-center gap-3 rounded-xl border border-(--color-border) bg-(--color-surface) px-4 text-sm font-semibold text-(--color-text-muted) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text)"
+              variant="secondary"
+              className="h-12 justify-center gap-3 rounded-xl border-(--color-border) bg-(--color-surface) px-4 text-sm font-semibold text-(--color-text-muted) normal-case tracking-normal hover:bg-(--color-surface-2) hover:text-(--color-text)"
             >
               <span className="text-[#4267b2]">F</span>
               <span>{dictionary.login.loginWithFacebook}</span>
-            </button>
+            </Button>
           </div>
 
           <p className="pt-4 text-center text-sm text-(--color-text-muted) sm:text-base">

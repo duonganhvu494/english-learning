@@ -73,15 +73,17 @@ export function StudentsMobileList({
               <Edit className="mr-1 h-4 w-4" />
               {dictionary.editStudent}
             </Button>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => onDelete(student.studentId)}
               disabled={deletingId === student.studentId}
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--color-error)_45%,var(--color-border)_55%)] bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)] px-3 text-xs font-semibold uppercase tracking-[0.08em] text-(--color-error) transition-colors hover:bg-[color-mix(in_srgb,var(--color-error-soft)_84%,var(--color-surface)_16%)] hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+              className="h-9 border-[color-mix(in_srgb,var(--color-error)_45%,var(--color-border)_55%)] bg-[color-mix(in_srgb,var(--color-error-soft)_70%,var(--color-surface)_30%)] px-3 text-xs text-(--color-error) hover:bg-[color-mix(in_srgb,var(--color-error-soft)_84%,var(--color-surface)_16%)]"
             >
               <Trash2 className="mr-1 h-4 w-4" />
               {dictionary.deleteAction}
-            </button>
+            </Button>
           </div>
         </article>
       ))}

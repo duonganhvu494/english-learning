@@ -8,9 +8,9 @@ export default function MainLayout({
 }) {
   return (
     <RequireAuth>
-      <div className="space-y-6 px-4 md:px-6 lg:px-8 xl:px-10">
+      <div className="space-y-6">
         <DashboardHeader />
-        <main className="space-y-6">{children}</main>
+        <main className="space-y-6 px-4 md:px-6 lg:px-8 xl:px-10">{children}</main>
       </div>
     </RequireAuth>
   );

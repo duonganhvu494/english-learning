@@ -4,6 +4,55 @@ export type WorkspaceMembership = {
   role: string;
 };
 
+export type PlanFeatureValueType = "boolean" | "number" | "string" | "json";
+
+export type PlanFeatureValue =
+  | boolean
+  | number
+  | string
+  | Record<string, unknown>
+  | unknown[]
+  | null;
+
+export type PlanFeature = {
+  featureKey: string;
+  valueType: PlanFeatureValueType;
+  value: PlanFeatureValue;
+};
+
+export type WorkspacePlan = {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  monthlyPriceCents: number | null;
+  isPublic: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  features: PlanFeature[];
+};
+
+export type WorkspaceSubscriptionStatus =
+  | "active"
+  | "trialing"
+  | "suspended"
+  | "cancelled"
+  | "expired";
+
+export type WorkspaceSubscription = {
+  id: string;
+  workspaceId: string;
+  status: WorkspaceSubscriptionStatus;
+  startedAt: string;
+  endedAt: string | null;
+  trialEndsAt: string | null;
+  cancelledAt: string | null;
+  source: string;
+  paymentTransactionId: string | null;
+  note: string | null;
+  plan: WorkspacePlan;
+};
+
 export type CurrentWorkspaceDetail = {
   id: string;
   name: string;

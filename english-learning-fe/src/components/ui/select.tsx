@@ -115,7 +115,7 @@ function SelectTrigger({
       data-size={size}
       onClick={() => setOpen((prev) => !prev)}
       className={cn(
-        "border-input text-left focus-visible:border-ring focus-visible:ring-ring/50 flex w-full items-center justify-between gap-2 rounded-md border bg-input-background px-3 py-2 text-sm whitespace-nowrap outline-none transition-[color,box-shadow] focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:size-4",
+        "flex w-full items-center justify-between gap-2 whitespace-nowrap rounded-md border border-app-border bg-app-surface px-3 py-2 text-left text-sm text-app-text outline-none transition-[color,box-shadow] focus-visible:border-(--color-primary) focus-visible:ring-[3px] focus-visible:ring-[color-mix(in_srgb,var(--color-primary)_22%,transparent)] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:size-4",
         className,
       )}
       aria-expanded={open}
@@ -160,7 +160,7 @@ function SelectContent({
       ref={contentRef}
       data-slot="select-content"
       className={cn(
-        "bg-popover text-popover-foreground absolute top-full z-50 mt-1 max-h-60 w-full overflow-x-hidden overflow-y-auto rounded-md border shadow-md",
+        "absolute top-full z-50 mt-1 max-h-60 w-full overflow-x-hidden overflow-y-auto rounded-md border border-app-border bg-app-surface text-app-text shadow-md",
         className,
       )}
       {...props}
@@ -197,7 +197,7 @@ function SelectItem({
       data-slot="select-item"
       onClick={() => setValue(value)}
       className={cn(
-        "focus:bg-accent focus:text-accent-foreground relative flex w-full items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none hover:bg-accent",
+        "relative flex w-full items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm text-app-text outline-none select-none hover:bg-app-surface-2 focus:bg-app-surface-2",
         className,
       )}
       {...props}

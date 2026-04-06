@@ -3,18 +3,21 @@
 import { Moon, Sun } from "lucide-react";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { cn } from "@/utils/cn";
+import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
   const { theme, setTheme, dictionary } = useAppSettings();
   const isDark = theme === "dark";
 
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
+      size="sm"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={cn(
-        "inline-flex h-9 items-center gap-2 rounded-full border border-(--color-border) bg-(--color-surface) px-3 text-xs font-semibold transition-colors hover:border-(--color-border-strong) hover:bg-(--color-surface-2) hover:text-(--color-text)",
-        "text-(--color-text-muted) hover:cursor-pointer",
+        "h-9 gap-2 rounded-full border-(--color-border) bg-(--color-surface) px-3 text-xs font-semibold normal-case tracking-normal transition-colors hover:border-(--color-border-strong) hover:bg-(--color-surface-2) hover:text-(--color-text)",
+        "text-(--color-text-muted)",
       )}
       aria-label="Toggle theme"
     >
@@ -26,6 +29,6 @@ export function ThemeToggle() {
       <span className="hidden dark:sm:inline">
         {dictionary.options.themes.dark}
       </span>
-    </button>
+    </Button>
   );
 }
