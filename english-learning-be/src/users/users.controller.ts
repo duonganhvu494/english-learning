@@ -28,6 +28,7 @@ import { ApiBusinessErrorResponses, ApiEnvelopeResponse } from 'src/common/swagg
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserProfileResponse } from './dto/user-profile-response.dto';
 import { UserDeleteResponseDto } from './dto/user-delete-response.dto';
+import { RegisterUserResponseDto } from './dto/register-user-response.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -42,16 +43,21 @@ export class UsersController {
     @ApiEnvelopeResponse({
         status: 201,
         description: 'Teacher account created successfully',
-        model: UserResponseDto,
-        exampleMessage: 'User created',
+        model: RegisterUserResponseDto,
+        exampleMessage: 'User created. Verify your email to continue',
         exampleResult: {
-            id: '550e8400-e29b-41d4-a716-446655440000',
-            fullName: 'Duong Anh Vu',
-            userName: 'duonganhvu',
-            email: 'duonganhvu@example.com',
-            accountType: 'teacher',
-            mustChangePassword: false,
-            isActive: true,
+            user: {
+                id: '550e8400-e29b-41d4-a716-446655440000',
+                fullName: 'Duong Anh Vu',
+                userName: 'duonganhvu',
+                email: 'duonganhvu@example.com',
+                accountType: 'teacher',
+                mustChangePassword: false,
+                emailVerified: false,
+                isActive: true,
+            },
+            emailVerificationRequired: true,
+            emailVerificationExpiresAt: '2026-04-06T10:15:00.000Z',
         },
     })
     @ApiBusinessErrorResponses([
@@ -66,9 +72,13 @@ export class UsersController {
             message: 'Validation failed',
         },
     ])
-    async register(@Body() dto: CreateUserDto) {
+    async register(@Body() dto: CreateUserDto): Promise<ApiResponse<RegisterUserResponseDto>> {
         const result = await this.usersService.register(dto);
-        return ApiResponse.success(result, 'User created', 201);
+        return ApiResponse.success(
+            result,
+            'User created. Verify your email to continue',
+            201,
+        );
     }
 
     @Get()
@@ -110,8 +120,8 @@ export class UsersController {
             message: 'Super admin access required',
         },
     ])
-    async findAll() {
-        const result = await this.usersService.findAll();
+    async listUsers(): Promise<ApiResponse<UserResponseDto[]>> {
+        const result = await this.usersService.listUsers();
         return ApiResponse.success(result, 'Users retrieved');
     }
 
@@ -154,7 +164,7 @@ export class UsersController {
             message: 'User not found',
         },
     ])
-    async findOne(@Param('id') id: string) {
+    async getUserById(@Param('id') id: string): Promise<ApiResponse<UserProfileResponse>> {
         const result = await this.usersService.getUserById(id);
         return ApiResponse.success(result, 'User retrieved');
     }
@@ -213,7 +223,7 @@ export class UsersController {
             message: 'Validation failed',
         },
     ])
-    async updateMe(@Body() dto: UpdateUserDto, @Req() req: AuthRequest) {
+    async updateMe(@Body() dto: UpdateUserDto, @Req() req: AuthRequest): Promise<ApiResponse<UserProfileResponse>> {
         const result = await this.usersService.updateProfile(req.user.userId, dto);
         return ApiResponse.success(result, 'User updated', 200);
     }
@@ -254,7 +264,7 @@ export class UsersController {
             message: 'User not found',
         },
     ])
-    async remove(@Param('id') id: string) {
+    async remove(@Param('id') id: string): Promise<ApiResponse<{ deleted: boolean; }>> {
         const result = await this.usersService.remove(id);
         return ApiResponse.success(result, 'User removed');
     }

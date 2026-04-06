@@ -77,7 +77,7 @@ export class NotificationsController {
   async listMyNotifications(
     @Req() req: AuthRequest,
     @Query() query: ListMyNotificationsQueryDto,
-  ) {
+  ): Promise<ApiResponse<NotificationResponseDto[]>> {
     const result = await this.notificationsService.listMyNotifications(
       req.user.userId,
       query,
@@ -112,7 +112,7 @@ export class NotificationsController {
       message: 'Password change is required before accessing this resource',
     },
   ])
-  async getMyUnreadCount(@Req() req: AuthRequest) {
+  async getMyUnreadCount(@Req() req: AuthRequest): Promise<ApiResponse<NotificationUnreadCountResponseDto>> {
     const result = await this.notificationsService.getMyUnreadCount(
       req.user.userId,
     );
@@ -169,7 +169,7 @@ export class NotificationsController {
   async markAsRead(
     @Param('notificationId') notificationId: string,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<NotificationResponseDto>> {
     const result = await this.notificationsService.markAsRead(
       notificationId,
       req.user.userId,
@@ -210,7 +210,7 @@ export class NotificationsController {
       message: 'CSRF token is missing or invalid',
     },
   ])
-  async markAllAsRead(@Req() req: AuthRequest) {
+  async markAllAsRead(@Req() req: AuthRequest): Promise<ApiResponse<NotificationMarkAllReadResponseDto>> {
     const result = await this.notificationsService.markAllAsRead(
       req.user.userId,
     );

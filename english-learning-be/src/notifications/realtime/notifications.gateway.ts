@@ -7,7 +7,7 @@ import {
 } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
-import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
+import { AuthSessionsService } from 'src/auth/redis/auth-sessions.service';
 import { JwtPayload } from 'src/auth/interfaces/jwt-payload.interface';
 import { NotificationResponseDto } from '../dto/notification-response.dto';
 import { UsersService } from 'src/users/users.service';

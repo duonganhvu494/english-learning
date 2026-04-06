@@ -101,7 +101,7 @@ export class AttendancesController {
   ])
   async getSessionAttendances(
     @Param('sessionId') sessionId: string,
-  ) {
+  ): Promise<ApiResponse<SessionAttendanceResponseDto>> {
     const result = await this.attendancesService.getSessionAttendances(sessionId);
 
     return ApiResponse.success(result, 'Session attendances fetched');
@@ -151,7 +151,7 @@ export class AttendancesController {
   async getMyAttendance(
     @Param('sessionId') sessionId: string,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<AttendanceSelfResponseDto>> {
     const result = await this.attendancesService.getMyAttendance(
       sessionId,
       req.user.userId,
@@ -223,7 +223,7 @@ export class AttendancesController {
     @Param('sessionId') sessionId: string,
     @Param('studentId') studentId: string,
     @Body() dto: UpdateAttendanceDto,
-  ) {
+  ): Promise<ApiResponse<AttendanceUpdateResponseDto>> {
     const result = await this.attendancesService.updateAttendance(
       sessionId,
       studentId,
@@ -293,7 +293,7 @@ export class AttendancesController {
   async selfCheckIn(
     @Param('sessionId') sessionId: string,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<AttendanceUpdateResponseDto>> {
     const result = await this.attendancesService.selfCheckIn(
       sessionId,
       req.user.userId,

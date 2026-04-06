@@ -83,6 +83,29 @@ export class AuthSessionsService {
     });
   }
 
+  async revokeAllUserSessionsExcept(
+    userId: string,
+    preservedJti: string,
+  ): Promise<void> {
+    const userIndexKey = this.buildUserSessionIndexKey(userId);
+
+    await this.redisService.withClient(async (client) => {
+      const jtis = await client.smembers(userIndexKey);
+      const multi = client.multi();
+
+      for (const jti of jtis) {
+        if (jti === preservedJti) {
+          continue;
+        }
+
+        multi.del(this.buildRefreshSessionKey(userId, jti));
+        multi.srem(userIndexKey, jti);
+      }
+
+      await multi.exec();
+    });
+  }
+
   async denyAccessToken(jti: string, ttlSeconds: number): Promise<void> {
     if (ttlSeconds <= 0) {
       return;

@@ -92,7 +92,7 @@ export class MaterialsController {
     @Param('workspaceId') workspaceId: string,
     @Body() dto: InitMaterialUploadDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<MaterialUploadInitResponseDto>> {
     const result = await this.materialsService.initMaterialUpload(
       workspaceId,
       dto,
@@ -144,7 +144,7 @@ export class MaterialsController {
   async signMaterialUploadPart(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: SignMaterialUploadPartDto,
-  ) {
+  ): Promise<ApiResponse<MaterialUploadPartSignedResponseDto>> {
     const result = await this.materialsService.signMaterialUploadPart(
       workspaceId,
       dto,
@@ -205,7 +205,7 @@ export class MaterialsController {
   async completeMaterialUpload(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: CompleteMaterialUploadDto,
-  ) {
+  ): Promise<ApiResponse<MaterialResponseDto>> {
     const result = await this.materialsService.completeMaterialUpload(
       workspaceId,
       dto,
@@ -257,7 +257,7 @@ export class MaterialsController {
   async abortMaterialUpload(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: AbortMaterialUploadDto,
-  ) {
+  ): Promise<ApiResponse<MaterialUploadAbortResponseDto>> {
     const result = await this.materialsService.abortMaterialUpload(
       workspaceId,
       dto,
@@ -313,7 +313,7 @@ export class MaterialsController {
   ])
   async listWorkspaceMaterials(
     @Param('workspaceId') workspaceId: string,
-  ) {
+  ): Promise<ApiResponse<MaterialResponseDto[]>> {
     const result = await this.materialsService.listWorkspaceMaterials(
       workspaceId,
     );
@@ -365,7 +365,7 @@ export class MaterialsController {
     { status: 403, code: 'RBAC_ROLE_DENIED', message: 'Role access denied' },
     { status: 400, code: 'MATERIAL_NOT_FOUND', message: 'Material not found' },
   ])
-  async getMaterialDetail(@Param('materialId') materialId: string) {
+  async getMaterialDetail(@Param('materialId') materialId: string): Promise<ApiResponse<MaterialResponseDto>> {
     const result = await this.materialsService.getMaterialDetail(materialId);
 
     return ApiResponse.success(result, 'Material detail fetched');
@@ -399,7 +399,7 @@ export class MaterialsController {
   async downloadMaterial(
     @Param('materialId') materialId: string,
     @Res() res: Response,
-  ) {
+  ): Promise<void> {
     const result = await this.materialsService.getMaterialDownloadTarget(
       materialId,
     );
@@ -440,7 +440,7 @@ export class MaterialsController {
     { status: 403, code: 'RBAC_ROLE_DENIED', message: 'Role access denied' },
     { status: 400, code: 'MATERIAL_NOT_FOUND', message: 'Material not found' },
   ])
-  async deleteMaterial(@Param('materialId') materialId: string) {
+  async deleteMaterial(@Param('materialId') materialId: string): Promise<ApiResponse<MaterialDeleteResponseDto>> {
     const result = await this.materialsService.deleteMaterial(materialId);
 
     return ApiResponse.success(result, 'Material deleted');

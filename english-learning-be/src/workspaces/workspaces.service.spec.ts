@@ -194,6 +194,8 @@ describe('WorkspacesService', () => {
         userName: 'teacher1',
         fullName: 'Teacher One',
         email: 'teacher@example.com',
+        emailVerified: true,
+        mustChangePassword: undefined,
       },
     });
   });
@@ -284,23 +286,47 @@ describe('WorkspacesService', () => {
     );
   });
 
-  it('blocks student creation when the current plan has reached its student quota', async () => {
+  it('creates or attaches a student inside a workspace and returns the mapped response', async () => {
     workspaceAccessService.getWorkspaceOrThrow.mockResolvedValue({
       id: 'workspace-1',
     });
-    workspaceEntitlementService.assertStudentQuotaAvailable.mockRejectedValue(
-      new ForbiddenException('Current workspace plan allows up to 30 students'),
-    );
-
-    await expect(
-      service.createStudentInWorkspace('workspace-1', {
+    workspaceStudentsService.provisionWorkspaceStudent.mockResolvedValue({
+      mode: 'created',
+      user: {
+        id: 'student-1',
         fullName: 'Student One',
-        userName: 'student1',
+        userName: 'studentone',
         email: 'student1@example.com',
-      }),
-    ).rejects.toThrow(ForbiddenException);
+        mustChangePassword: true,
+      },
+      workspaceRole: { name: 'student' },
+    });
 
-    expect(workspaceStudentsService.provisionWorkspaceStudent).not.toHaveBeenCalled();
+    const result = await service.createStudentInWorkspace('workspace-1', {
+      fullName: 'Student One',
+      email: 'student1@example.com',
+    });
+
+    expect(workspaceStudentsService.provisionWorkspaceStudent).toHaveBeenCalledWith(
+      { id: 'workspace-1' },
+      {
+        fullName: 'Student One',
+        email: 'student1@example.com',
+      },
+    );
+    expect(result).toEqual({
+      workspaceId: 'workspace-1',
+      mode: 'created',
+      role: 'student',
+      user: {
+        id: 'student-1',
+        fullName: 'Student One',
+        userName: 'studentone',
+        email: 'student1@example.com',
+        mustChangePassword: true,
+        emailVerified: true,
+      },
+    });
   });
 
   it('returns the current workspace subscription for the owning teacher', async () => {
@@ -494,6 +520,8 @@ describe('WorkspacesService', () => {
         userName: 'teacher1',
         fullName: 'Teacher One',
         email: 'teacher@example.com',
+        emailVerified: true,
+        mustChangePassword: undefined,
       },
       isActive: true,
       currentUserRole: 'owner',

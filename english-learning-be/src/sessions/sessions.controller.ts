@@ -92,7 +92,7 @@ export class SessionsController {
   async createSession(
     @Param('classId') classId: string,
     @Body() dto: CreateSessionDto,
-  ) {
+  ): Promise<ApiResponse<SessionResponseDto>> {
     const result = await this.sessionsService.createSession(classId, dto);
 
     return ApiResponse.success(result, 'Session created', 201);
@@ -150,7 +150,7 @@ export class SessionsController {
   ])
   async listClassSessions(
     @Param('classId') classId: string,
-  ) {
+  ): Promise<ApiResponse<SessionResponseDto[]>> {
     const result = await this.sessionsService.listClassSessions(classId);
 
     return ApiResponse.success(result, 'Class sessions fetched');
@@ -206,7 +206,7 @@ export class SessionsController {
   ])
   async getSessionDetail(
     @Param('sessionId') sessionId: string,
-  ) {
+  ): Promise<ApiResponse<SessionResponseDto>> {
     const result = await this.sessionsService.getSessionDetail(sessionId);
 
     return ApiResponse.success(result, 'Session detail fetched');
@@ -265,7 +265,7 @@ export class SessionsController {
   async updateSession(
     @Param('sessionId') sessionId: string,
     @Body() dto: UpdateSessionDto,
-  ) {
+  ): Promise<ApiResponse<SessionResponseDto>> {
     const result = await this.sessionsService.updateSession(sessionId, dto);
 
     return ApiResponse.success(result, 'Session updated');
@@ -305,7 +305,7 @@ export class SessionsController {
     { status: 403, code: 'RBAC_ROLE_DENIED', message: 'Role access denied' },
     { status: 400, code: 'SESSION_NOT_FOUND', message: 'Session not found' },
   ])
-  async deleteSession(@Param('sessionId') sessionId: string) {
+  async deleteSession(@Param('sessionId') sessionId: string): Promise<ApiResponse<SessionDeleteResponseDto>> {
     const result = await this.sessionsService.deleteSession(sessionId);
 
     return ApiResponse.success(result, 'Session deleted');

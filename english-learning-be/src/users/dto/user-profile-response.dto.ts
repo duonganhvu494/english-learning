@@ -12,6 +12,8 @@ export class UserProfileResponse {
     email: string;
     @ApiProperty({ example: false })
     mustChangePassword: boolean;
+    @ApiProperty({ example: true })
+    emailVerified: boolean;
 
     static fromData(data: {
         id: string;
@@ -19,6 +21,7 @@ export class UserProfileResponse {
         fullName: string;
         email: string;
         mustChangePassword: boolean;
+        emailVerified: boolean;
     }): UserProfileResponse {
         const dto = new UserProfileResponse();
         dto.id = data.id;
@@ -26,6 +29,7 @@ export class UserProfileResponse {
         dto.fullName = data.fullName;
         dto.email = data.email;
         dto.mustChangePassword = data.mustChangePassword;
+        dto.emailVerified = data.emailVerified;
         return dto;
     }
 
@@ -36,6 +40,9 @@ export class UserProfileResponse {
             fullName: user.fullName,
             email: user.email,
             mustChangePassword: user.mustChangePassword,
+            emailVerified:
+                !user.emailVerificationRequired ||
+                user.emailVerifiedAt !== null,
         });
     }
 }

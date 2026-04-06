@@ -94,7 +94,7 @@ export class SubmissionsController {
     @Param('assignmentId') assignmentId: string,
     @Body() dto: InitSubmissionUploadDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<MaterialUploadInitResponseDto>> {
     const result = await this.submissionsService.initMySubmissionUpload(
       assignmentId,
       req.user.userId,
@@ -133,7 +133,7 @@ export class SubmissionsController {
     @Param('assignmentId') assignmentId: string,
     @Body() dto: SignMaterialUploadPartDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<MaterialUploadPartSignedResponseDto>> {
     const result = await this.submissionsService.signMySubmissionUploadPart(
       assignmentId,
       req.user.userId,
@@ -186,7 +186,7 @@ export class SubmissionsController {
     @Param('assignmentId') assignmentId: string,
     @Body() dto: CompleteMaterialUploadDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<SubmissionResponseDto>> {
     const result = await this.submissionsService.completeMySubmissionUpload(
       assignmentId,
       req.user.userId,
@@ -226,7 +226,7 @@ export class SubmissionsController {
     @Param('assignmentId') assignmentId: string,
     @Body() dto: AbortMaterialUploadDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<MaterialUploadAbortResponseDto>> {
     const result = await this.submissionsService.abortMySubmissionUpload(
       assignmentId,
       req.user.userId,
@@ -269,7 +269,7 @@ export class SubmissionsController {
     @Param('assignmentId') assignmentId: string,
     @Req() req: AuthRequest,
     @Res() res: Response,
-  ) {
+  ): Promise<void> {
     const result = await this.submissionsService.getMySubmissionDownloadTarget(
       assignmentId,
       req.user.userId,
@@ -318,7 +318,7 @@ export class SubmissionsController {
   async getMySubmission(
     @Param('assignmentId') assignmentId: string,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<SubmissionResponseDto>> {
     const result = await this.submissionsService.getMySubmission(
       assignmentId,
       req.user.userId,
@@ -368,7 +368,7 @@ export class SubmissionsController {
   })
   @ApiUnauthorizedResponse({ description: 'User is not authenticated or must change password first' })
   @ApiForbiddenResponse({ description: 'Owner role is required' })
-  async listAssignmentSubmissions(@Param('assignmentId') assignmentId: string) {
+  async listAssignmentSubmissions(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<SubmissionResponseDto[]>> {
     const result = await this.submissionsService.listAssignmentSubmissions(
       assignmentId,
     );
@@ -409,7 +409,7 @@ export class SubmissionsController {
     @Param('assignmentId') assignmentId: string,
     @Param('studentId') studentId: string,
     @Res() res: Response,
-  ) {
+  ): Promise<void> {
     const result = await this.submissionsService.getSubmissionDownloadTarget(
       assignmentId,
       studentId,
@@ -458,7 +458,7 @@ export class SubmissionsController {
   async getAssignmentSubmission(
     @Param('assignmentId') assignmentId: string,
     @Param('studentId') studentId: string,
-  ) {
+  ): Promise<ApiResponse<SubmissionResponseDto>> {
     const result = await this.submissionsService.getAssignmentSubmission(
       assignmentId,
       studentId,
@@ -511,7 +511,7 @@ export class SubmissionsController {
     @Param('studentId') studentId: string,
     @Req() req: AuthRequest,
     @Body() dto: ReviewSubmissionDto,
-  ) {
+  ): Promise<ApiResponse<SubmissionResponseDto>> {
     const result = await this.submissionsService.reviewSubmission(
       assignmentId,
       studentId,

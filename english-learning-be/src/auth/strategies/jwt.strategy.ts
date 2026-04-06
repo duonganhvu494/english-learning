@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { UsersService } from 'src/users/users.service';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { RequestWithCookies } from '../interfaces/request-cookie.interface';
-import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
+import { AuthSessionsService } from 'src/auth/redis/auth-sessions.service';
 import { errorPayload } from 'src/common/utils/error-payload.util';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -48,6 +48,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: user.id,
       email: user.email,
+      emailVerified: !user.emailVerificationRequired || user.emailVerifiedAt !== null,
       userName: user.userName,
       fullName: user.fullName,
       jti: payload.jti,

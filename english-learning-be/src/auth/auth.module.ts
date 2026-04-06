@@ -6,13 +6,15 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-import { AuthSessionsModule } from 'src/auth-sessions/auth-sessions.module';
+import { AuthRedisModule } from 'src/auth/redis/auth-redis.module';
 import { AuthSecurityService } from './auth-security.service';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
   imports: [
     UsersModule,
-    AuthSessionsModule,
+    AuthRedisModule,
+    MailModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

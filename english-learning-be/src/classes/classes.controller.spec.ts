@@ -184,10 +184,10 @@ describe('ClassesController', () => {
     classesService.createStudentForClass.mockResolvedValue({
       classId: 'class-1',
       workspaceId: 'workspace-1',
+      mode: 'created',
       workspaceRole: 'student',
       classRoleId: 'role-student',
       classRoleName: 'student',
-      plainPassword: 'temp-pass-493',
       user: { id: 'student-1' },
     });
 
@@ -196,7 +196,6 @@ describe('ClassesController', () => {
       {
         fullName: 'Student One',
         email: 'student@example.com',
-        userName: 'student1',
       },
       { user: { userId: 'owner-1' } } as never,
     );
@@ -206,7 +205,6 @@ describe('ClassesController', () => {
       {
         fullName: 'Student One',
         email: 'student@example.com',
-        userName: 'student1',
       },
     );
     expect(result).toEqual({
@@ -215,10 +213,10 @@ describe('ClassesController', () => {
       result: {
         classId: 'class-1',
         workspaceId: 'workspace-1',
+        mode: 'created',
         workspaceRole: 'student',
         classRoleId: 'role-student',
         classRoleName: 'student',
-        plainPassword: 'temp-pass-493',
         user: { id: 'student-1' },
       },
     });

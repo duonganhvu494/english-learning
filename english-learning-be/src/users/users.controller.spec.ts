@@ -6,7 +6,7 @@ describe('UsersController', () => {
   let controller: UsersController;
   let usersService: {
     register: jest.Mock;
-    findAll: jest.Mock;
+    listUsers: jest.Mock;
     getUserById: jest.Mock;
     updateProfile: jest.Mock;
     remove: jest.Mock;
@@ -15,7 +15,7 @@ describe('UsersController', () => {
   beforeEach(async () => {
     usersService = {
       register: jest.fn(),
-      findAll: jest.fn(),
+      listUsers: jest.fn(),
       getUserById: jest.fn(),
       updateProfile: jest.fn(),
       remove: jest.fn(),
@@ -56,17 +56,17 @@ describe('UsersController', () => {
     });
     expect(result).toEqual({
       statusCode: 201,
-      message: 'User created',
+      message: 'User created. Verify your email to continue',
       result: { id: 'user-1' },
     });
   });
 
   it('returns the admin user list', async () => {
-    usersService.findAll.mockResolvedValue([{ id: 'user-1' }]);
+    usersService.listUsers.mockResolvedValue([{ id: 'user-1' }]);
 
-    const result = await controller.findAll();
+    const result = await controller.listUsers();
 
-    expect(usersService.findAll).toHaveBeenCalledWith();
+    expect(usersService.listUsers).toHaveBeenCalledWith();
     expect(result).toEqual({
       statusCode: 200,
       message: 'Users retrieved',
@@ -77,7 +77,7 @@ describe('UsersController', () => {
   it('returns a specific user through the admin route', async () => {
     usersService.getUserById.mockResolvedValue({ id: 'user-2' });
 
-    const result = await controller.findOne('user-2');
+    const result = await controller.getUserById('user-2');
 
     expect(usersService.getUserById).toHaveBeenCalledWith('user-2');
     expect(result).toEqual({

@@ -295,32 +295,25 @@ describe('ClassesService', () => {
     };
 
     workspaceAccessService.getClassOrThrow.mockResolvedValue(classEntity);
-    workspaceEntitlementService.assertStudentQuotaAvailable.mockResolvedValue(
-      undefined,
-    );
     rbacService.ensureDefaultClassStudentRole.mockResolvedValue(defaultClassRole);
     workspaceStudentsService.provisionWorkspaceStudent.mockResolvedValue({
-      plainPassword: 'temp-pass-493',
+      mode: 'created',
       user: savedUser,
       workspaceRole: workspaceStudentRole,
     });
+    classStudentRepo.findOne.mockResolvedValue(null);
     managerClassStudentRepo.save.mockResolvedValue(undefined);
 
     const result = await service.createStudentForClass('class-1', {
       fullName: '  Student One  ',
       email: 'student@example.com  ',
-      userName: ' student1 ',
     });
 
-    expect(
-      workspaceEntitlementService.assertStudentQuotaAvailable,
-    ).toHaveBeenCalledWith('workspace-1');
     expect(workspaceStudentsService.provisionWorkspaceStudent).toHaveBeenCalledWith(
       classEntity.workspace,
       {
         fullName: '  Student One  ',
         email: 'student@example.com  ',
-        userName: ' student1 ',
       },
     );
     expect(classStudentRepo.create).toHaveBeenCalledWith({
@@ -339,16 +332,17 @@ describe('ClassesService', () => {
     expect(result).toEqual({
       classId: 'class-1',
       workspaceId: 'workspace-1',
+      mode: 'created',
       workspaceRole: 'student',
       classRoleId: 'class-role-student',
       classRoleName: 'student',
-      plainPassword: 'temp-pass-493',
       user: {
         id: 'student-1',
         fullName: 'Student One',
         userName: 'student1',
         email: 'student@example.com',
         mustChangePassword: true,
+        emailVerified: true,
       },
     });
   });

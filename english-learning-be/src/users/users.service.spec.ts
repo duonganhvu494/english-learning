@@ -1,18 +1,28 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BadRequestException } from '@nestjs/common';
+import { AuthOtpService } from 'src/auth/redis/auth-otp.service';
+import { MailService } from 'src/mail/mail.service';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
-import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
+import { AuthSessionsService } from 'src/auth/redis/auth-sessions.service';
 
 describe('UsersService', () => {
   let service: UsersService;
   const usersRepo = {
     findOne: jest.fn(),
-    update: jest.fn(),
+    save: jest.fn(),
   };
   const authSessionsService = {
     revokeAllUserSessions: jest.fn(),
+  };
+  const mailService = {
+    sendEmailVerificationOtp: jest.fn(),
+    sendPasswordResetOtp: jest.fn(),
+  };
+  const authOtpService = {
+    issueEmailVerificationOtp: jest.fn(),
+    issuePasswordResetOtp: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -28,6 +38,14 @@ describe('UsersService', () => {
         {
           provide: AuthSessionsService,
           useValue: authSessionsService,
+        },
+        {
+          provide: MailService,
+          useValue: mailService,
+        },
+        {
+          provide: AuthOtpService,
+          useValue: authOtpService,
         },
       ],
     }).compile();
@@ -52,10 +70,16 @@ describe('UsersService', () => {
       id: 'user-1',
       isActive: true,
     });
-    usersRepo.update.mockResolvedValue({ affected: 1 });
+    usersRepo.save.mockResolvedValue({
+      id: 'user-1',
+      isActive: false,
+    });
 
     await expect(service.remove('user-1')).resolves.toEqual({ deleted: true });
-    expect(usersRepo.update).toHaveBeenCalledWith('user-1', { isActive: false });
+    expect(usersRepo.save).toHaveBeenCalledWith({
+      id: 'user-1',
+      isActive: false,
+    });
     expect(authSessionsService.revokeAllUserSessions).toHaveBeenCalledWith(
       'user-1',
     );
@@ -68,7 +92,7 @@ describe('UsersService', () => {
     });
 
     await expect(service.remove('user-1')).resolves.toEqual({ deleted: true });
-    expect(usersRepo.update).not.toHaveBeenCalled();
+    expect(usersRepo.save).not.toHaveBeenCalled();
     expect(authSessionsService.revokeAllUserSessions).toHaveBeenCalledWith(
       'user-1',
     );

@@ -298,10 +298,6 @@ export class ClassesService {
     const classEntity = await this.workspaceAccessService.getClassOrThrow(
       classId,
     );
-    await this.workspaceEntitlementService.assertStudentQuotaAvailable(
-      classEntity.workspace.id,
-    );
-
     const defaultClassStudentRole =
       await this.rbacService.ensureDefaultClassStudentRole(classId);
     const createdStudent =
@@ -309,6 +305,29 @@ export class ClassesService {
         classEntity.workspace,
         dto,
       );
+
+    const existingAssignment = await this.classStudentRepo.findOne({
+      where: {
+        classEntity: { id: classId },
+        student: { id: createdStudent.user.id },
+      },
+      relations: {
+        role: true,
+      },
+    });
+
+    if (existingAssignment) {
+      return CreateClassStudentResponseDto.fromData({
+        classId,
+        workspaceId: classEntity.workspace.id,
+        mode: 'already_assigned',
+        workspaceRole: createdStudent.workspaceRole.name,
+        classRoleId: existingAssignment.role?.id || defaultClassStudentRole.id,
+        classRoleName:
+          existingAssignment.role?.name || defaultClassStudentRole.name,
+        user: UserProfileResponse.fromEntity(createdStudent.user),
+      });
+    }
 
     await this.classStudentRepo.save(
       this.classStudentRepo.create({
@@ -331,10 +350,10 @@ export class ClassesService {
     return CreateClassStudentResponseDto.fromData({
       classId,
       workspaceId: classEntity.workspace.id,
+      mode: createdStudent.mode === 'created' ? 'created' : 'attached',
       workspaceRole: createdStudent.workspaceRole.name,
       classRoleId: defaultClassStudentRole.id,
       classRoleName: defaultClassStudentRole.name,
-      plainPassword: createdStudent.plainPassword,
       user: UserProfileResponse.fromEntity(createdStudent.user),
     });
   }

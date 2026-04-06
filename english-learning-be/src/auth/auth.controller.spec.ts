@@ -11,6 +11,10 @@ describe('AuthController', () => {
     refreshSession: jest.Mock;
     logout: jest.Mock;
     changePassword: jest.Mock;
+    verifyEmailOtp: jest.Mock;
+    resendEmailVerificationOtp: jest.Mock;
+    forgotPassword: jest.Mock;
+    resetPasswordWithOtp: jest.Mock;
   };
   let configService: {
     get: jest.Mock;
@@ -23,6 +27,10 @@ describe('AuthController', () => {
       refreshSession: jest.fn(),
       logout: jest.fn(),
       changePassword: jest.fn(),
+      verifyEmailOtp: jest.fn(),
+      resendEmailVerificationOtp: jest.fn(),
+      forgotPassword: jest.fn(),
+      resetPasswordWithOtp: jest.fn(),
     };
     configService = {
       get: jest.fn((key: string, fallback?: unknown) => {
@@ -82,7 +90,7 @@ describe('AuthController', () => {
     });
 
     const result = await controller.login(
-      { userName: 'teacher1', password: 'secret123' },
+      { identifier: 'teacher1', password: 'secret123' },
       { ip: '127.0.0.1' } as never,
       res as never,
     );
@@ -132,6 +140,27 @@ describe('AuthController', () => {
     });
   });
 
+  it('accepts the legacy userName field for backward compatibility', async () => {
+    const res = { cookie: jest.fn() };
+    authService.signIn.mockResolvedValue({
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      user: { id: 'user-1' },
+    });
+
+    await controller.login(
+      { userName: 'teacher1', password: 'secret123' } as never,
+      { ip: '127.0.0.1' } as never,
+      res as never,
+    );
+
+    expect(authService.signIn).toHaveBeenCalledWith(
+      'teacher1',
+      'secret123',
+      '127.0.0.1',
+    );
+  });
+
   it('refreshes the session and rotates cookies', async () => {
     const res = { cookie: jest.fn() };
     authService.refreshSession.mockResolvedValue({
@@ -139,7 +168,7 @@ describe('AuthController', () => {
       refreshToken: 'next-refresh-token',
     });
 
-    const result = await controller.refresh_token(
+    const result = await controller.refreshToken(
       {
         user: {
           userId: 'user-1',
@@ -251,18 +280,110 @@ describe('AuthController', () => {
         fullName: 'Teacher One',
         email: 'teacher@example.com',
         mustChangePassword: false,
+        emailVerified: true,
       },
     } as never);
 
+    expect(result.statusCode).toBe(200);
+    expect(result.message).toBe('Is authenticated');
+    expect(result.result).toMatchObject({
+      id: 'user-1',
+      userName: 'teacher1',
+      fullName: 'Teacher One',
+      email: 'teacher@example.com',
+      mustChangePassword: false,
+      emailVerified: true,
+    });
+  });
+
+  it('verifies an email OTP', async () => {
+    authService.verifyEmailOtp.mockResolvedValue({
+      emailVerified: true,
+      user: { id: 'user-1' },
+    });
+
+    const result = await controller.verifyEmailOtp({
+      email: 'teacher@example.com',
+      otp: '123456',
+    });
+
+    expect(authService.verifyEmailOtp).toHaveBeenCalledWith(
+      'teacher@example.com',
+      '123456',
+    );
     expect(result).toEqual({
       statusCode: 200,
-      message: 'Is authenticated',
+      message: 'Email verified successfully',
       result: {
-        id: 'user-1',
-        userName: 'teacher1',
-        fullName: 'Teacher One',
+        emailVerified: true,
+        user: { id: 'user-1' },
+      },
+    });
+  });
+
+  it('resends an email verification OTP', async () => {
+    authService.resendEmailVerificationOtp.mockResolvedValue({
+      email: 'teacher@example.com',
+      expiresAt: '2026-04-06T10:15:00.000Z',
+    });
+
+    const result = await controller.resendEmailVerificationOtp({
+      email: 'teacher@example.com',
+    });
+
+    expect(authService.resendEmailVerificationOtp).toHaveBeenCalledWith(
+      'teacher@example.com',
+    );
+    expect(result).toEqual({
+      statusCode: 200,
+      message: 'Verification OTP sent',
+      result: {
         email: 'teacher@example.com',
-        mustChangePassword: false,
+        expiresAt: '2026-04-06T10:15:00.000Z',
+      },
+    });
+  });
+
+  it('requests a forgot password OTP', async () => {
+    authService.forgotPassword.mockResolvedValue({ sent: true });
+
+    const result = await controller.forgotPassword({
+      email: 'teacher@example.com',
+    });
+
+    expect(authService.forgotPassword).toHaveBeenCalledWith(
+      'teacher@example.com',
+    );
+    expect(result).toEqual({
+      statusCode: 200,
+      message: 'Password reset OTP sent if the account exists',
+      result: {
+        sent: true,
+      },
+    });
+  });
+
+  it('resets password with OTP', async () => {
+    authService.resetPasswordWithOtp.mockResolvedValue({
+      user: { id: 'user-1' },
+    });
+
+    const result = await controller.resetPassword({
+      email: 'teacher@example.com',
+      otp: '123456',
+      newPassword: 'new-secret',
+    });
+
+    expect(authService.resetPasswordWithOtp).toHaveBeenCalledWith(
+      'teacher@example.com',
+      '123456',
+      'new-secret',
+    );
+    expect(result).toEqual({
+      statusCode: 200,
+      message: 'Password reset successfully',
+      result: {
+        user: { id: 'user-1' },
       },
     });
   });
@@ -280,6 +401,9 @@ describe('AuthController', () => {
         user: {
           userId: 'user-1',
         },
+        cookies: {
+          refreshToken: 'refresh-token',
+        },
       } as never,
       {
         currentPassword: 'temp-secret',
@@ -291,6 +415,7 @@ describe('AuthController', () => {
       'user-1',
       'temp-secret',
       'new-secret',
+      'refresh-token',
     );
     expect(result).toEqual({
       statusCode: 200,

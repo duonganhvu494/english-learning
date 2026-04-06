@@ -12,7 +12,7 @@ import { SessionEntity } from 'src/sessions/entities/session.entity';
 import { SubmissionEntity } from 'src/submissions/entities/submission.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UsersModule } from 'src/users/users.module';
-import { AuthSessionsModule } from 'src/auth-sessions/auth-sessions.module';
+import { AuthRedisModule } from 'src/auth/redis/auth-redis.module';
 import { NotificationEntity } from './entities/notification.entity';
 import { AssignmentDeadlineNotificationsJob } from './jobs/assignment-deadline-notifications.job';
 import { AssignmentMaterialsNotificationsListener } from './listeners/assignment-materials-notifications.listener';
@@ -34,7 +34,7 @@ import { NotificationsService } from './notifications.service';
   imports: [
     ConfigModule,
     UsersModule,
-    AuthSessionsModule,
+    AuthRedisModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -41,6 +41,13 @@ export class CsrfMiddleware implements NestMiddleware {
   }
 
   private isCsrfExemptRoute(path: string): boolean {
-    return path === '/auth/login' || path === '/users/register';
+    return (
+      path === '/auth/login' ||
+      path === '/auth/verify-email-otp' ||
+      path === '/auth/resend-email-otp' ||
+      path === '/auth/forgot-password' ||
+      path === '/auth/reset-password' ||
+      path === '/users/register'
+    );
   }
 }

@@ -109,10 +109,10 @@ export class WorkspacesController {
     },
     { status: 400, code: 'VALIDATION_ERROR', message: 'Validation failed' },
   ])
-  async create(
+  async createWorkspace(
     @Body() dto: CreateWorkspaceDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<WorkspaceResponseDto>> {
     const workspace = await this.service.createWorkspace(
       dto,
       req.user.userId,
@@ -163,7 +163,7 @@ export class WorkspacesController {
     },
     { status: 400, code: 'WORKSPACE_NOT_FOUND', message: 'Workspace not found' },
   ])
-  async myWorkspace(@Req() req: AuthRequest) {
+  async getMyWorkspace(@Req() req: AuthRequest): Promise<ApiResponse<WorkspaceDetailResponseDto>> {
     const result = await this.service.getMyWorkspace(
       req.user.userId,
     );
@@ -228,7 +228,7 @@ export class WorkspacesController {
       message: 'Workspace subscription not found',
     },
   ])
-  async myWorkspaceSubscription(@Req() req: AuthRequest) {
+  async getMyWorkspaceSubscription(@Req() req: AuthRequest): Promise<ApiResponse<WorkspaceSubscriptionResponseDto>> {
     const result = await this.service.getMyWorkspaceSubscription(
       req.user.userId,
     );
@@ -277,7 +277,7 @@ export class WorkspacesController {
       message: 'Password change is required before accessing this resource',
     },
   ])
-  async listPlans() {
+  async listPlans(): Promise<ApiResponse<PlanResponseDto[]>> {
     const result = await this.workspacePlansService.listPublicPlans();
     return ApiResponse.success(result, 'Workspace plans retrieved');
   }
@@ -327,10 +327,10 @@ export class WorkspacesController {
     { status: 403, code: 'RBAC_PERMISSION_DENIED', message: 'Permission access denied' },
     { status: 400, code: 'WORKSPACE_NOT_FOUND', message: 'Workspace not found' },
   ])
-  async getDetail(
+  async getWorkspaceDetail(
     @Param('id') workspaceId: string,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<WorkspaceDetailResponseDto>> {
     const result = await this.service.getWorkspaceDetail(
       workspaceId,
       req.user.userId,
@@ -344,19 +344,19 @@ export class WorkspacesController {
   @ApiOperation({
     summary: 'Create workspace student',
     description:
-      'Creates a student account and adds it into the target workspace. Owner access required.',
+      'Finds an existing student by email or creates a new student account, then adds the student into the target workspace. Owner access required.',
   })
   @ApiCookieAuth('cookieAuth')
   @ApiSecurity('csrfHeader')
   @ApiEnvelopeResponse({
     status: 201,
-    description: 'Workspace student created successfully',
+    description: 'Workspace student processed successfully',
     model: WorkspaceStudentResponseDto,
     exampleMessage: 'Student created and added to workspace',
     exampleResult: {
       workspaceId: '550e8400-e29b-41d4-a716-446655440100',
+      mode: 'created',
       role: 'student',
-      plainPassword: 'temp-pass-493',
       user: {
         id: '550e8400-e29b-41d4-a716-446655440010',
         userName: 'student01',
@@ -378,29 +378,36 @@ export class WorkspacesController {
     { status: 403, code: 'RBAC_ROLE_DENIED', message: 'Role access denied' },
     {
       status: 400,
-      code: 'WORKSPACE_STUDENT_EMAIL_ALREADY_EXISTS',
-      message: 'Email already exists',
+      code: 'WORKSPACE_STUDENT_EMAIL_BELONGS_TO_ANOTHER_ACCOUNT',
+      message: 'Email already belongs to another account',
     },
     {
       status: 400,
-      code: 'WORKSPACE_STUDENT_USERNAME_ALREADY_EXISTS',
-      message: 'Username already exists',
+      code: 'WORKSPACE_STUDENT_ACCOUNT_INACTIVE',
+      message: 'Student account is inactive',
     },
     { status: 400, code: 'WORKSPACE_NOT_FOUND', message: 'Workspace not found' },
+    {
+      status: 403,
+      code: 'WORKSPACE_PLAN_MAX_STUDENTS_REACHED',
+      message: 'Current workspace plan allows up to 30 students',
+    },
     { status: 400, code: 'VALIDATION_ERROR', message: 'Validation failed' },
   ])
   async createStudent(
     @Param('id') workspaceId: string,
     @Body() dto: CreateStudentDto
-  ) {
+  ): Promise<ApiResponse<WorkspaceStudentResponseDto>> {
     const student = await this.service.createStudentInWorkspace(
       workspaceId,
       dto,
     );
+    const statusCode = student.mode === 'already_assigned' ? 200 : 201;
+
     return ApiResponse.success(
       student,
-      'Student created and added to workspace',
-      201,
+      this.getWorkspaceStudentMessage(student.mode),
+      statusCode,
     );
   }
 
@@ -443,7 +450,7 @@ export class WorkspacesController {
   ])
   async listStudents(
     @Param('id') workspaceId: string,
-  ) {
+  ): Promise<ApiResponse<WorkspaceStudentListItemDto[]>> {
     const students = await this.service.listWorkspaceStudents(
       workspaceId,
     );
@@ -505,7 +512,7 @@ export class WorkspacesController {
     @Param('id') workspaceId: string,
     @Param('studentId') studentId: string,
     @Body() dto: UpdateWorkspaceStudentDto,
-  ) {
+  ): Promise<ApiResponse<WorkspaceStudentListItemDto>> {
     const result = await this.service.updateWorkspaceStudent(
       workspaceId,
       studentId,
@@ -554,11 +561,24 @@ export class WorkspacesController {
   async removeStudent(
     @Param('id') workspaceId: string,
     @Param('studentId') studentId: string,
-  ) {
+  ): Promise<ApiResponse<RemoveWorkspaceStudentResponseDto>> {
     const result = await this.service.removeStudentFromWorkspace(
       workspaceId,
       studentId,
     );
     return ApiResponse.success(result, 'Student removed from workspace');
+  }
+
+  private getWorkspaceStudentMessage(
+    mode: WorkspaceStudentResponseDto['mode'],
+  ): string {
+    switch (mode) {
+      case 'created':
+        return 'Student created and added to workspace';
+      case 'attached':
+        return 'Existing student added to workspace';
+      case 'already_assigned':
+        return 'Student already exists in workspace';
+    }
   }
 }

@@ -18,6 +18,7 @@ import { RbacModule } from './rbac/rbac.module';
 import { ClassesModule } from './classes/classes.module';
 import appConfig from './config/app.config';
 import jwtConfig from './config/jwt.config';
+import mailConfig from './config/mail.config';
 import redisConfig from './config/redis.config';
 import storageConfig from './config/storage.config';
 import { validateEnvironment } from './config/env.validation';
@@ -36,7 +37,14 @@ import { BillingModule } from './billing/billing.module';
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnvironment,
-      load: [databaseConfig, jwtConfig, appConfig, redisConfig, storageConfig],
+      load: [
+        databaseConfig,
+        jwtConfig,
+        appConfig,
+        redisConfig,
+        storageConfig,
+        mailConfig,
+      ],
     }),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),

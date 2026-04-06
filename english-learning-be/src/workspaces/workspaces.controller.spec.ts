@@ -88,7 +88,7 @@ describe('WorkspacesController', () => {
   it('creates a workspace for the current teacher', async () => {
     workspacesService.createWorkspace.mockResolvedValue({ id: 'workspace-1' });
 
-    const result = await controller.create(
+    const result = await controller.createWorkspace(
       { name: 'English Center' },
       { user: { userId: 'teacher-1' } } as never,
     );
@@ -127,7 +127,7 @@ describe('WorkspacesController', () => {
       currentUserRole: 'owner',
     });
 
-    const result = await controller.myWorkspace({
+    const result = await controller.getMyWorkspace({
       user: { userId: 'teacher-1' },
     } as never);
 
@@ -151,7 +151,7 @@ describe('WorkspacesController', () => {
       plan: { code: 'starter' },
     });
 
-    const result = await controller.myWorkspaceSubscription({
+    const result = await controller.getMyWorkspaceSubscription({
       user: { userId: 'teacher-1' },
     } as never);
 
@@ -175,7 +175,7 @@ describe('WorkspacesController', () => {
       currentUserRole: 'owner',
     });
 
-    const result = await controller.getDetail(
+    const result = await controller.getWorkspaceDetail(
       'workspace-1',
       { user: { userId: 'teacher-1' } } as never,
     );
@@ -197,6 +197,7 @@ describe('WorkspacesController', () => {
   it('creates a student inside a workspace', async () => {
     workspacesService.createStudentInWorkspace.mockResolvedValue({
       workspaceId: 'workspace-1',
+      mode: 'created',
       user: { id: 'student-1' },
     });
 
@@ -205,7 +206,6 @@ describe('WorkspacesController', () => {
       {
         fullName: 'Student One',
         email: 'student@example.com',
-        userName: 'student1',
       },
     );
 
@@ -214,14 +214,15 @@ describe('WorkspacesController', () => {
       {
         fullName: 'Student One',
         email: 'student@example.com',
-        userName: 'student1',
       },
     );
     expect(result).toEqual({
+      code: undefined,
       statusCode: 201,
       message: 'Student created and added to workspace',
       result: {
         workspaceId: 'workspace-1',
+        mode: 'created',
         user: { id: 'student-1' },
       },
     });

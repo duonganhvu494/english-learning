@@ -77,7 +77,10 @@ export class WorkspacesService {
   }
 
   // ================= CREATE WORKSPACE =================
-  async createWorkspace(dto: CreateWorkspaceDto, userId: string) {
+  async createWorkspace(
+    dto: CreateWorkspaceDto,
+    userId: string,
+  ): Promise<WorkspaceResponseDto> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new BadRequestException(
@@ -138,8 +141,10 @@ export class WorkspacesService {
       );
     }
 
+    const normalizedWorkspaceName = dto.name.trim();
+
     const workspace = this.workspaceRepo.create({
-      name: dto.name,
+      name: normalizedWorkspaceName,
       owner: user,
       isActive: true,
     });
@@ -255,10 +260,6 @@ export class WorkspacesService {
       workspaceId,
     );
 
-    await this.workspaceEntitlementService.assertStudentQuotaAvailable(
-      workspaceId,
-    );
-
     const createdStudent =
       await this.workspaceStudentsService.provisionWorkspaceStudent(
         workspace,
@@ -267,15 +268,15 @@ export class WorkspacesService {
 
     return WorkspaceStudentResponseDto.fromData({
       workspaceId: workspace.id,
+      mode: createdStudent.mode,
       role: createdStudent.workspaceRole.name,
-      plainPassword: createdStudent.plainPassword,
       user: UserProfileResponse.fromEntity(createdStudent.user),
     });
   }
 
   async listWorkspaceStudents(
     workspaceId: string,
-  ) {
+  ): Promise<WorkspaceStudentListItemDto[]> {
     await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const members = await this.memberRepo

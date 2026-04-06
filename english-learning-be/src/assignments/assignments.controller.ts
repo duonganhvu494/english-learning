@@ -119,7 +119,7 @@ export class AssignmentsController {
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateAssignmentDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<AssignmentResponseDto>> {
     const result = await this.assignmentsService.createAssignment(
       sessionId,
       dto,
@@ -185,7 +185,7 @@ export class AssignmentsController {
     { status: 403, code: 'RBAC_ROLE_DENIED', message: 'Role access denied' },
     { status: 403, code: 'RBAC_PERMISSION_DENIED', message: 'Permission access denied' },
   ])
-  async listSessionAssignments(@Param('sessionId') sessionId: string) {
+  async listSessionAssignments(@Param('sessionId') sessionId: string): Promise<ApiResponse<AssignmentResponseDto[]>> {
     const result = await this.assignmentsService.listSessionAssignments(
       sessionId,
     );
@@ -247,7 +247,7 @@ export class AssignmentsController {
     { status: 403, code: 'RBAC_PERMISSION_DENIED', message: 'Permission access denied' },
     { status: 400, code: 'ASSIGNMENT_NOT_FOUND', message: 'Assignment not found' },
   ])
-  async getAssignmentDetail(@Param('assignmentId') assignmentId: string) {
+  async getAssignmentDetail(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<AssignmentResponseDto>> {
     const result = await this.assignmentsService.getAssignmentDetail(
       assignmentId,
     );
@@ -316,7 +316,7 @@ export class AssignmentsController {
     { status: 400, code: 'ASSIGNMENT_NOT_FOUND', message: 'Assignment not found' },
     { status: 400, code: 'ASSIGNMENT_QUIZ_TYPE_REQUIRED', message: 'Assignment is not a quiz' },
   ])
-  async getQuizManagement(@Param('assignmentId') assignmentId: string) {
+  async getQuizManagement(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<AssignmentQuizManagementResponseDto>> {
     const result = await this.assignmentsQuizService.getQuizManagement(
       assignmentId,
     );
@@ -394,7 +394,7 @@ export class AssignmentsController {
     { status: 400, code: 'ASSIGNMENT_QUIZ_TYPE_REQUIRED', message: 'Assignment is not a quiz' },
     { status: 400, code: 'ASSIGNMENT_QUIZ_NOT_READY', message: 'Quiz is not ready yet' },
   ])
-  async getQuiz(@Param('assignmentId') assignmentId: string) {
+  async getQuiz(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<AssignmentQuizResponseDto>> {
     const result = await this.assignmentsQuizService.getQuiz(assignmentId);
 
     return ApiResponse.success(result, 'Assignment quiz fetched');
@@ -437,7 +437,7 @@ export class AssignmentsController {
   async createQuizQuestion(
     @Param('assignmentId') assignmentId: string,
     @Body() dto: CreateAssignmentQuizQuestionDto,
-  ) {
+  ): Promise<ApiResponse<AssignmentQuizQuestionManagementResponseDto>> {
     const result = await this.assignmentsQuizService.createQuizQuestion(
       assignmentId,
       dto,
@@ -483,7 +483,7 @@ export class AssignmentsController {
     @Param('assignmentId') assignmentId: string,
     @Param('questionId') questionId: string,
     @Body() dto: UpdateAssignmentQuizQuestionDto,
-  ) {
+  ): Promise<ApiResponse<AssignmentQuizQuestionManagementResponseDto>> {
     const result = await this.assignmentsQuizService.updateQuizQuestion(
       assignmentId,
       questionId,
@@ -528,7 +528,7 @@ export class AssignmentsController {
   async deleteQuizQuestion(
     @Param('assignmentId') assignmentId: string,
     @Param('questionId') questionId: string,
-  ) {
+  ): Promise<ApiResponse<{ questionId: string; }>> {
     const result = await this.assignmentsQuizService.deleteQuizQuestion(
       assignmentId,
       questionId,
@@ -574,7 +574,7 @@ export class AssignmentsController {
     @Param('assignmentId') assignmentId: string,
     @Param('questionId') questionId: string,
     @Body() dto: CreateAssignmentQuizOptionDto,
-  ) {
+  ): Promise<ApiResponse<AssignmentQuizQuestionManagementResponseDto>> {
     const result = await this.assignmentsQuizService.createQuizOption(
       assignmentId,
       questionId,
@@ -621,7 +621,7 @@ export class AssignmentsController {
     @Param('assignmentId') assignmentId: string,
     @Param('optionId') optionId: string,
     @Body() dto: UpdateAssignmentQuizOptionDto,
-  ) {
+  ): Promise<ApiResponse<AssignmentQuizQuestionManagementResponseDto>> {
     const result = await this.assignmentsQuizService.updateQuizOption(
       assignmentId,
       optionId,
@@ -666,7 +666,7 @@ export class AssignmentsController {
   async deleteQuizOption(
     @Param('assignmentId') assignmentId: string,
     @Param('optionId') optionId: string,
-  ) {
+  ): Promise<ApiResponse<{ optionId: string; }>> {
     const result = await this.assignmentsQuizService.deleteQuizOption(
       assignmentId,
       optionId,
@@ -718,7 +718,7 @@ export class AssignmentsController {
     @Param('questionId') questionId: string,
     @Param('materialId') materialId: string,
     @Res() res: Response,
-  ) {
+  ): Promise<void> {
     const result =
       await this.assignmentsQuizService.getQuizQuestionMaterialDownloadTarget(
         assignmentId,
@@ -780,7 +780,7 @@ export class AssignmentsController {
   async startMyQuizAttempt(
     @Param('assignmentId') assignmentId: string,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<AssignmentQuizAttemptResponseDto>> {
     const result = await this.assignmentsQuizService.startMyQuizAttempt(
       assignmentId,
       req.user.userId,
@@ -832,7 +832,7 @@ export class AssignmentsController {
   async getMyQuizAttempt(
     @Param('assignmentId') assignmentId: string,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<AssignmentQuizAttemptResponseDto>> {
     const result = await this.assignmentsQuizService.getMyQuizAttempt(
       assignmentId,
       req.user.userId,
@@ -886,7 +886,7 @@ export class AssignmentsController {
     @Param('assignmentId') assignmentId: string,
     @Body() dto: SubmitAssignmentQuizAttemptDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<AssignmentQuizAttemptResponseDto>> {
     const result = await this.assignmentsQuizService.submitMyQuizAttempt(
       assignmentId,
       req.user.userId,
@@ -932,7 +932,7 @@ export class AssignmentsController {
   })
   @ApiUnauthorizedResponse({ description: 'User is not authenticated or must change password first' })
   @ApiForbiddenResponse({ description: 'Owner role is required' })
-  async listQuizAttempts(@Param('assignmentId') assignmentId: string) {
+  async listQuizAttempts(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<AssignmentQuizAttemptResponseDto[]>> {
     const result = await this.assignmentsQuizService.listQuizAttempts(
       assignmentId,
     );
@@ -976,7 +976,7 @@ export class AssignmentsController {
   async getQuizAttempt(
     @Param('assignmentId') assignmentId: string,
     @Param('studentId') studentId: string,
-  ) {
+  ): Promise<ApiResponse<AssignmentQuizAttemptResponseDto>> {
     const result = await this.assignmentsQuizService.getQuizAttempt(
       assignmentId,
       studentId,
@@ -1025,7 +1025,7 @@ export class AssignmentsController {
     @Param('assignmentId') assignmentId: string,
     @Param('materialId') materialId: string,
     @Res() res: Response,
-  ) {
+  ): Promise<void> {
     const result = await this.assignmentsService.getAssignmentMaterialDownloadTarget(
       assignmentId,
       materialId,
@@ -1077,7 +1077,7 @@ export class AssignmentsController {
       message: 'Cannot delete assignment after students have started quiz attempts',
     },
   ])
-  async deleteAssignment(@Param('assignmentId') assignmentId: string) {
+  async deleteAssignment(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<AssignmentDeleteResponseDto>> {
     const result = await this.assignmentsService.deleteAssignment(assignmentId);
 
     return ApiResponse.success(result, 'Assignment deleted');

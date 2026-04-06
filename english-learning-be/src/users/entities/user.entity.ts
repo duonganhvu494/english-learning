@@ -29,6 +29,12 @@ export class User {
   @Column({ default: false })
   mustChangePassword: boolean;
 
+  @Column({ default: false })
+  emailVerificationRequired: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  emailVerifiedAt: Date | null;
+
   @Column({
     type: 'enum',
     enum: AccountType,
