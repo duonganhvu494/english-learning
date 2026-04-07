@@ -1,12 +1,19 @@
 "use client";
 
-import type { Dictionary } from "@/i18n/types";
-
-export type NotificationItem =
-  Dictionary["notificationsPage"]["mock"]["teacher"][number];
+export type NotificationItem = {
+  id: string;
+  type: "info" | "success" | "warning" | "error";
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  category: "class" | "assignment" | "event" | "system" | "student";
+};
 
 export type NotificationFilter = "all" | "unread";
 
-export type NotificationCategoryLabels =
-  Dictionary["notificationsPage"]["categories"];
+export type NotificationCategoryLabels = Record<
+  NotificationItem["category"],
+  string
+>;
 

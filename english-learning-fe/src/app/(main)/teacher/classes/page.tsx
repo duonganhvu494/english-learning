@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, classesApi } from "@/api";
 import { translateApiMessage } from "@/api/core/api-message-translator";
 import { useSubscription } from "@/context/subscriptionContext";
-import { UpgradePlanDialog } from "@/components/common/upgrade-plan-dialog";
+import { PlanUpgradeDialog } from "@/components/common/plan-upgrade-dialog";
 import { ClassesEmptyState } from "@/components/teacher/classes/classes-empty-state";
 import { ClassesGrid } from "@/components/teacher/classes/classes-grid";
 import { ClassFormDialog } from "@/components/teacher/classes/class-form-dialog";
@@ -46,7 +46,7 @@ function parseClassLimitFromError(
 export default function ClassesPage() {
   const { dictionary } = useAppSettings();
   const { activeWorkspaceId } = useAuth();
-  const { maxClasses, upgradeTier } = useSubscription();
+  const { tier, maxClasses, upgradeTier } = useSubscription();
   const { success: notifySuccess, error: notifyError } = useNotification();
   const classesDictionary = dictionary.classesPage;
 
@@ -296,11 +296,40 @@ export default function ClassesPage() {
         />
       )}
 
-      <UpgradePlanDialog
+      <PlanUpgradeDialog
         open={upgradeDialogOpen}
         onOpenChange={setUpgradeDialogOpen}
         onUpgrade={handleUpgrade}
-        maxClasses={Number.isFinite(maxClasses) ? maxClasses : 999}
+        currentTier={tier}
+        title={dictionary.dashboard.upgradeDialogTitle}
+        description={dictionary.dashboard.upgradeDialogDescription.replace(
+          "{maxClasses}",
+          String(Number.isFinite(maxClasses) ? maxClasses : 3),
+        )}
+        cancelLabel={dictionary.dashboard.createDialogCancel}
+        proPlan={{
+          name: dictionary.dashboard.proPlanTitle,
+          price: dictionary.dashboard.planPrice,
+          period: dictionary.dashboard.planPeriod,
+          features: [
+            dictionary.dashboard.upgradeBenefit1,
+            dictionary.dashboard.upgradeBenefit2,
+            dictionary.dashboard.upgradeBenefit3,
+          ],
+          ctaLabel: dictionary.dashboard.upgradeProCta,
+          badgeLabel: dictionary.landing.pricing.mostPopular,
+        }}
+        enterprisePlan={{
+          name: dictionary.dashboard.enterprisePlanTitle,
+          price: dictionary.dashboard.enterprisePlanPrice,
+          period: dictionary.dashboard.planPeriod,
+          features: [
+            dictionary.dashboard.enterpriseBenefit1,
+            dictionary.dashboard.enterpriseBenefit2,
+            dictionary.dashboard.enterpriseBenefit3,
+          ],
+          ctaLabel: dictionary.dashboard.upgradeEnterpriseCta,
+        }}
       />
     </div>
   );

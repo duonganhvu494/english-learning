@@ -21,9 +21,11 @@ import { ApiResponse } from 'src/common/dto/api-response.dto';
 import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
 import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
 import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
+import { CreateStudentDto } from 'src/users/dto/create-student.dto';
 import { AddClassStudentsDto } from './dto/add-class-students.dto';
 import { ApiBusinessErrorResponses, ApiEnvelopeResponse } from 'src/common/swagger/swagger-response.decorator';
 import { CreateClassDto } from './dto/create-class.dto';
+import { CreateClassStudentResponseDto } from './dto/create-class-student-response.dto';
 import { UpdateClassStudentRoleDto } from './dto/update-class-student-role.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { ClassesService } from './classes.service';
@@ -81,7 +83,7 @@ export class ClassesController {
   async createClass(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: CreateClassDto,
-  ) {
+  ): Promise<ApiResponse<ClassResponseDto>> {
     const classEntity = await this.classesService.createClass(
       workspaceId,
       dto,
@@ -131,7 +133,7 @@ export class ClassesController {
   ])
   async listWorkspaceClasses(
     @Param('workspaceId') workspaceId: string,
-  ) {
+  ): Promise<ApiResponse<ClassResponseDto[]>> {
     const result = await this.classesService.listWorkspaceClasses(
       workspaceId,
     );
@@ -178,7 +180,7 @@ export class ClassesController {
   ])
   async getClassDetail(
     @Param('classId') classId: string,
-  ) {
+  ): Promise<ApiResponse<ClassResponseDto>> {
     const result = await this.classesService.getClassDetail(classId);
 
     return ApiResponse.success(result, 'Class detail fetched');
@@ -229,7 +231,7 @@ export class ClassesController {
   ])
   async getClassStudents(
     @Param('classId') classId: string,
-  ) {
+  ): Promise<ApiResponse<ClassRosterResponseDto>> {
     const result = await this.classesService.getClassStudents(classId);
 
     return ApiResponse.success(result, 'Class students fetched');
@@ -277,13 +279,98 @@ export class ClassesController {
   async addStudentsToClass(
     @Param('classId') classId: string,
     @Body() dto: AddClassStudentsDto,
-  ) {
+  ): Promise<ApiResponse<ClassStudentsResponseDto>> {
     const result = await this.classesService.addStudentsToClass(
       classId,
       dto,
     );
 
     return ApiResponse.success(result, 'Students added to class');
+  }
+
+  @Post('classes/:classId/students/create')
+  @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
+  @RequireRoles(['owner'], {
+    scopeType: 'workspace',
+    scopeResourceType: 'class',
+    scopeResourceIdParam: 'classId',
+  })
+  @ApiOperation({
+    summary: 'Create student and add to class',
+    description:
+      'Finds an existing student by email or creates a new student account, then ensures the student is assigned to the target class. Owner access required.',
+  })
+  @ApiCookieAuth('cookieAuth')
+  @ApiSecurity('csrfHeader')
+  @ApiEnvelopeResponse({
+    status: 201,
+    description: 'Class student processed successfully',
+    model: CreateClassStudentResponseDto,
+    exampleMessage: 'Student created and added to class',
+    exampleResult: {
+      classId: '550e8400-e29b-41d4-a716-446655440200',
+      workspaceId: '550e8400-e29b-41d4-a716-446655440100',
+      mode: 'created',
+      workspaceRole: 'student',
+      classRoleId: '550e8400-e29b-41d4-a716-446655440300',
+      classRoleName: 'student',
+      user: {
+        id: '550e8400-e29b-41d4-a716-446655440010',
+        fullName: 'Nguyen Van A',
+        userName: 'student01',
+        email: 'student01@example.com',
+        mustChangePassword: true,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'User is not authenticated or must change password first' })
+  @ApiForbiddenResponse({ description: 'Owner role is required' })
+  @ApiBusinessErrorResponses([
+    { status: 401, code: 'AUTH_UNAUTHORIZED', message: 'Unauthorized' },
+    {
+      status: 401,
+      code: 'AUTH_PASSWORD_CHANGE_REQUIRED',
+      message: 'Password change is required before accessing this resource',
+    },
+    { status: 403, code: 'RBAC_ROLE_DENIED', message: 'Role access denied' },
+    { status: 400, code: 'CLASS_NOT_FOUND', message: 'Class not found' },
+    {
+      status: 400,
+      code: 'WORKSPACE_STUDENT_ROLE_NOT_FOUND',
+      message: 'Student role not found',
+    },
+    {
+      status: 400,
+      code: 'WORKSPACE_STUDENT_EMAIL_BELONGS_TO_ANOTHER_ACCOUNT',
+      message: 'Email already belongs to another account',
+    },
+    {
+      status: 400,
+      code: 'WORKSPACE_STUDENT_ACCOUNT_INACTIVE',
+      message: 'Student account is inactive',
+    },
+    {
+      status: 403,
+      code: 'WORKSPACE_PLAN_MAX_STUDENTS_REACHED',
+      message: 'Current workspace plan allows up to 30 students',
+    },
+    { status: 400, code: 'VALIDATION_ERROR', message: 'Validation failed' },
+  ])
+  async createStudentForClass(
+    @Param('classId') classId: string,
+    @Body() dto: CreateStudentDto,
+  ): Promise<ApiResponse<CreateClassStudentResponseDto>> {
+    const result = await this.classesService.createStudentForClass(
+      classId,
+      dto,
+    );
+    const statusCode = result.mode === 'already_assigned' ? 200 : 201;
+
+    return ApiResponse.success(
+      result,
+      this.getClassStudentMessage(result.mode),
+      statusCode,
+    );
   }
 
   @Patch('classes/:classId')
@@ -329,7 +416,7 @@ export class ClassesController {
   async updateClass(
     @Param('classId') classId: string,
     @Body() dto: UpdateClassDto,
-  ) {
+  ): Promise<ApiResponse<ClassResponseDto>> {
     const result = await this.classesService.updateClass(
       classId,
       dto,
@@ -378,7 +465,7 @@ export class ClassesController {
   async removeStudentFromClass(
     @Param('classId') classId: string,
     @Param('studentId') studentId: string,
-  ) {
+  ): Promise<ApiResponse<ClassStudentsResponseDto>> {
     const result = await this.classesService.removeStudentFromClass(
       classId,
       studentId,
@@ -423,7 +510,7 @@ export class ClassesController {
   ])
   async deleteClass(
     @Param('classId') classId: string,
-  ) {
+  ): Promise<ApiResponse<ClassDeleteResponseDto>> {
     const result = await this.classesService.deleteClass(classId);
 
     return ApiResponse.success(result, 'Class deleted');
@@ -473,7 +560,7 @@ export class ClassesController {
     @Param('classId') classId: string,
     @Param('studentId') studentId: string,
     @Body() dto: UpdateClassStudentRoleDto,
-  ) {
+  ): Promise<ApiResponse<ClassStudentRoleResponseDto>> {
     const result = await this.classesService.updateClassStudentRole(
       classId,
       studentId,
@@ -481,5 +568,18 @@ export class ClassesController {
     );
 
     return ApiResponse.success(result, 'Class student role updated');
+  }
+
+  private getClassStudentMessage(
+    mode: CreateClassStudentResponseDto['mode'],
+  ): string {
+    switch (mode) {
+      case 'created':
+        return 'Student created and added to class';
+      case 'attached':
+        return 'Existing student added to class';
+      case 'already_assigned':
+        return 'Student already exists in class';
+    }
   }
 }

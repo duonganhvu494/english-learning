@@ -11,7 +11,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import type { Dictionary } from "@/i18n/types";
 import type { PrivacySettingsState } from "@/components/settings/settings-types";
@@ -31,6 +30,15 @@ export function SettingsPrivacyTab({
   onChange,
   onSave,
 }: SettingsPrivacyTabProps) {
+  const selectedProfileVisibilityLabel =
+    value.profileVisibility === "public"
+      ? dictionary.profileVisibilityPublic
+      : value.profileVisibility === "private"
+        ? dictionary.profileVisibilityPrivate
+        : isTeacher
+          ? dictionary.profileVisibilityMembersTeacher
+          : dictionary.profileVisibilityMembersStudent;
+
   return (
     <Card className="border-app-border bg-app-surface">
       <CardHeader>
@@ -52,7 +60,7 @@ export function SettingsPrivacyTab({
             }
           >
             <SelectTrigger id="profile-visibility">
-              <SelectValue />
+              <span>{selectedProfileVisibilityLabel}</span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="public">{dictionary.profileVisibilityPublic}</SelectItem>

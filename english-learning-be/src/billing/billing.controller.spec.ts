@@ -61,7 +61,7 @@ describe('BillingController', () => {
       endedAt: null,
     });
 
-    const result = await controller.myBillingSubscription({
+    const result = await controller.getMyBillingSubscription({
       user: { userId: 'teacher-1' },
     } as never);
 

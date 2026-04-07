@@ -8,6 +8,7 @@ import { useNotification } from "@/providers/notification-provider";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationsList } from "@/components/notifications/notifications-list";
+import type { NotificationItem } from "@/components/notifications/notifications-types";
 
 function replaceTemplate(template: string, vars: Record<string, string>) {
   return Object.entries(vars).reduce(
@@ -20,8 +21,10 @@ export function NotificationsPage() {
   const { appRole } = useAuth();
   const { dictionary } = useAppSettings();
   const { success: notifySuccess } = useNotification();
-  const notificationsDictionary = dictionary.notificationsPage;
-  const sourceNotifications = notificationsDictionary.mock[appRole];
+  const notificationsDictionary = dictionary.notificationsPage as any;
+  const sourceNotifications = notificationsDictionary.mock[
+    appRole
+  ] as NotificationItem[];
 
   const [readOverrides, setReadOverrides] = useState<Record<string, boolean>>({});
   const [removedIds, setRemovedIds] = useState<string[]>([]);

@@ -10,7 +10,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import type { Dictionary } from "@/i18n/types";
 import type { AppearanceSettingsState } from "@/components/settings/settings-types";
@@ -28,6 +27,13 @@ export function SettingsAppearanceTab({
   onChange,
   onSave,
 }: SettingsAppearanceTabProps) {
+  const selectedThemeLabel =
+    value.theme === "dark" ? dictionary.themeDark : dictionary.themeLight;
+  const selectedLanguageLabel =
+    value.locale === "vi"
+      ? dictionary.languageVietnamese
+      : dictionary.languageEnglish;
+
   return (
     <Card className="border-app-border bg-app-surface">
       <CardHeader>
@@ -47,7 +53,7 @@ export function SettingsAppearanceTab({
             }
           >
             <SelectTrigger id="settings-theme">
-              <SelectValue />
+              <span>{selectedThemeLabel}</span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="light">{dictionary.themeLight}</SelectItem>
@@ -71,7 +77,7 @@ export function SettingsAppearanceTab({
             }
           >
             <SelectTrigger id="settings-language">
-              <SelectValue />
+              <span>{selectedLanguageLabel}</span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="en">{dictionary.languageEnglish}</SelectItem>

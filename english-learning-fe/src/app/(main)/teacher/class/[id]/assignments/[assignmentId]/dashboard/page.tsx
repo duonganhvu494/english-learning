@@ -55,7 +55,7 @@ function formatDueLabel(
   classDetailDictionary: ReturnType<typeof useAppSettings>["dictionary"]["classDetailPage"],
 ) {
   if (typeof daysUntilDue !== "number") {
-    return "-";
+    return classDetailDictionary.notAvailableLabel;
   }
   if (daysUntilDue < 0) {
     return classDetailDictionary.overdueLabel.replace("{days}", String(Math.abs(daysUntilDue)));

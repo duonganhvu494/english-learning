@@ -1,1 +1,1 @@
-export { ProfilePage as default } from "@/components/profile/profile-page";
+export { default } from "@/app/(main)/teacher/profile/page";

@@ -97,6 +97,32 @@ export const validateEnvironment = (env: EnvRecord): EnvRecord => {
     errors.push('COOKIE_SAME_SITE=none requires COOKIE_SECURE=true');
   }
 
+  const hasMailConfig = [
+    env.MAIL_HOST,
+    env.MAIL_PORT,
+    env.MAIL_SECURE,
+    env.MAIL_USER,
+    env.MAIL_PASSWORD,
+    env.MAIL_FROM,
+  ].some((value) => !isBlank(value));
+
+  if (hasMailConfig) {
+    requireEnv(env, 'MAIL_HOST', errors);
+    requireIntegerEnv(env, 'MAIL_PORT', errors);
+
+    if (!isBlank(env.MAIL_SECURE)) {
+      requireBooleanEnv(env, 'MAIL_SECURE', errors);
+    }
+
+    const hasMailUser = !isBlank(env.MAIL_USER);
+    const hasMailPassword = !isBlank(env.MAIL_PASSWORD);
+    if (hasMailUser !== hasMailPassword) {
+      errors.push(
+        'MAIL_USER and MAIL_PASSWORD must be provided together',
+      );
+    }
+  }
+
   if (errors.length > 0) {
     throw new Error(`Environment validation failed: ${errors.join('; ')}`);
   }

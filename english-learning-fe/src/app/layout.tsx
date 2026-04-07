@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { DICTIONARIES } from "@/i18n";
 import { AppSettingsProvider } from "@/providers/app-settings-provider";
 import { NotificationProvider } from "@/providers/notification-provider";
+import { NotificationsRealtimeProvider } from "@/providers/notifications-realtime-provider";
 import { AuthProvider } from "@/providers/auth-provider";
 import { cn } from "@/utils/cn";
 import "./globals.css";
@@ -40,7 +41,11 @@ export default function RootLayout({
           <AuthProvider>
             <SubscriptionProvider>
               <DataProvider>
-                <NotificationProvider>{children}</NotificationProvider>
+                <NotificationProvider>
+                  <NotificationsRealtimeProvider>
+                    {children}
+                  </NotificationsRealtimeProvider>
+                </NotificationProvider>
               </DataProvider>
             </SubscriptionProvider>
           </AuthProvider>

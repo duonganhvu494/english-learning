@@ -3,6 +3,8 @@ import type {
   AddClassStudentsRequest,
   ClassRosterResponse,
   ClassStudentsResponse,
+  CreateClassStudentRequest,
+  CreateClassStudentResponse,
   CreateClassRequest,
   DeleteClassResponse,
   UpdateClassRequest,
@@ -23,6 +25,14 @@ export const classesApi = {
     httpClient.get<ClassRosterResponse>(`/classes/${classId}/students`),
   addStudents: (classId: string, payload: AddClassStudentsRequest) =>
     httpClient.post<ClassStudentsResponse>(`/classes/${classId}/students`, payload),
+  createStudentForClass: (
+    classId: string,
+    payload: CreateClassStudentRequest,
+  ) =>
+    httpClient.post<CreateClassStudentResponse>(
+      `/classes/${classId}/students/create`,
+      payload,
+    ),
   removeStudent: (classId: string, studentId: string) =>
     httpClient.remove<ClassStudentsResponse>(
       `/classes/${classId}/students/${studentId}`,

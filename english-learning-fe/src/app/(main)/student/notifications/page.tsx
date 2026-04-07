@@ -1,2 +1,1 @@
-export { NotificationsPage as default } from "@/components/notifications/notifications-page";
-
+export { default } from "@/app/(main)/teacher/notifications/page";

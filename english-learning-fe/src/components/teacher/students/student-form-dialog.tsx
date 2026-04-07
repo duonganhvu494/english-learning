@@ -24,6 +24,7 @@ type StudentFormDialogProps = {
   onOpenChange: (open: boolean) => void;
   onFormDataChange: (next: StudentFormData) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  hideTrigger?: boolean;
 };
 
 export function StudentFormDialog({
@@ -35,6 +36,7 @@ export function StudentFormDialog({
   onOpenChange,
   onFormDataChange,
   onSubmit,
+  hideTrigger = false,
 }: StudentFormDialogProps) {
   const updateField = (field: keyof StudentFormData, value: string) => {
     onFormDataChange({
@@ -45,12 +47,14 @@ export function StudentFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button className="w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          {dictionary.addStudent}
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger ? (
+        <DialogTrigger asChild>
+          <Button className="w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            {dictionary.addStudent}
+          </Button>
+        </DialogTrigger>
+      ) : null}
 
       <DialogContent className="max-w-xl">
         <DialogHeader>

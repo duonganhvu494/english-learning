@@ -13,7 +13,11 @@ import { ApiError, classesApi, workspacesApi } from "@/api";
 import { translateApiMessage } from "@/api/core/api-message-translator";
 import { useAppSettings } from "@/providers/app-settings-provider";
 import { useNotification } from "@/providers/notification-provider";
-import type { ClassStudentListItem, WorkspaceClass } from "@/types/class";
+import type {
+  ClassStudentListItem,
+  CreateClassStudentRequest,
+  WorkspaceClass,
+} from "@/types/class";
 import type { WorkspaceStudentListItem } from "@/types/workspace";
 
 type ClassDetailContextValue = {
@@ -24,7 +28,10 @@ type ClassDetailContextValue = {
   availableStudents: WorkspaceStudentListItem[];
   isLoading: boolean;
   reloadClassData: () => Promise<void>;
-  enrollStudent: (studentId: string) => Promise<boolean>;
+  enrollStudents: (studentIds: string[]) => Promise<boolean>;
+  createStudentForClass: (
+    payload: CreateClassStudentRequest,
+  ) => Promise<boolean>;
   unenrollStudent: (studentId: string) => Promise<boolean>;
 };
 
@@ -42,6 +49,7 @@ export function ClassDetailProvider({
   const { dictionary } = useAppSettings();
   const { success: notifySuccess, error: notifyError } = useNotification();
   const classDetailDictionary = dictionary.classDetailPage;
+  const studentsDictionary = dictionary.studentsPage;
 
   const [classItem, setClassItem] = useState<WorkspaceClass | null>(null);
   const [enrolledStudents, setEnrolledStudents] = useState<ClassStudentListItem[]>(
@@ -124,15 +132,15 @@ export function ClassDetailProvider({
     void reloadClassData();
   }, [reloadClassData]);
 
-  const enrollStudent = useCallback(
-    async (studentId: string) => {
-      if (!classId || !studentId) {
+  const enrollStudents = useCallback(
+    async (studentIds: string[]) => {
+      if (!classId || studentIds.length === 0) {
         return false;
       }
 
       try {
         await classesApi.addStudents(classId, {
-          studentIds: [studentId],
+          studentIds,
         });
         notifySuccess(classDetailDictionary.enrollSuccess);
         await reloadClassData();
@@ -214,6 +222,52 @@ export function ClassDetailProvider({
     );
   }, [enrolledStudents, workspaceStudents]);
 
+  const createStudentForClass = useCallback(
+    async (payload: CreateClassStudentRequest) => {
+      if (!classId) {
+        return false;
+      }
+
+      try {
+        const response = await classesApi.createStudentForClass(classId, payload);
+        notifySuccess(
+          studentsDictionary.studentCreatedSuccess,
+          studentsDictionary.studentCreatedPassword.replace(
+            "{password}",
+            response.result.plainPassword,
+          ),
+        );
+        await reloadClassData();
+        return true;
+      } catch (error) {
+        if (error instanceof ApiError) {
+          notifyError(
+            translateApiMessage(
+              error.details,
+              error.code,
+              dictionary,
+              studentsDictionary.defaultErrorMessage,
+            ),
+          );
+        } else {
+          notifyError(studentsDictionary.defaultErrorMessage);
+        }
+
+        return false;
+      }
+    },
+    [
+      classId,
+      dictionary,
+      notifyError,
+      notifySuccess,
+      reloadClassData,
+      studentsDictionary.defaultErrorMessage,
+      studentsDictionary.studentCreatedPassword,
+      studentsDictionary.studentCreatedSuccess,
+    ],
+  );
+
   const value = useMemo<ClassDetailContextValue>(
     () => ({
       classId,
@@ -223,14 +277,16 @@ export function ClassDetailProvider({
       availableStudents,
       isLoading,
       reloadClassData,
-      enrollStudent,
+      enrollStudents,
+      createStudentForClass,
       unenrollStudent,
     }),
     [
       availableStudents,
       classId,
       classItem,
-      enrollStudent,
+      createStudentForClass,
+      enrollStudents,
       enrolledStudents,
       isLoading,
       reloadClassData,

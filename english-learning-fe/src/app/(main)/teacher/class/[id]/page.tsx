@@ -95,6 +95,28 @@ export default function ClassDashboardPage() {
     return null;
   }
 
+  const getEventTypeLabel = (eventType: string) => {
+    const normalized = eventType.trim().toLowerCase();
+
+    if (normalized === "class") {
+      return classDetailDictionary.eventTypeClass;
+    }
+
+    if (normalized === "assignment due" || normalized === "assignment_due") {
+      return classDetailDictionary.eventTypeAssignmentDue;
+    }
+
+    if (normalized === "exam") {
+      return classDetailDictionary.eventTypeExam;
+    }
+
+    if (normalized === "event") {
+      return classDetailDictionary.eventTypeEvent;
+    }
+
+    return eventType;
+  };
+
   const stats = [
     {
       title: classDetailDictionary.totalStudents,
@@ -265,7 +287,7 @@ export default function ClassDashboardPage() {
                             variant="outline"
                             className="border-app-border bg-app-surface text-xs text-app-text-muted"
                           >
-                            {event.type}
+                            {getEventTypeLabel(event.type)}
                           </Badge>
                         </div>
                         <p className="text-sm text-app-text-muted">
@@ -348,7 +370,8 @@ export default function ClassDashboardPage() {
                       {assignment.description}
                     </p>
                     <p className="text-sm text-app-text-muted">
-                      {classDetailDictionary.dueLabel}: {dueLabel || "-"} •{" "}
+                      {classDetailDictionary.dueLabel}:{" "}
+                      {dueLabel || classDetailDictionary.notAvailableLabel} •{" "}
                       {assignment.totalPoints}{" "}
                       {classDetailDictionary.pointsLabel}
                     </p>

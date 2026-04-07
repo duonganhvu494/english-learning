@@ -31,6 +31,40 @@ export function ProfilePage() {
   const { tier } = useSubscription();
   const { classes, students, assignments, calendarEvents } = useData();
   const profileDictionary = dictionary.profilePage;
+  const profileFormDictionary = {
+    personalInformationTitle: profileDictionary.personalInformationTitle,
+    personalInformationDescription:
+      profileDictionary.personalInformationDescription,
+    fullNameLabel: profileDictionary.fullNameLabel,
+    fullNamePlaceholder: profileDictionary.fullNamePlaceholder,
+    emailLabel: profileDictionary.emailLabel,
+    emailPlaceholder: profileDictionary.emailPlaceholder,
+    phoneLabel: profileDictionary.phoneLabel,
+    phonePlaceholder: profileDictionary.phonePlaceholder,
+    locationLabel: profileDictionary.locationLabel,
+    locationPlaceholder: profileDictionary.locationPlaceholder,
+    bioLabel: profileDictionary.bioLabel,
+    bioTeacherPlaceholder: profileDictionary.bioTeacherPlaceholder,
+    bioStudentPlaceholder: profileDictionary.bioStudentPlaceholder,
+    saveChanges: profileDictionary.saveChanges,
+    cancel: profileDictionary.cancel,
+  };
+  const profileStatsDictionary = {
+    teachingStatisticsTitle: profileDictionary.teachingStatisticsTitle,
+    teachingStatisticsDescription:
+      profileDictionary.teachingStatisticsDescription,
+    learningProgressTitle: profileDictionary.learningProgressTitle,
+    learningProgressDescription:
+      profileDictionary.learningProgressDescription,
+    statTotalClasses: profileDictionary.statTotalClasses,
+    statTotalStudents: profileDictionary.statTotalStudents,
+    statAssignments: profileDictionary.statAssignments,
+    statEvents: profileDictionary.statEvents,
+    statEnrolledClasses: profileDictionary.statEnrolledClasses,
+    statCompleted: profileDictionary.statCompleted,
+    statAverageScore: profileDictionary.statAverageScore,
+    statStreak: profileDictionary.statStreak,
+  };
 
   const isTeacher = appRole === "teacher";
   const [isEditing, setIsEditing] = useState(false);
@@ -76,9 +110,14 @@ export function ProfilePage() {
     currentProfile.fullName ||
     user?.userName ||
     profileDictionary.fallbackUserName;
-  const displayContact = currentProfile.email || user?.userName || "-";
+  const displayContact =
+    currentProfile.email ||
+    user?.userName ||
+    dictionary.classDetailPage.notAvailableLabel;
   const initials = getInitials(displayName, isTeacher ? "T" : "S");
-  const planName = dictionary.landing.pricing.plans[tier].name;
+  const planName =
+    dictionary.landing.pricing.plans[tier]?.name ??
+    dictionary.landing.pricing.plans.free.name;
   const additionalBadges = isTeacher
     ? [profileDictionary.planBadge.replace("{plan}", planName)]
     : [
@@ -133,7 +172,7 @@ export function ProfilePage() {
       />
 
       <ProfileFormCard
-        dictionary={profileDictionary}
+        dictionary={profileFormDictionary}
         isTeacher={isTeacher}
         isEditing={isEditing}
         formData={currentProfile}
@@ -148,7 +187,7 @@ export function ProfilePage() {
       />
 
       <ProfileStatsCard
-        dictionary={profileDictionary}
+        dictionary={profileStatsDictionary}
         isTeacher={isTeacher}
         values={{
           totalClasses: classes.length,

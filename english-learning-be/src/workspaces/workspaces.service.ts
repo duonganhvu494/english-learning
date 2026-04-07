@@ -6,7 +6,6 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, IsNull, MoreThan, Repository } from "typeorm";
-import * as bcrypt from 'bcrypt';
 import { Workspace } from "./entities/workspace.entity";
 import {
   WorkspaceMember,
@@ -35,6 +34,7 @@ import { ClassStudent } from "src/classes/entities/class-student.entity";
 import { errorPayload } from 'src/common/utils/error-payload.util';
 import { WorkspaceEntitlementService } from './workspace-entitlement.service';
 import { WorkspaceSubscriptionResponseDto } from './dto/workspace-subscription-response.dto';
+import { WorkspaceStudentsService } from './workspace-students.service';
 
 @Injectable()
 export class WorkspacesService {
@@ -64,17 +64,8 @@ export class WorkspacesService {
 
     private readonly workspaceAccessService: WorkspaceAccessService,
     private readonly workspaceEntitlementService: WorkspaceEntitlementService,
+    private readonly workspaceStudentsService: WorkspaceStudentsService,
   ) {}
-
-  private generateRandomPassword(length = 10): string {
-    const chars =
-      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+[]{}|;:,.<>?';
-    let password = '';
-    for (let i = 0; i < length; i++) {
-      password += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return password;
-  }
 
   private isUniqueConstraintViolation(error: unknown): error is { code: string } {
     return (
@@ -86,7 +77,10 @@ export class WorkspacesService {
   }
 
   // ================= CREATE WORKSPACE =================
-  async createWorkspace(dto: CreateWorkspaceDto, userId: string) {
+  async createWorkspace(
+    dto: CreateWorkspaceDto,
+    userId: string,
+  ): Promise<WorkspaceResponseDto> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new BadRequestException(
@@ -147,8 +141,10 @@ export class WorkspacesService {
       );
     }
 
+    const normalizedWorkspaceName = dto.name.trim();
+
     const workspace = this.workspaceRepo.create({
-      name: dto.name,
+      name: normalizedWorkspaceName,
       owner: user,
       isActive: true,
     });
@@ -259,79 +255,28 @@ export class WorkspacesService {
   async createStudentInWorkspace(
     workspaceId: string,
     dto: CreateStudentDto,
-  ) {
-    const workspace = await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
-    
-    await this.workspaceEntitlementService.assertStudentQuotaAvailable(
+  ): Promise<WorkspaceStudentResponseDto> {
+    const workspace = await this.workspaceAccessService.getWorkspaceOrThrow(
       workspaceId,
     );
 
-    const studentRole = await this.roleRepo.findOne({
-      where: {
-        name: "student",
-        isSystem: true,
-        workspaceId: IsNull(),
-      },
-    });
-    if (!studentRole) {
-      throw new BadRequestException(
-        errorPayload(
-          'Student role not found',
-          'WORKSPACE_STUDENT_ROLE_NOT_FOUND',
-        ),
-      );
-    }
-
-    return this.workspaceRepo.manager.transaction(async (manager) => {
-      const userRepo = manager.getRepository(User);
-      const memberRepo = manager.getRepository(WorkspaceMember);
-
-      const exist = await userRepo.findOne({
-        where: [{ email: dto.email }, { userName: dto.userName }],
-      });
-      if (exist) {
-        throw new BadRequestException(
-          errorPayload(
-            'Email or username already exists',
-            'WORKSPACE_STUDENT_CREDENTIALS_ALREADY_EXIST',
-          ),
-        );
-      }
-
-      const plainPassword = this.generateRandomPassword();
-      const hashedPassword = await bcrypt.hash(plainPassword, 10);
-
-      const user = userRepo.create({
-        fullName: dto.fullName,
-        email: dto.email,
-        userName: dto.userName,
-        password: hashedPassword,
-        mustChangePassword: true,
-        accountType: AccountType.STUDENT,
-        isActive: true,
-        isSuperAdmin: false,
-      });
-      const savedUser = await userRepo.save(user);
-
-      const member = memberRepo.create({
+    const createdStudent =
+      await this.workspaceStudentsService.provisionWorkspaceStudent(
         workspace,
-        user: savedUser,
-        role: studentRole,
-      });
-      await memberRepo.save(member);
+        dto,
+      );
 
-      return WorkspaceStudentResponseDto.fromData({
-        workspaceId: workspace.id,
-        role: studentRole.name,
-        plainPassword,
-        user: UserProfileResponse.fromEntity(savedUser),
-      });
+    return WorkspaceStudentResponseDto.fromData({
+      workspaceId: workspace.id,
+      mode: createdStudent.mode,
+      role: createdStudent.workspaceRole.name,
+      user: UserProfileResponse.fromEntity(createdStudent.user),
     });
   }
 
   async listWorkspaceStudents(
     workspaceId: string,
-  ) {
+  ): Promise<WorkspaceStudentListItemDto[]> {
     await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const members = await this.memberRepo

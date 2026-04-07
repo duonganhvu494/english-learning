@@ -15,9 +15,12 @@ import { Role } from 'src/rbac/entities/role.entity';
 import { RbacModule } from 'src/rbac/rbac.module';
 import { ClassEntity } from 'src/classes/entities/class.entity';
 import { ClassStudent } from 'src/classes/entities/class-student.entity';
+import { MailModule } from 'src/mail/mail.module';
+import { WorkspaceStudentsService } from './workspace-students.service';
 
 @Module({
   imports: [
+    MailModule,
     RbacModule,
     WorkspaceEntitlementModule,
     TypeOrmModule.forFeature([
@@ -33,6 +36,7 @@ import { ClassStudent } from 'src/classes/entities/class-student.entity';
     ]),
   ],
   controllers: [WorkspacesController],
-  providers: [WorkspacesService, WorkspacePlansService],
+  providers: [WorkspacesService, WorkspacePlansService, WorkspaceStudentsService],
+  exports: [WorkspaceStudentsService],
 })
 export class WorkspacesModule {}

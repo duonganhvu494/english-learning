@@ -12,6 +12,8 @@ export class UserResponseDto {
   email: string;
   @ApiProperty({ example: false })
   mustChangePassword: boolean;
+  @ApiProperty({ example: true })
+  emailVerified: boolean;
   @ApiProperty({ enum: AccountType, example: AccountType.TEACHER })
   accountType: AccountType;
   @ApiProperty({ example: false })
@@ -26,6 +28,8 @@ export class UserResponseDto {
     dto.userName = user.userName;
     dto.email = user.email;
     dto.mustChangePassword = user.mustChangePassword;
+    dto.emailVerified =
+      !user.emailVerificationRequired || user.emailVerifiedAt !== null;
     dto.accountType = user.accountType;
     dto.isSuperAdmin = user.isSuperAdmin;
     dto.isActive = user.isActive;

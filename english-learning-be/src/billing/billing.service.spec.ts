@@ -90,19 +90,19 @@ describe('BillingService', () => {
     );
 
     managerBillingSubscriptionRepo.save.mockImplementation(
-      async (input: Record<string, unknown>) => ({
+      (input: Record<string, unknown>) => ({
         id: (input.id as string | undefined) ?? 'billing-subscription-1',
         ...input,
       }),
     );
     managerPaymentTransactionRepo.save.mockImplementation(
-      async (input: Record<string, unknown>) => ({
+      (input: Record<string, unknown>) => ({
         id: (input.id as string | undefined) ?? 'payment-transaction-1',
         ...input,
       }),
     );
     managerWorkspaceSubscriptionRepo.save.mockImplementation(
-      async (input: Record<string, unknown>) => ({
+      (input: Record<string, unknown>) => ({
         id: (input.id as string | undefined) ?? 'workspace-subscription-1',
         ...input,
       }),
@@ -407,7 +407,7 @@ describe('BillingService', () => {
     };
     billingSubscriptionRepo.findOne.mockResolvedValue(billingSubscription);
     paymentTransactionRepo.findOne.mockResolvedValue(null);
-    paymentTransactionRepo.save.mockImplementation(async (input) => ({
+    paymentTransactionRepo.save.mockImplementation((input: Record<string, unknown>) => ({
       id: 'payment-transaction-2',
       ...input,
     }));

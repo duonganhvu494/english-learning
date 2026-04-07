@@ -29,14 +29,15 @@ describe('WorkspacePlansService', () => {
     jest.clearAllMocks();
 
     planRepo.findOne.mockImplementation(
-      async (options: { where: { code: string } }) =>
+      (options: { where: { code: string } }) =>
         plans.get(options.where.code) ?? null,
     );
     planRepo.find.mockImplementation(
-      async (options: {
+      (options: {
         where?: { isPublic?: boolean; isActive?: boolean };
       }) =>
-        [...plans.values()].filter((plan) => {
+        [...plans.values()]
+          .filter((plan) => {
           if (
             options.where?.isPublic !== undefined &&
             plan.isPublic !== options.where.isPublic
@@ -52,23 +53,27 @@ describe('WorkspacePlansService', () => {
           }
 
           return true;
-        }).map((plan) => ({
-          ...plan,
-          features: [...planFeatures.values()].filter(
-            (feature) => feature.plan.id === plan.id,
+          })
+          .map(
+            (plan) =>
+              ({
+                ...plan,
+                features: [...planFeatures.values()].filter(
+                  (feature) => feature.plan.id === plan.id,
+                ),
+              }) as Plan,
           ),
-        }) as Plan),
     );
     planRepo.create.mockImplementation(
       (input: Omit<Plan, 'id' | 'createdAt' | 'updatedAt'>) => input,
     );
-    planRepo.save.mockImplementation(async (input: Partial<Plan>) => {
+    planRepo.save.mockImplementation((input: Partial<Plan>) => {
       const savedPlan = {
-        id: (input.id as string | undefined) ?? `plan-${input.code}`,
+        id: input.id ?? `plan-${input.code}`,
         code: input.code as string,
         name: input.name as string,
-        description: (input.description ?? null) as string | null,
-        monthlyPriceCents: (input.monthlyPriceCents ?? null) as number | null,
+        description: input.description ?? null,
+        monthlyPriceCents: input.monthlyPriceCents ?? null,
         isPublic: Boolean(input.isPublic),
         isActive: Boolean(input.isActive),
         sortOrder: input.sortOrder as number,
@@ -79,7 +84,7 @@ describe('WorkspacePlansService', () => {
     });
 
     planFeatureRepo.findOne.mockImplementation(
-      async (options: { where: { plan: { id: string }; featureKey: string } }) =>
+      (options: { where: { plan: { id: string }; featureKey: string } }) =>
         planFeatures.get(
           `${options.where.plan.id}:${options.where.featureKey}`,
         ) ?? null,
@@ -87,21 +92,18 @@ describe('WorkspacePlansService', () => {
     planFeatureRepo.create.mockImplementation(
       (input: Omit<PlanFeature, 'id' | 'createdAt' | 'updatedAt'>) => input,
     );
-    planFeatureRepo.save.mockImplementation(async (input: Partial<PlanFeature>) => {
+    planFeatureRepo.save.mockImplementation((input: Partial<PlanFeature>) => {
       const planId = input.plan?.id as string;
       const featureKey = input.featureKey as string;
       const savedFeature = {
-        id: (input.id as string | undefined) ?? `feature-${planId}-${featureKey}`,
+        id: input.id ?? `feature-${planId}-${featureKey}`,
         plan: input.plan as Plan,
         featureKey,
         valueType: input.valueType as PlanFeatureValueType,
-        booleanValue: (input.booleanValue ?? null) as boolean | null,
-        numberValue: (input.numberValue ?? null) as string | null,
-        stringValue: (input.stringValue ?? null) as string | null,
-        jsonValue: (input.jsonValue ?? null) as
-          | Record<string, unknown>
-          | unknown[]
-          | null,
+        booleanValue: input.booleanValue ?? null,
+        numberValue: input.numberValue ?? null,
+        stringValue: input.stringValue ?? null,
+        jsonValue: input.jsonValue ?? null,
       } as PlanFeature;
 
       planFeatures.set(`${planId}:${featureKey}`, savedFeature);

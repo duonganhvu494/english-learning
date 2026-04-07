@@ -199,7 +199,7 @@ export class RbacService implements OnModuleInit {
     private readonly workspaceEntitlementService: WorkspaceEntitlementService,
   ) {}
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     await this.seedSystemRoles();
     await this.seedSystemPermissions();
     await this.seedSystemRolePermissions();

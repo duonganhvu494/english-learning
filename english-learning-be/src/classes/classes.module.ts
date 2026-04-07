@@ -5,6 +5,7 @@ import { RbacModule } from 'src/rbac/rbac.module';
 import { Role } from 'src/rbac/entities/role.entity';
 import { WorkspaceMember } from 'src/workspaces/entities/workspace-member.entity';
 import { WorkspaceEntitlementModule } from 'src/workspaces/workspace-entitlement.module';
+import { WorkspacesModule } from 'src/workspaces/workspaces.module';
 import { Permission } from 'src/rbac/entities/permission.entity';
 import { RolePermission } from 'src/rbac/entities/role-permission.entity';
 import { ClassesController } from './classes.controller';
@@ -16,6 +17,7 @@ import { ClassStudent } from './entities/class-student.entity';
   imports: [
     EventEmitterModule,
     RbacModule,
+    WorkspacesModule,
     WorkspaceEntitlementModule,
     TypeOrmModule.forFeature([
       ClassEntity,

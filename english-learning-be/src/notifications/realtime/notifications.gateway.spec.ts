@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
+import { AuthSessionsService } from 'src/auth/redis/auth-sessions.service';
 import { UsersService } from 'src/users/users.service';
 import { NotificationsGateway } from './notifications.gateway';
 

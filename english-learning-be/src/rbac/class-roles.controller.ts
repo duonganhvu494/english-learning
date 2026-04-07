@@ -86,7 +86,7 @@ export class ClassRolesController {
   ])
   async listClassRoles(
     @Param('classId') classId: string,
-  ) {
+  ): Promise<ApiResponse<CustomRoleResponseDto[]>> {
     const roles = await this.rbacService.listClassCustomRoles(classId);
 
     return ApiResponse.success(roles, 'Class roles retrieved');
@@ -164,7 +164,7 @@ export class ClassRolesController {
   async createClassRole(
     @Param('classId') classId: string,
     @Body() dto: CreateClassRoleDto,
-  ) {
+  ): Promise<ApiResponse<CustomRoleResponseDto>> {
     const role = await this.rbacService.createClassCustomRole(classId, dto);
 
     return ApiResponse.success(role, 'Class role created', 201);
@@ -258,7 +258,7 @@ export class ClassRolesController {
     @Param('classId') classId: string,
     @Param('roleId') roleId: string,
     @Body() dto: UpdateCustomRoleDto,
-  ) {
+  ): Promise<ApiResponse<CustomRoleResponseDto>> {
     const role = await this.rbacService.updateClassCustomRole(classId, roleId, dto);
 
     return ApiResponse.success(role, 'Class role updated');
@@ -319,7 +319,7 @@ export class ClassRolesController {
   async deleteClassRole(
     @Param('classId') classId: string,
     @Param('roleId') roleId: string,
-  ) {
+  ): Promise<ApiResponse<DeleteRoleResponseDto>> {
     const result = await this.rbacService.deleteClassCustomRole(classId, roleId);
 
     return ApiResponse.success(result, 'Class role deleted');

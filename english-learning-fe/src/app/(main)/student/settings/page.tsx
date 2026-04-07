@@ -1,1 +1,1 @@
-export { SettingsPage as default } from "@/components/settings/settings-page";
+export { default } from "@/app/(main)/teacher/settings/page";

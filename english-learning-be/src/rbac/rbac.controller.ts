@@ -76,7 +76,7 @@ export class RbacController {
   ])
   async listPermissions(
     @Param('workspaceId') workspaceId: string,
-  ) {
+  ): Promise<ApiResponse<PermissionResponseDto[]>> {
     const permissions = await this.rbacService.listPermissions(workspaceId);
 
     return ApiResponse.success(permissions, 'Permissions retrieved');
@@ -133,7 +133,7 @@ export class RbacController {
   ])
   async listCustomRoles(
     @Param('workspaceId') workspaceId: string,
-  ) {
+  ): Promise<ApiResponse<CustomRoleResponseDto[]>> {
     const roles = await this.rbacService.listCustomRoles(workspaceId);
 
     return ApiResponse.success(roles, 'Custom roles retrieved');
@@ -210,7 +210,7 @@ export class RbacController {
   async createCustomRole(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: CreateCustomRoleDto,
-  ) {
+  ): Promise<ApiResponse<CustomRoleResponseDto>> {
     const role = await this.rbacService.createCustomRole(workspaceId, dto);
 
     return ApiResponse.success(role, 'Custom role created', 201);
@@ -298,7 +298,7 @@ export class RbacController {
     @Param('workspaceId') workspaceId: string,
     @Param('roleId') roleId: string,
     @Body() dto: UpdateCustomRoleDto,
-  ) {
+  ): Promise<ApiResponse<CustomRoleResponseDto>> {
     const role = await this.rbacService.updateCustomRole(workspaceId, roleId, dto);
 
     return ApiResponse.success(role, 'Custom role updated');
@@ -353,7 +353,7 @@ export class RbacController {
   async deleteCustomRole(
     @Param('workspaceId') workspaceId: string,
     @Param('roleId') roleId: string,
-  ) {
+  ): Promise<ApiResponse<DeleteRoleResponseDto>> {
     const result = await this.rbacService.deleteCustomRole(workspaceId, roleId);
 
     return ApiResponse.success(result, 'Custom role deleted');

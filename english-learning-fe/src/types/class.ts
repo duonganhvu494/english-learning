@@ -39,3 +39,25 @@ export type ClassStudentsResponse = {
   classId: string;
   studentIds: string[];
 };
+
+export type CreateClassStudentRequest = {
+  fullName: string;
+  userName: string;
+  email: string;
+};
+
+export type CreateClassStudentResponse = {
+  classId: string;
+  workspaceId: string;
+  workspaceRole: string;
+  classRoleId: string;
+  classRoleName: string;
+  plainPassword: string;
+  user: {
+    id: string;
+    userName: string;
+    fullName: string;
+    email: string;
+    mustChangePassword: boolean;
+  };
+};

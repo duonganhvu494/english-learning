@@ -14,6 +14,7 @@ import { ClassesService } from './classes.service';
 import { ClassEntity } from './entities/class.entity';
 import { ClassStudent } from './entities/class-student.entity';
 import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
+import { WorkspaceStudentsService } from 'src/workspaces/workspace-students.service';
 
 describe('ClassesService', () => {
   let service: ClassesService;
@@ -30,6 +31,7 @@ describe('ClassesService', () => {
   const classStudentRepo = {
     find: jest.fn(),
     findOne: jest.fn(),
+    create: jest.fn(),
     save: jest.fn(),
     manager: {
       transaction: jest.fn(),
@@ -47,6 +49,10 @@ describe('ClassesService', () => {
   };
   const workspaceEntitlementService = {
     assertClassQuotaAvailable: jest.fn(),
+    assertStudentQuotaAvailable: jest.fn(),
+  };
+  const workspaceStudentsService = {
+    provisionWorkspaceStudent: jest.fn(),
   };
   const rbacService = {
     ensureDefaultClassStudentRole: jest.fn(),
@@ -61,6 +67,9 @@ describe('ClassesService', () => {
       (input: Record<string, unknown>) => input,
     );
     managerClassStudentRepo.create.mockImplementation(
+      (input: Record<string, unknown>) => input,
+    );
+    classStudentRepo.create.mockImplementation(
       (input: Record<string, unknown>) => input,
     );
     classStudentRepo.manager.transaction.mockImplementation(
@@ -102,6 +111,10 @@ describe('ClassesService', () => {
         {
           provide: WorkspaceEntitlementService,
           useValue: workspaceEntitlementService,
+        },
+        {
+          provide: WorkspaceStudentsService,
+          useValue: workspaceStudentsService,
         },
         {
           provide: RbacService,
@@ -263,6 +276,74 @@ describe('ClassesService', () => {
     expect(result).toEqual({
       classId: 'class-1',
       studentIds: ['student-1', 'student-2'],
+    });
+  });
+
+  it('creates a new student, adds the student to the workspace, and assigns the student to the class', async () => {
+    const classEntity = {
+      id: 'class-1',
+      workspace: { id: 'workspace-1' },
+    };
+    const workspaceStudentRole = { id: 'workspace-role-student', name: 'student' };
+    const defaultClassRole = { id: 'class-role-student', name: 'student' };
+    const savedUser = {
+      id: 'student-1',
+      fullName: 'Student One',
+      userName: 'student1',
+      email: 'student@example.com',
+      mustChangePassword: true,
+    };
+
+    workspaceAccessService.getClassOrThrow.mockResolvedValue(classEntity);
+    rbacService.ensureDefaultClassStudentRole.mockResolvedValue(defaultClassRole);
+    workspaceStudentsService.provisionWorkspaceStudent.mockResolvedValue({
+      mode: 'created',
+      user: savedUser,
+      workspaceRole: workspaceStudentRole,
+    });
+    classStudentRepo.findOne.mockResolvedValue(null);
+    managerClassStudentRepo.save.mockResolvedValue(undefined);
+
+    const result = await service.createStudentForClass('class-1', {
+      fullName: '  Student One  ',
+      email: 'student@example.com  ',
+    });
+
+    expect(workspaceStudentsService.provisionWorkspaceStudent).toHaveBeenCalledWith(
+      classEntity.workspace,
+      {
+        fullName: '  Student One  ',
+        email: 'student@example.com  ',
+      },
+    );
+    expect(classStudentRepo.create).toHaveBeenCalledWith({
+      classEntity,
+      student: savedUser,
+      role: defaultClassRole,
+    });
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'class.students_added',
+      expect.objectContaining({
+        classId: 'class-1',
+        workspaceId: 'workspace-1',
+        studentIds: ['student-1'],
+      }),
+    );
+    expect(result).toEqual({
+      classId: 'class-1',
+      workspaceId: 'workspace-1',
+      mode: 'created',
+      workspaceRole: 'student',
+      classRoleId: 'class-role-student',
+      classRoleName: 'student',
+      user: {
+        id: 'student-1',
+        fullName: 'Student One',
+        userName: 'student1',
+        email: 'student@example.com',
+        mustChangePassword: true,
+        emailVerified: true,
+      },
     });
   });
 

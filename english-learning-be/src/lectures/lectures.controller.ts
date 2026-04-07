@@ -108,7 +108,7 @@ export class LecturesController {
     @Param('sessionId') sessionId: string,
     @Body() dto: CreateLectureDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<LectureResponseDto>> {
     const result = await this.lecturesService.createLecture(
       sessionId,
       dto,
@@ -170,7 +170,7 @@ export class LecturesController {
     { status: 403, code: 'RBAC_ROLE_DENIED', message: 'Role access denied' },
     { status: 403, code: 'RBAC_PERMISSION_DENIED', message: 'Permission access denied' },
   ])
-  async listSessionLectures(@Param('sessionId') sessionId: string) {
+  async listSessionLectures(@Param('sessionId') sessionId: string): Promise<ApiResponse<LectureResponseDto[]>> {
     const result = await this.lecturesService.listSessionLectures(sessionId);
 
     return ApiResponse.success(result, 'Session lectures fetched');
@@ -226,7 +226,7 @@ export class LecturesController {
     { status: 403, code: 'RBAC_PERMISSION_DENIED', message: 'Permission access denied' },
     { status: 400, code: 'LECTURE_NOT_FOUND', message: 'Lecture not found' },
   ])
-  async getLectureDetail(@Param('lectureId') lectureId: string) {
+  async getLectureDetail(@Param('lectureId') lectureId: string): Promise<ApiResponse<LectureResponseDto>> {
     const result = await this.lecturesService.getLectureDetail(lectureId);
 
     return ApiResponse.success(result, 'Lecture detail fetched');
@@ -272,7 +272,7 @@ export class LecturesController {
     @Param('lectureId') lectureId: string,
     @Param('materialId') materialId: string,
     @Res() res: Response,
-  ) {
+  ): Promise<void> {
     const result = await this.lecturesService.getLectureMaterialDownloadTarget(
       lectureId,
       materialId,
@@ -333,7 +333,7 @@ export class LecturesController {
     @Param('lectureId') lectureId: string,
     @Body() dto: UpdateLectureDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<LectureResponseDto>> {
     const result = await this.lecturesService.updateLecture(
       lectureId,
       dto,
@@ -377,7 +377,7 @@ export class LecturesController {
     { status: 403, code: 'RBAC_ROLE_DENIED', message: 'Role access denied' },
     { status: 400, code: 'LECTURE_NOT_FOUND', message: 'Lecture not found' },
   ])
-  async deleteLecture(@Param('lectureId') lectureId: string) {
+  async deleteLecture(@Param('lectureId') lectureId: string): Promise<ApiResponse<LectureDeleteResponseDto>> {
     const result = await this.lecturesService.deleteLecture(lectureId);
 
     return ApiResponse.success(result, 'Lecture deleted');

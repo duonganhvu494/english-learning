@@ -4,8 +4,9 @@ import { JwtService } from '@nestjs/jwt';
 import { HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
+import { AuthOtpService } from 'src/auth/redis/auth-otp.service';
 import { UsersService } from 'src/users/users.service';
-import { AuthSessionsService } from 'src/auth-sessions/auth-sessions.service';
+import { AuthSessionsService } from 'src/auth/redis/auth-sessions.service';
 
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
@@ -15,10 +16,19 @@ describe('AuthService', () => {
   let service: AuthService;
   const compareMock = bcrypt.compare as jest.MockedFunction<typeof bcrypt.compare>;
   const usersService = {
-    findByUserName: jest.fn(),
+    findByEmailOrUserName: jest.fn(),
+    findByEmail: jest.fn(),
+    findByEmailWithPassword: jest.fn(),
     findByIdWithPassword: jest.fn(),
     updatePassword: jest.fn(),
-    findByEmail: jest.fn(),
+    markEmailVerified: jest.fn(),
+    issueEmailVerificationChallenge: jest.fn(),
+    issuePasswordResetChallenge: jest.fn(),
+    resetPasswordByOtp: jest.fn(),
+  };
+  const authOtpService = {
+    verifyEmailVerificationOtp: jest.fn(),
+    verifyPasswordResetOtp: jest.fn(),
   };
   const jwtService = {
     signAsync: jest.fn(),
@@ -32,6 +42,8 @@ describe('AuthService', () => {
     storeRefreshSession: jest.fn(),
     replaceRefreshSession: jest.fn(),
     revokeRefreshSession: jest.fn(),
+    revokeAllUserSessions: jest.fn(),
+    revokeAllUserSessionsExcept: jest.fn(),
     isLoginRateLimited: jest.fn(),
     recordFailedLoginAttempt: jest.fn(),
     clearLoginAttempts: jest.fn(),
@@ -47,6 +59,10 @@ describe('AuthService', () => {
         {
           provide: UsersService,
           useValue: usersService,
+        },
+        {
+          provide: AuthOtpService,
+          useValue: authOtpService,
         },
         {
           provide: JwtService,
@@ -72,7 +88,7 @@ describe('AuthService', () => {
 
   it('should reject disabled users on sign in', async () => {
     authSessionsService.isLoginRateLimited.mockResolvedValue(false);
-    usersService.findByUserName.mockResolvedValue({
+    usersService.findByEmailOrUserName.mockResolvedValue({
       id: 'user-1',
       email: 'disabled@example.com',
       password: 'hashed-password',
@@ -82,20 +98,24 @@ describe('AuthService', () => {
     await expect(service.signIn('disabled-user', 'secret')).rejects.toThrow(
       new UnauthorizedException('Account is disabled'),
     );
-    expect(usersService.findByUserName).toHaveBeenCalledWith('disabled-user');
+    expect(usersService.findByEmailOrUserName).toHaveBeenCalledWith(
+      'disabled-user',
+    );
     expect(authSessionsService.recordFailedLoginAttempt).toHaveBeenCalled();
   });
 
   it('should sign in active users with valid password', async () => {
     authSessionsService.isLoginRateLimited.mockResolvedValue(false);
     compareMock.mockResolvedValue(true);
-    usersService.findByUserName.mockResolvedValue({
+    usersService.findByEmailOrUserName.mockResolvedValue({
       id: 'user-1',
       email: 'active@example.com',
       userName: 'active-user',
       fullName: 'Active User',
       password: 'hashed-password',
       isActive: true,
+      emailVerificationRequired: false,
+      emailVerifiedAt: new Date(),
     });
     jwtService.signAsync.mockResolvedValueOnce('access-token');
     jwtService.signAsync.mockResolvedValueOnce('refresh-token');
@@ -129,6 +149,54 @@ describe('AuthService', () => {
     expect(authSessionsService.storeRefreshSession).toHaveBeenCalledTimes(1);
     expect(authSessionsService.clearLoginAttempts).toHaveBeenCalledWith(
       'active-user',
+      'unknown',
+    );
+  });
+
+  it('should sign in by email when the identifier is an email address', async () => {
+    authSessionsService.isLoginRateLimited.mockResolvedValue(false);
+    compareMock.mockResolvedValue(true);
+    usersService.findByEmailOrUserName.mockResolvedValue({
+      id: 'user-1',
+      email: 'active@example.com',
+      userName: 'active-user',
+      fullName: 'Active User',
+      password: 'hashed-password',
+      isActive: true,
+      emailVerificationRequired: false,
+      emailVerifiedAt: new Date(),
+    });
+    jwtService.signAsync.mockResolvedValueOnce('access-token');
+    jwtService.signAsync.mockResolvedValueOnce('refresh-token');
+    configService.get.mockImplementation((key: string, fallback?: string) => {
+      switch (key) {
+        case 'jwt.expiresIn':
+          return '15m';
+        case 'jwt.refreshExpiresIn':
+          return '7d';
+        default:
+          return fallback;
+      }
+    });
+    configService.getOrThrow.mockImplementation((key: string) => {
+      switch (key) {
+        case 'jwt.secret':
+          return 'secret';
+        case 'jwt.refreshSecret':
+          return 'refresh-secret';
+        default:
+          throw new Error(`Unexpected config key: ${key}`);
+      }
+    });
+
+    const result = await service.signIn('active@example.com', 'secret');
+
+    expect(result.user.email).toBe('active@example.com');
+    expect(usersService.findByEmailOrUserName).toHaveBeenCalledWith(
+      'active@example.com',
+    );
+    expect(authSessionsService.clearLoginAttempts).toHaveBeenCalledWith(
+      'active@example.com',
       'unknown',
     );
   });
@@ -175,6 +243,25 @@ describe('AuthService', () => {
     );
   });
 
+  it('should reject sign in when email verification is still pending', async () => {
+    authSessionsService.isLoginRateLimited.mockResolvedValue(false);
+    usersService.findByEmailOrUserName.mockResolvedValue({
+      id: 'user-1',
+      email: 'pending@example.com',
+      userName: 'pending-user',
+      fullName: 'Pending User',
+      password: 'hashed-password',
+      isActive: true,
+      emailVerificationRequired: true,
+      emailVerifiedAt: null,
+    });
+
+    await expect(service.signIn('pending-user', 'secret')).rejects.toThrow(
+      new UnauthorizedException('Email verification is required before login'),
+    );
+    expect(authSessionsService.recordFailedLoginAttempt).toHaveBeenCalled();
+  });
+
   it('should ignore invalid refresh token during logout', async () => {
     configService.getOrThrow.mockImplementation((key: string) => {
       switch (key) {
@@ -204,7 +291,7 @@ describe('AuthService', () => {
         HttpStatus.TOO_MANY_REQUESTS,
       ),
     );
-    expect(usersService.findByUserName).not.toHaveBeenCalled();
+    expect(usersService.findByEmailOrUserName).not.toHaveBeenCalled();
   });
 
   it('should denylist access token during logout when token is valid', async () => {
@@ -254,11 +341,25 @@ describe('AuthService', () => {
       id: 'user-1',
       mustChangePassword: false,
     });
+    configService.getOrThrow.mockImplementation((key: string) => {
+      switch (key) {
+        case 'jwt.refreshSecret':
+          return 'refresh-secret';
+        default:
+          throw new Error(`Unexpected config key: ${key}`);
+      }
+    });
+    jwtService.verifyAsync.mockResolvedValue({
+      userId: 'user-1',
+      email: 'active@example.com',
+      jti: 'current-refresh-jti',
+    });
 
     const result = await service.changePassword(
       'user-1',
       'old-secret',
       'new-secret',
+      'refresh-token',
     );
 
     expect(usersService.findByIdWithPassword).toHaveBeenCalledWith('user-1');
@@ -267,12 +368,53 @@ describe('AuthService', () => {
       'new-secret',
       false,
     );
+    expect(authSessionsService.revokeAllUserSessionsExcept).toHaveBeenCalledWith(
+      'user-1',
+      'current-refresh-jti',
+    );
+    expect(authSessionsService.revokeAllUserSessions).not.toHaveBeenCalled();
     expect(result).toEqual({
       user: {
         id: 'user-1',
         mustChangePassword: false,
       },
     });
+  });
+
+  it('should revoke all sessions when current refresh token is missing or invalid during password change', async () => {
+    usersService.findByIdWithPassword.mockResolvedValue({
+      id: 'user-1',
+      password: 'hashed-password',
+      isActive: true,
+    });
+    compareMock.mockResolvedValue(true);
+    usersService.updatePassword.mockResolvedValue({
+      id: 'user-1',
+      mustChangePassword: false,
+    });
+    configService.getOrThrow.mockImplementation((key: string) => {
+      switch (key) {
+        case 'jwt.refreshSecret':
+          return 'refresh-secret';
+        default:
+          throw new Error(`Unexpected config key: ${key}`);
+      }
+    });
+    jwtService.verifyAsync.mockRejectedValue(new Error('invalid'));
+
+    await service.changePassword(
+      'user-1',
+      'old-secret',
+      'new-secret',
+      'invalid-refresh-token',
+    );
+
+    expect(authSessionsService.revokeAllUserSessions).toHaveBeenCalledWith(
+      'user-1',
+    );
+    expect(
+      authSessionsService.revokeAllUserSessionsExcept,
+    ).not.toHaveBeenCalled();
   });
 
   it('should reject change password when current password is incorrect', async () => {

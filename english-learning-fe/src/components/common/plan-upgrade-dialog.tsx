@@ -49,6 +49,7 @@ export function PlanUpgradeDialog({
 }: PlanUpgradeDialogProps) {
   const canUpgradeToPro = currentTier !== "pro" && currentTier !== "enterprise";
   const canUpgradeToEnterprise = currentTier !== "enterprise";
+  const hasBothPlans = canUpgradeToPro && canUpgradeToEnterprise;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,7 +59,11 @@ export function PlanUpgradeDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4 md:grid-cols-2">
+        <div
+          className={
+            hasBothPlans ? "grid gap-6 py-4 sm:grid-cols-2" : "grid gap-6 py-4"
+          }
+        >
           {canUpgradeToPro ? (
             <Card className="border-2 border-(--color-primary)">
               <CardHeader>

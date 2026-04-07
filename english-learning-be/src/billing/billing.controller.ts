@@ -65,7 +65,7 @@ export class BillingController {
       message: 'Current workspace not found',
     },
   ])
-  async myBillingSubscription(@Req() req: AuthRequest) {
+  async getMyBillingSubscription(@Req() req: AuthRequest): Promise<ApiResponse<BillingSubscriptionResponseDto | null>> {
     const result = await this.billingService.getMyBillingSubscription(
       req.user.userId,
     );
@@ -168,7 +168,7 @@ export class BillingController {
   async startMyBillingSubscription(
     @Body() dto: StartBillingSubscriptionDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<StartBillingSubscriptionResponseDto>> {
     const result = await this.billingService.startMyWorkspacePlanSubscription(
       req.user.userId,
       dto.planCode,
@@ -240,7 +240,7 @@ export class BillingController {
   async payMockTransaction(
     @Param('transactionId') transactionId: string,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<PaymentTransactionResponseDto>> {
     const result = await this.billingService.markMyTransactionPaid(
       req.user.userId,
       transactionId,
@@ -312,7 +312,7 @@ export class BillingController {
     @Param('transactionId') transactionId: string,
     @Body() dto: MarkPaymentFailedDto,
     @Req() req: AuthRequest,
-  ) {
+  ): Promise<ApiResponse<PaymentTransactionResponseDto>> {
     const result = await this.billingService.markMyTransactionFailed(
       req.user.userId,
       transactionId,
@@ -389,7 +389,7 @@ export class BillingController {
       message: 'Only active billing subscriptions can be cancelled at period end',
     },
   ])
-  async cancelMyBillingSubscription(@Req() req: AuthRequest) {
+  async cancelMyBillingSubscription(@Req() req: AuthRequest): Promise<ApiResponse<BillingSubscriptionResponseDto>> {
     const result = await this.billingService.cancelMyBillingSubscription(
       req.user.userId,
     );
