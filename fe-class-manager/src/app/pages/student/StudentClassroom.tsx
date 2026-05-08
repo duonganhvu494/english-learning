@@ -1,90 +1,195 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
-import { Calendar, Users, FileText, Download, CheckCircle, XCircle, Clock } from 'lucide-react';
+import {
+  Calendar,
+  CheckCircle,
+  Clock,
+  Download,
+  FileText,
+  Users,
+  XCircle,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import Card, { CardBody, CardHeader } from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
+import {
+  assignmentsApi,
+  attendancesApi,
+  getApiErrorMessage,
+  lecturesApi,
+  resolveApiUrl,
+  sessionsApi,
+} from '@/api';
+import type {
+  AttendanceStatusValue,
+  LectureResponse,
+  SessionResponse,
+} from '@/types';
+import { formatDateTime } from '@/app/utils/format';
+
+type SessionAttendanceSummary = {
+  sessionId: string;
+  status: AttendanceStatusValue | null;
+};
+
+type ClassroomMaterialItem = {
+  key: string;
+  lectureTitle: string;
+  fileName: string;
+  size: number | null;
+  downloadUrl: string;
+};
+
+function attendanceLabel(status: AttendanceStatusValue | null): string {
+  if (status === 'present') {
+    return 'Có mặt';
+  }
+  if (status === 'late') {
+    return 'Đi trễ';
+  }
+  if (status === 'absent') {
+    return 'Vắng mặt';
+  }
+  return 'Chưa điểm danh';
+}
+
+function attendanceVariant(status: AttendanceStatusValue | null): 'success' | 'warning' | 'danger' | 'default' {
+  if (status === 'present') {
+    return 'success';
+  }
+  if (status === 'late') {
+    return 'warning';
+  }
+  if (status === 'absent') {
+    return 'danger';
+  }
+  return 'default';
+}
+
+function renderAttendanceIcon(status: AttendanceStatusValue | null) {
+  if (status === 'present') {
+    return <CheckCircle className="w-4 h-4 text-green-600" />;
+  }
+  if (status === 'late') {
+    return <Clock className="w-4 h-4 text-yellow-600" />;
+  }
+  if (status === 'absent') {
+    return <XCircle className="w-4 h-4 text-red-600" />;
+  }
+  return null;
+}
+
+function formatFileSize(sizeInBytes: number | null): string {
+  if (!sizeInBytes || sizeInBytes <= 0) {
+    return '-';
+  }
+  if (sizeInBytes < 1024) {
+    return `${sizeInBytes} B`;
+  }
+  if (sizeInBytes < 1024 * 1024) {
+    return `${(sizeInBytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(sizeInBytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 export default function StudentClassroom() {
   const { classId } = useParams();
 
-  const classInfo = {
-    id: classId,
-    className: 'IELTS Foundation 01',
-    description: 'Lớp học IELTS cơ bản dành cho người mới bắt đầu',
-    teacher: 'Nguyễn Thị Lan',
-    schedule: 'Thứ 2, 4, 6 - 08:00-10:00',
-    room: 'Phòng A1',
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessions, setSessions] = useState<SessionResponse[]>([]);
+  const [attendances, setAttendances] = useState<SessionAttendanceSummary[]>([]);
+  const [lecturesBySession, setLecturesBySession] = useState<Record<string, LectureResponse[]>>({});
+  const [assignmentCount, setAssignmentCount] = useState(0);
+
+  const loadData = async () => {
+    if (!classId) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const sessionList = await sessionsApi.listClassSessions(classId);
+      const sortedSessions = [...sessionList].sort(
+        (a, b) => new Date(b.timeStart).getTime() - new Date(a.timeStart).getTime(),
+      );
+      setSessions(sortedSessions);
+
+      const perSessionData = await Promise.all(
+        sortedSessions.map(async (session) => {
+          const [attendance, lectures, assignments] = await Promise.all([
+            attendancesApi.getMyAttendance(session.id).catch(() => null),
+            lecturesApi.listSessionLectures(session.id).catch(() => [] as LectureResponse[]),
+            assignmentsApi.listSessionAssignments(session.id).catch(() => []),
+          ]);
+          return { session, attendance, lectures, assignments };
+        }),
+      );
+
+      const attendanceItems: SessionAttendanceSummary[] = perSessionData.map((item) => ({
+        sessionId: item.session.id,
+        status: item.attendance?.status ?? null,
+      }));
+      setAttendances(attendanceItems);
+
+      const lecturesMap: Record<string, LectureResponse[]> = {};
+      let totalAssignments = 0;
+      perSessionData.forEach((item) => {
+        lecturesMap[item.session.id] = item.lectures;
+        totalAssignments += item.assignments.length;
+      });
+      setLecturesBySession(lecturesMap);
+      setAssignmentCount(totalAssignments);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Không thể tải dữ liệu lớp học'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const recentSessions = [
-    {
-      id: '1',
-      topic: 'Introduction to IELTS',
-      date: '02/05/2026',
-      time: '08:00-10:00',
-      status: 'completed',
-      attendance: 'present',
-    },
-    {
-      id: '2',
-      topic: 'Reading Skills - Part 1',
-      date: '04/05/2026',
-      time: '08:00-10:00',
-      status: 'completed',
-      attendance: 'present',
-    },
-    {
-      id: '3',
-      topic: 'Listening Skills - Part 1',
-      date: '06/05/2026',
-      time: '08:00-10:00',
-      status: 'upcoming',
-      attendance: null,
-    },
-  ];
+  useEffect(() => {
+    void loadData();
+  }, [classId]);
 
-  const materials = [
-    {
-      id: '1',
-      sessionTopic: 'Introduction to IELTS',
-      name: 'Slide bài giảng.pdf',
-      size: '2.5 MB',
-      date: '02/05/2026',
-    },
-    {
-      id: '2',
-      sessionTopic: 'Reading Skills - Part 1',
-      name: 'Bài tập thực hành.docx',
-      size: '1.2 MB',
-      date: '04/05/2026',
-    },
-    {
-      id: '3',
-      sessionTopic: 'Reading Skills - Part 1',
-      name: 'Đáp án và giải thích.pdf',
-      size: '800 KB',
-      date: '04/05/2026',
-    },
-  ];
+  const attendanceMap = useMemo(
+    () => new Map(attendances.map((item) => [item.sessionId, item.status])),
+    [attendances],
+  );
 
-  const attendanceStats = {
-    present: 18,
-    late: 1,
-    absent: 1,
-    total: 20,
-  };
+  const attendanceStats = useMemo(() => {
+    const present = attendances.filter((item) => item.status === 'present').length;
+    const late = attendances.filter((item) => item.status === 'late').length;
+    const absent = attendances.filter((item) => item.status === 'absent').length;
+    const total = attendances.length;
+    return { present, late, absent, total };
+  }, [attendances]);
 
-  const getAttendanceIcon = (attendance: string | null) => {
-    if (attendance === 'present') return <CheckCircle className="w-4 h-4 text-green-600" />;
-    if (attendance === 'late') return <Clock className="w-4 h-4 text-yellow-600" />;
-    if (attendance === 'absent') return <XCircle className="w-4 h-4 text-red-600" />;
-    return null;
-  };
+  const classMaterials = useMemo(() => {
+    const items: ClassroomMaterialItem[] = [];
+    Object.values(lecturesBySession).forEach((lectures) => {
+      lectures.forEach((lecture) => {
+        lecture.materials.forEach((material) => {
+          items.push({
+            key: `${lecture.id}-${material.id}`,
+            lectureTitle: lecture.title,
+            fileName: material.fileName,
+            size: material.size,
+            downloadUrl: material.downloadUrl,
+          });
+        });
+      });
+    });
+    return items;
+  }, [lecturesBySession]);
+
+  const className = classId ? `Lớp ${classId.slice(0, 8)}` : 'Lớp học';
 
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{classInfo.className}</h1>
-        <p className="text-gray-600 mt-1">{classInfo.description}</p>
+        <h1 className="text-2xl font-bold text-gray-900">{className}</h1>
+        <p className="text-gray-600 mt-1">
+          Theo dõi lịch học, tài liệu và điểm danh của bạn trong lớp
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -96,19 +201,19 @@ export default function StudentClassroom() {
             <CardBody className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Giáo viên</p>
-                <p className="font-medium text-gray-900">{classInfo.teacher}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Lịch học</p>
-                <p className="font-medium text-gray-900">{classInfo.schedule}</p>
+                <p className="font-medium text-gray-900">-</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Phòng học</p>
-                <p className="font-medium text-gray-900">{classInfo.room}</p>
+                <p className="font-medium text-gray-900">-</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Sĩ số lớp</p>
-                <p className="font-medium text-gray-900">24 học viên</p>
+                <p className="text-sm text-gray-600">Số buổi học</p>
+                <p className="font-medium text-gray-900">{sessions.length}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Tổng bài tập</p>
+                <p className="font-medium text-gray-900">{assignmentCount}</p>
               </div>
             </CardBody>
           </Card>
@@ -119,61 +224,81 @@ export default function StudentClassroom() {
               <h3 className="font-semibold text-gray-900">Lịch sử buổi học</h3>
             </CardHeader>
             <CardBody>
-              <div className="space-y-3">
-                {recentSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="p-4 border border-gray-200 rounded-lg"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-medium text-gray-900">{session.topic}</h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {session.date} • {session.time}
-                        </p>
+              {isLoading ? (
+                <div className="text-center py-8 text-sm text-gray-500">Đang tải dữ liệu...</div>
+              ) : sessions.length === 0 ? (
+                <div className="text-center py-8 text-sm text-gray-500">Chưa có buổi học nào</div>
+              ) : (
+                <div className="space-y-3">
+                  {sessions.map((session) => {
+                    const attendanceStatus = attendanceMap.get(session.id) ?? null;
+                    const isUpcoming = new Date(session.timeStart).getTime() > Date.now();
+                    return (
+                      <div key={session.id} className="p-4 border border-gray-200 rounded-lg">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h4 className="font-medium text-gray-900">{session.topic}</h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {formatDateTime(session.timeStart)} - {formatDateTime(session.timeEnd)}
+                            </p>
+                            <div className="mt-2">
+                              <Badge variant={isUpcoming ? 'info' : 'default'}>
+                                {isUpcoming ? 'Sắp diễn ra' : 'Đã diễn ra'}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {renderAttendanceIcon(attendanceStatus)}
+                            <Badge variant={attendanceVariant(attendanceStatus)}>
+                              {attendanceLabel(attendanceStatus)}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {session.attendance && getAttendanceIcon(session.attendance)}
-                        <Badge variant={session.status === 'completed' ? 'success' : 'warning'}>
-                          {session.status === 'completed' ? 'Đã học' : 'Sắp tới'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardBody>
           </Card>
 
           <Card>
             <CardHeader className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Tài liệu học tập</h3>
+              <h3 className="font-semibold text-gray-900">Tài liệu lớp học</h3>
             </CardHeader>
             <CardBody>
-              <div className="space-y-3">
-                {materials.map((material) => (
-                  <div
-                    key={material.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-blue-600" />
+              {isLoading ? (
+                <div className="text-center py-8 text-sm text-gray-500">Đang tải dữ liệu...</div>
+              ) : classMaterials.length === 0 ? (
+                <div className="text-center py-8 text-sm text-gray-500">Chưa có tài liệu nào</div>
+              ) : (
+                <div className="space-y-3">
+                  {classMaterials.map((material) => (
+                    <div
+                      key={material.key}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{material.fileName}</p>
+                          <p className="text-sm text-gray-600">
+                            {material.lectureTitle} • {formatFileSize(material.size)}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{material.name}</p>
-                        <p className="text-sm text-gray-600">
-                          {material.sessionTopic} • {material.size}
-                        </p>
-                      </div>
+                      <a href={resolveApiUrl(material.downloadUrl)} target="_blank" rel="noreferrer">
+                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                          <Download className="w-4 h-4 text-gray-600" />
+                        </button>
+                      </a>
                     </div>
-                    <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                      <Download className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardBody>
           </Card>
         </div>
@@ -187,9 +312,12 @@ export default function StudentClassroom() {
             <CardBody className="space-y-4">
               <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
                 <p className="text-4xl font-bold text-blue-600 mb-1">
-                  {Math.round((attendanceStats.present / attendanceStats.total) * 100)}%
+                  {attendanceStats.total > 0
+                    ? Math.round((attendanceStats.present / attendanceStats.total) * 100)
+                    : 0}
+                  %
                 </p>
-                <p className="text-sm text-gray-600">Tỷ lệ điểm danh</p>
+                <p className="text-sm text-gray-600">Tỷ lệ có mặt</p>
               </div>
 
               <div className="space-y-2">
@@ -198,7 +326,7 @@ export default function StudentClassroom() {
                     <CheckCircle className="w-4 h-4 text-green-600" />
                     <span className="text-sm text-gray-700">Có mặt</span>
                   </div>
-                  <span className="font-semibold text-gray-900">{attendanceStats.present} buổi</span>
+                  <span className="font-semibold text-gray-900">{attendanceStats.present}</span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
@@ -206,7 +334,7 @@ export default function StudentClassroom() {
                     <Clock className="w-4 h-4 text-yellow-600" />
                     <span className="text-sm text-gray-700">Đi trễ</span>
                   </div>
-                  <span className="font-semibold text-gray-900">{attendanceStats.late} buổi</span>
+                  <span className="font-semibold text-gray-900">{attendanceStats.late}</span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
@@ -214,7 +342,7 @@ export default function StudentClassroom() {
                     <XCircle className="w-4 h-4 text-red-600" />
                     <span className="text-sm text-gray-700">Vắng mặt</span>
                   </div>
-                  <span className="font-semibold text-gray-900">{attendanceStats.absent} buổi</span>
+                  <span className="font-semibold text-gray-900">{attendanceStats.absent}</span>
                 </div>
               </div>
             </CardBody>

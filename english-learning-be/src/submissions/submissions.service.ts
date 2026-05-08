@@ -446,10 +446,11 @@ export class SubmissionsService {
     reviewerUserId: string,
     dto: ReviewSubmissionDto,
   ): Promise<SubmissionResponseDto> {
-    if (dto.grade === undefined && dto.feedback === undefined) {
+    const resolvedScore = dto.score ?? dto.grade;
+    if (resolvedScore === undefined && dto.feedback === undefined) {
       throw new BadRequestException(
         errorPayload(
-          'At least one of grade or feedback must be provided',
+          'At least one of score or feedback must be provided',
           'SUBMISSION_REVIEW_EMPTY',
         ),
       );
@@ -457,8 +458,8 @@ export class SubmissionsService {
 
     const submission = await this.loadSubmissionOrThrow(assignmentId, studentId);
 
-    if (dto.grade !== undefined) {
-      submission.grade = dto.grade;
+    if (resolvedScore !== undefined) {
+      submission.grade = resolvedScore;
     }
 
     if (dto.feedback !== undefined) {

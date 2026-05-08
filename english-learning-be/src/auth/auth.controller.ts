@@ -315,6 +315,8 @@ export class AuthController {
       email: req.user.email,
       mustChangePassword: req.user.mustChangePassword ?? false,
       emailVerified: req.user.emailVerified ?? false,
+      role: req.user.role ?? '',
+      avatarUrl: undefined,
     });
     return ApiResponse.success(result, 'Is authenticated');
   }

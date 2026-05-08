@@ -22,6 +22,9 @@ export class SubmissionResponseDto {
   @ApiProperty({ example: 8.5, nullable: true })
   grade: number | null;
 
+  @ApiProperty({ example: 8.5, nullable: true })
+  score: number | null;
+
   @ApiProperty({ example: 'Good job, but review question 3.', nullable: true })
   feedback: string | null;
 
@@ -39,6 +42,7 @@ export class SubmissionResponseDto {
     dto.submitted = true;
     dto.submittedAt = submission.submittedAt;
     dto.grade = submission.grade;
+    dto.score = submission.grade;
     dto.feedback = submission.feedback;
     dto.material = MaterialSummaryDto.fromEntity(submission.material, downloadUrl);
     return dto;
@@ -55,6 +59,7 @@ export class SubmissionResponseDto {
     dto.submitted = false;
     dto.submittedAt = null;
     dto.grade = null;
+    dto.score = null;
     dto.feedback = null;
     dto.material = null;
     return dto;

@@ -10,6 +10,17 @@ export class ReviewSubmissionDto {
   })
   @IsOptional()
   @Type(() => Number)
+  @IsNumber({}, { message: 'score must be a number' })
+  @Min(0, { message: 'score must be greater than or equal to 0' })
+  score?: number;
+
+  @ApiPropertyOptional({
+    example: 8.5,
+    description: 'Legacy alias for score. Prefer score.',
+    minimum: 0,
+  })
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber({}, { message: 'grade must be a number' })
   @Min(0, { message: 'grade must be greater than or equal to 0' })
   grade?: number;

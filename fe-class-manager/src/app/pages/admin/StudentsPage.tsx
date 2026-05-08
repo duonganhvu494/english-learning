@@ -1,33 +1,92 @@
-import { useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, Filter, Download, Upload } from 'lucide-react';
+import { toast } from 'sonner';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card, { CardBody } from '../../components/ui/Card';
 import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table';
 import Badge from '../../components/ui/Badge';
 import Modal, { ModalBody, ModalFooter } from '../../components/ui/Modal';
+import { getApiErrorMessage, workspacesApi } from '@/api';
+import { resolveWorkspaceId } from '@/app/utils/workspace';
+import type { WorkspaceStudentListItem } from '@/types';
 
 export default function StudentsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [students, setStudents] = useState<WorkspaceStudentListItem[]>([]);
+  const [workspaceId, setWorkspaceIdState] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
   });
 
-  const students = [
-    { id: '1', fullName: 'Nguyễn Văn A', email: 'nguyenvana@gmail.com', class: 'IELTS Foundation 01', status: 'active', joinDate: '01/01/2026' },
-    { id: '2', fullName: 'Trần Thị B', email: 'tranthib@gmail.com', class: 'TOEIC Advanced', status: 'active', joinDate: '05/01/2026' },
-    { id: '3', fullName: 'Lê Văn C', email: 'levanc@gmail.com', class: 'Business English', status: 'active', joinDate: '10/01/2026' },
-    { id: '4', fullName: 'Phạm Thị D', email: 'phamthid@gmail.com', class: 'IELTS Foundation 01', status: 'inactive', joinDate: '15/01/2026' },
-    { id: '5', fullName: 'Hoàng Văn E', email: 'hoangvane@gmail.com', class: 'TOEIC Advanced', status: 'active', joinDate: '20/01/2026' },
-    { id: '6', fullName: 'Võ Thị F', email: 'vothif@gmail.com', class: 'Business English', status: 'active', joinDate: '25/01/2026' },
-  ];
+  const loadStudents = async (targetWorkspaceId?: string) => {
+    const activeWorkspaceId = targetWorkspaceId || workspaceId;
+    if (!activeWorkspaceId) {
+      return;
+    }
 
-  const handleSubmit = (e: React.FormEvent) => {
+    try {
+      const items = await workspacesApi.listWorkspaceStudents(activeWorkspaceId);
+      setStudents(items);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Không thể tải danh sách học viên'));
+    }
+  };
+
+  useEffect(() => {
+    const bootstrap = async () => {
+      setIsLoading(true);
+      try {
+        const resolvedWorkspaceId = await resolveWorkspaceId();
+        setWorkspaceIdState(resolvedWorkspaceId);
+        await loadStudents(resolvedWorkspaceId);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, 'Không thể xác định workspace'));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void bootstrap();
+  }, []);
+
+  const filteredStudents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      return students;
+    }
+    return students.filter((student) =>
+      [student.fullName, student.email, student.userName].some((value) =>
+        value.toLowerCase().includes(q),
+      ),
+    );
+  }, [searchQuery, students]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowAddModal(false);
-    setFormData({ fullName: '', email: '' });
+    if (!workspaceId || isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await workspacesApi.createWorkspaceStudent(workspaceId, {
+        fullName: formData.fullName,
+        email: formData.email,
+      });
+      toast.success('Thêm học viên thanh cong');
+      await loadStudents(workspaceId);
+      setShowAddModal(false);
+      setFormData({ fullName: '', email: '' });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Không thể thêm học viên'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -40,13 +99,13 @@ export default function StudentsPage() {
         <div className="flex gap-3">
           <Button variant="outline">
             <Download className="w-4 h-4" />
-            Xuất Excel
+            Xuat Excel
           </Button>
           <Button variant="outline">
             <Upload className="w-4 h-4" />
             Nhập Excel
           </Button>
-          <Button onClick={() => setShowAddModal(true)}>
+          <Button onClick={() => setShowAddModal(true)} disabled={!workspaceId}>
             <Plus className="w-4 h-4" />
             Thêm học viên
           </Button>
@@ -68,7 +127,7 @@ export default function StudentsPage() {
             </div>
             <Button variant="outline">
               <Filter className="w-4 h-4" />
-              Lọc
+              Loc
             </Button>
           </div>
 
@@ -77,15 +136,21 @@ export default function StudentsPage() {
               <TableRow>
                 <TableHead>Học viên</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Lớp học</TableHead>
-                <TableHead>Ngày tham gia</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead>Thao tác</TableHead>
+                <TableHead>Username</TableHead>
+                <TableHead>Vai tro</TableHead>
+                <TableHead>Trang thai</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((student) => (
-                <TableRow key={student.id}>
+              {!isLoading && filteredStudents.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <div className="text-center py-8 text-sm text-gray-500">Không có học viên</div>
+                  </TableCell>
+                </TableRow>
+              )}
+              {filteredStudents.map((student) => (
+                <TableRow key={student.studentId}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -97,18 +162,14 @@ export default function StudentsPage() {
                     </div>
                   </TableCell>
                   <TableCell>{student.email}</TableCell>
-                  <TableCell>{student.class}</TableCell>
-                  <TableCell>{student.joinDate}</TableCell>
+                  <TableCell>{student.userName}</TableCell>
                   <TableCell>
-                    <Badge variant={student.status === 'active' ? 'success' : 'default'}>
-                      {student.status === 'active' ? 'Đang học' : 'Tạm nghỉ'}
-                    </Badge>
+                    <Badge variant="default">{student.role}</Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <button className="text-sm text-blue-600 hover:underline">Xem</button>
-                      <button className="text-sm text-blue-600 hover:underline">Sửa</button>
-                    </div>
+                    <Badge variant={student.status === 'active' ? 'success' : 'warning'}>
+                      {student.status}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}
@@ -116,17 +177,14 @@ export default function StudentsPage() {
           </Table>
 
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600">Hiển thị 1-6 trong tổng số 6 học viên</p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled>Trước</Button>
-              <Button variant="outline" size="sm">1</Button>
-              <Button variant="outline" size="sm" disabled>Sau</Button>
-            </div>
+            <p className="text-sm text-gray-600">
+              Hien thi {filteredStudents.length} / {students.length} hoc vien
+            </p>
           </div>
         </CardBody>
       </Card>
 
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Thêm học viên mới">
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Thêm học viên moi">
         <form onSubmit={handleSubmit}>
           <ModalBody className="space-y-4">
             <Input
@@ -149,12 +207,16 @@ export default function StudentsPage() {
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => setShowAddModal(false)} type="button">
-              Hủy
+              Huy
             </Button>
-            <Button type="submit">Thêm học viên</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Đang thêm...' : 'Thêm học viên'}
+            </Button>
           </ModalFooter>
         </form>
       </Modal>
     </div>
   );
 }
+
+

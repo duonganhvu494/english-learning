@@ -1,56 +1,148 @@
-import { useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, Plus, Users, Calendar, FileText, UserPlus, Clock } from 'lucide-react';
+import { toast } from 'sonner';
 import Button from '../../components/ui/Button';
 import Card, { CardBody, CardHeader } from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table';
 import Modal, { ModalBody, ModalFooter } from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
+import { classesApi, getApiErrorMessage, sessionsApi, workspacesApi } from '@/api';
+import type { ClassResponse, ClassStudentListItem, SessionResponse, WorkspaceStudentListItem } from '@/types';
+import { formatDateTime, toIsoFromLocalDateTime } from '@/app/utils/format';
+import { resolveWorkspaceId } from '@/app/utils/workspace';
 
 export default function ClassDetailPage() {
   const { classId } = useParams();
   const [activeTab, setActiveTab] = useState<'info' | 'students' | 'sessions'>('info');
   const [showAddSessionModal, setShowAddSessionModal] = useState(false);
+  const [showAddStudentsModal, setShowAddStudentsModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSavingSession, setIsSavingSession] = useState(false);
+  const [isSavingStudents, setIsSavingStudents] = useState(false);
+  const [classInfo, setClassInfo] = useState<ClassResponse | null>(null);
+  const [students, setStudents] = useState<ClassStudentListItem[]>([]);
+  const [sessions, setSessions] = useState<SessionResponse[]>([]);
+  const [workspaceStudents, setWorkspaceStudents] = useState<WorkspaceStudentListItem[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [sessionFormData, setSessionFormData] = useState({
     topic: '',
     timeStart: '',
     timeEnd: '',
   });
 
-  const classInfo = {
-    id: classId,
-    className: 'IELTS Foundation 01',
-    description: 'Lớp học IELTS cơ bản dành cho người mới bắt đầu',
-    teacher: 'Nguyễn Thị Lan',
-    schedule: 'Thứ 2, 4, 6 - 08:00-10:00',
-    room: 'Phòng A1',
-    startDate: '01/01/2026',
-    endDate: '30/06/2026',
-    status: 'active',
+  const loadData = async () => {
+    if (!classId) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const workspaceId = await resolveWorkspaceId();
+      const [classList, roster, classSessions, workspaceStudentList] = await Promise.all([
+        classesApi.listWorkspaceClasses(workspaceId),
+        classesApi.getClassStudents(classId),
+        sessionsApi.listClassSessions(classId),
+        workspacesApi.listWorkspaceStudents(workspaceId),
+      ]);
+
+      const classDetail = classList.find((item) => item.id === classId) ?? null;
+      setClassInfo(classDetail);
+      setStudents(roster.students);
+      setSessions(classSessions);
+      setWorkspaceStudents(workspaceStudentList);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Không thể tải chi tiết lớp học'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const students = [
-    { id: '1', fullName: 'Nguyễn Văn A', email: 'nguyenvana@gmail.com', role: 'student', joinDate: '01/01/2026' },
-    { id: '2', fullName: 'Trần Thị B', email: 'tranthib@gmail.com', role: 'student', joinDate: '01/01/2026' },
-    { id: '3', fullName: 'Lê Văn C', email: 'levanc@gmail.com', role: 'student', joinDate: '05/01/2026' },
-  ];
+  useEffect(() => {
+    void loadData();
+  }, [classId]);
 
-  const sessions = [
-    { id: '1', topic: 'Introduction to IELTS', date: '02/01/2026', time: '08:00-10:00', status: 'completed' },
-    { id: '2', topic: 'Reading Skills - Part 1', date: '04/01/2026', time: '08:00-10:00', status: 'completed' },
-    { id: '3', topic: 'Listening Skills - Part 1', date: '06/01/2026', time: '08:00-10:00', status: 'upcoming' },
-    { id: '4', topic: 'Writing Task 1', date: '09/01/2026', time: '08:00-10:00', status: 'upcoming' },
-  ];
+  const sessionStats = useMemo(() => {
+    const now = Date.now();
+    const completed = sessions.filter((session) => new Date(session.timeEnd).getTime() < now).length;
+    return {
+      total: sessions.length,
+      completed,
+      upcoming: sessions.length - completed,
+    };
+  }, [sessions]);
 
-  const handleAddSession = (e: React.FormEvent) => {
+  const availableStudents = useMemo(
+    () => workspaceStudents.filter(
+      (workspaceStudent) => !students.some((student) => student.studentId === workspaceStudent.studentId),
+    ),
+    [workspaceStudents, students],
+  );
+
+  const handleAddSession = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowAddSessionModal(false);
-    setSessionFormData({ topic: '', timeStart: '', timeEnd: '' });
+    if (!classId || isSavingSession) {
+      return;
+    }
+
+    setIsSavingSession(true);
+    try {
+      await sessionsApi.createSession(classId, {
+        topic: sessionFormData.topic,
+        timeStart: toIsoFromLocalDateTime(sessionFormData.timeStart),
+        timeEnd: toIsoFromLocalDateTime(sessionFormData.timeEnd),
+      });
+      toast.success('Tạo buổi học thanh cong');
+      setShowAddSessionModal(false);
+      setSessionFormData({ topic: '', timeStart: '', timeEnd: '' });
+      await loadData();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Không thể tạo buổi học'));
+    } finally {
+      setIsSavingSession(false);
+    }
+  };
+
+  const handleAddStudents = async () => {
+    if (!classId || selectedStudentIds.length === 0 || isSavingStudents) {
+      return;
+    }
+
+    setIsSavingStudents(true);
+    try {
+      await classesApi.addClassStudents(classId, {
+        studentIds: selectedStudentIds,
+      });
+      toast.success('Da them hoc vien vao lop');
+      setShowAddStudentsModal(false);
+      setSelectedStudentIds([]);
+      await loadData();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Không thể thêm học viên vào lớp'));
+    } finally {
+      setIsSavingStudents(false);
+    }
+  };
+
+  const handleResetRole = async (studentId: string) => {
+    if (!classId) {
+      return;
+    }
+
+    try {
+      await classesApi.updateClassStudentRole(classId, studentId, {
+        roleId: null,
+      });
+      toast.success('Da cap nhat role mac dinh');
+      await loadData();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Không thể cập nhật vai trò'));
+    }
   };
 
   const tabs = [
-    { id: 'info', label: 'Thông tin', icon: FileText },
+    { id: 'info', label: 'Thong tin', icon: FileText },
     { id: 'students', label: 'Học viên', icon: Users },
     { id: 'sessions', label: 'Buổi học', icon: Calendar },
   ];
@@ -64,10 +156,10 @@ export default function ClassDetailPage() {
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">{classInfo.className}</h1>
-          <p className="text-gray-600 mt-1">{classInfo.description}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{classInfo?.className || 'Class detail'}</h1>
+          <p className="text-gray-600 mt-1">{classInfo?.description || 'Không có mô tả'}</p>
         </div>
-        <Badge variant="success">Đang diễn ra</Badge>
+        <Badge variant="success">Đang hoạt động</Badge>
       </div>
 
       <div className="border-b border-gray-200">
@@ -77,7 +169,7 @@ export default function ClassDetailPage() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as 'info' | 'students' | 'sessions')}
                 className={`flex items-center gap-2 pb-3 border-b-2 transition-colors ${
                   activeTab === tab.id
                     ? 'border-blue-600 text-blue-600'
@@ -96,37 +188,27 @@ export default function ClassDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <h3 className="font-semibold text-gray-900">Thông tin cơ bản</h3>
+              <h3 className="font-semibold text-gray-900">Thong tin co ban</h3>
             </CardHeader>
             <CardBody className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600">Giáo viên phụ trách</p>
-                <p className="font-medium text-gray-900">{classInfo.teacher}</p>
+                <p className="text-sm text-gray-600">Ten lop</p>
+                <p className="font-medium text-gray-900">{classInfo?.className || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Lịch học</p>
-                <p className="font-medium text-gray-900">{classInfo.schedule}</p>
+                <p className="text-sm text-gray-600">Mô tả</p>
+                <p className="font-medium text-gray-900">{classInfo?.description || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Phòng học</p>
-                <p className="font-medium text-gray-900">{classInfo.room}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Ngày bắt đầu</p>
-                  <p className="font-medium text-gray-900">{classInfo.startDate}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Ngày kết thúc</p>
-                  <p className="font-medium text-gray-900">{classInfo.endDate}</p>
-                </div>
+                <p className="text-sm text-gray-600">Workspace</p>
+                <p className="font-medium text-gray-900 break-all">{classInfo?.workspaceId || '-'}</p>
               </div>
             </CardBody>
           </Card>
 
           <Card>
             <CardHeader>
-              <h3 className="font-semibold text-gray-900">Thống kê</h3>
+              <h3 className="font-semibold text-gray-900">Thong ke</h3>
             </CardHeader>
             <CardBody className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
@@ -134,7 +216,7 @@ export default function ClassDetailPage() {
                   <Users className="w-8 h-8 text-blue-600" />
                   <div>
                     <p className="text-sm text-gray-600">Tổng học viên</p>
-                    <p className="text-2xl font-bold text-gray-900">24</p>
+                    <p className="text-2xl font-bold text-gray-900">{students.length}</p>
                   </div>
                 </div>
               </div>
@@ -142,8 +224,8 @@ export default function ClassDetailPage() {
                 <div className="flex items-center gap-3">
                   <Calendar className="w-8 h-8 text-green-600" />
                   <div>
-                    <p className="text-sm text-gray-600">Tổng buổi học</p>
-                    <p className="text-2xl font-bold text-gray-900">36</p>
+                    <p className="text-sm text-gray-600">Tong buoi hoc</p>
+                    <p className="text-2xl font-bold text-gray-900">{sessionStats.total}</p>
                   </div>
                 </div>
               </div>
@@ -151,8 +233,8 @@ export default function ClassDetailPage() {
                 <div className="flex items-center gap-3">
                   <Clock className="w-8 h-8 text-yellow-600" />
                   <div>
-                    <p className="text-sm text-gray-600">Đã hoàn thành</p>
-                    <p className="text-2xl font-bold text-gray-900">12</p>
+                    <p className="text-sm text-gray-600">Da hoan thanh</p>
+                    <p className="text-2xl font-bold text-gray-900">{sessionStats.completed}</p>
                   </div>
                 </div>
               </div>
@@ -165,7 +247,7 @@ export default function ClassDetailPage() {
         <Card>
           <CardHeader className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">Danh sách học viên</h3>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setShowAddStudentsModal(true)}>
               <UserPlus className="w-4 h-4" />
               Thêm học viên
             </Button>
@@ -176,14 +258,20 @@ export default function ClassDetailPage() {
                 <TableRow>
                   <TableHead>Học viên</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Vai trò</TableHead>
-                  <TableHead>Ngày tham gia</TableHead>
-                  <TableHead>Thao tác</TableHead>
+                  <TableHead>Role hien tai</TableHead>
+                  <TableHead>Thao tac</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {!isLoading && students.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4}>
+                      <div className="text-center py-8 text-sm text-gray-500">Lop chua co hoc vien</div>
+                    </TableCell>
+                  </TableRow>
+                )}
                 {students.map((student) => (
-                  <TableRow key={student.id}>
+                  <TableRow key={student.studentId}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -196,11 +284,17 @@ export default function ClassDetailPage() {
                     </TableCell>
                     <TableCell>{student.email}</TableCell>
                     <TableCell>
-                      <Badge variant="default">Học viên</Badge>
+                      <Badge variant={student.classRoleName ? 'info' : 'default'}>
+                        {student.classRoleName || 'student'}
+                      </Badge>
                     </TableCell>
-                    <TableCell>{student.joinDate}</TableCell>
                     <TableCell>
-                      <button className="text-sm text-red-600 hover:underline">Xóa</button>
+                      <button
+                        onClick={() => handleResetRole(student.studentId)}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        Reset role mac dinh
+                      </button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -213,7 +307,7 @@ export default function ClassDetailPage() {
       {activeTab === 'sessions' && (
         <Card>
           <CardHeader className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Lịch sử buổi học</h3>
+            <h3 className="font-semibold text-gray-900">Lich su buoi hoc</h3>
             <Button size="sm" onClick={() => setShowAddSessionModal(true)}>
               <Plus className="w-4 h-4" />
               Tạo buổi học
@@ -221,43 +315,49 @@ export default function ClassDetailPage() {
           </CardHeader>
           <CardBody>
             <div className="space-y-3">
-              {sessions.map((session) => (
-                <Link
-                  key={session.id}
-                  to={`/admin/sessions/${session.id}`}
-                  className="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{session.topic}</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {session.date} • {session.time}
-                      </p>
+              {!isLoading && sessions.length === 0 && (
+                <div className="text-center py-8 text-sm text-gray-500 border rounded-lg">Chưa có buổi học nào</div>
+              )}
+              {sessions.map((session) => {
+                const isCompleted = new Date(session.timeEnd).getTime() < Date.now();
+                return (
+                  <Link
+                    key={session.id}
+                    to={`/admin/sessions/${session.id}`}
+                    className="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{session.topic}</h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {formatDateTime(session.timeStart)} - {formatDateTime(session.timeEnd)}
+                        </p>
+                      </div>
+                      <Badge variant={isCompleted ? 'success' : 'warning'}>
+                        {isCompleted ? 'Da hoan thanh' : 'Sap dien ra'}
+                      </Badge>
                     </div>
-                    <Badge variant={session.status === 'completed' ? 'success' : 'warning'}>
-                      {session.status === 'completed' ? 'Đã hoàn thành' : 'Sắp diễn ra'}
-                    </Badge>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </CardBody>
         </Card>
       )}
 
-      <Modal isOpen={showAddSessionModal} onClose={() => setShowAddSessionModal(false)} title="Tạo buổi học mới">
+      <Modal isOpen={showAddSessionModal} onClose={() => setShowAddSessionModal(false)} title="Tạo buổi học moi">
         <form onSubmit={handleAddSession}>
           <ModalBody className="space-y-4">
             <Input
-              label="Chủ đề buổi học"
+              label="Chu de buoi hoc"
               name="topic"
-              placeholder="Ví dụ: Reading Skills - Part 1"
+              placeholder="Vi du: Reading Skills - Part 1"
               value={sessionFormData.topic}
               onChange={(e) => setSessionFormData({ ...sessionFormData, topic: e.target.value })}
               required
             />
             <Input
-              label="Thời gian bắt đầu"
+              label="Thoi gian bat dau"
               type="datetime-local"
               name="timeStart"
               value={sessionFormData.timeStart}
@@ -265,7 +365,7 @@ export default function ClassDetailPage() {
               required
             />
             <Input
-              label="Thời gian kết thúc"
+              label="Thoi gian ket thuc"
               type="datetime-local"
               name="timeEnd"
               value={sessionFormData.timeEnd}
@@ -275,12 +375,62 @@ export default function ClassDetailPage() {
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => setShowAddSessionModal(false)} type="button">
-              Hủy
+              Huy
             </Button>
-            <Button type="submit">Tạo buổi học</Button>
+            <Button type="submit" disabled={isSavingSession}>
+              {isSavingSession ? 'Đang tạo...' : 'Tạo buổi học'}
+            </Button>
           </ModalFooter>
         </form>
+      </Modal>
+
+      <Modal isOpen={showAddStudentsModal} onClose={() => setShowAddStudentsModal(false)} title="Thêm học viên vao lop" size="lg">
+        <ModalBody>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {availableStudents.length === 0 && (
+              <div className="text-sm text-gray-500 py-6 text-center">Không còn học viên nào để thêm</div>
+            )}
+            {availableStudents.map((student) => {
+              const isSelected = selectedStudentIds.includes(student.studentId);
+              return (
+                <label
+                  key={student.studentId}
+                  className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(event) => {
+                      setSelectedStudentIds((prev) => {
+                        if (event.target.checked) {
+                          return [...prev, student.studentId];
+                        }
+                        return prev.filter((item) => item !== student.studentId);
+                      });
+                    }}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{student.fullName}</p>
+                    <p className="text-xs text-gray-600">{student.email}</p>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" onClick={() => setShowAddStudentsModal(false)} type="button">
+            Huy
+          </Button>
+          <Button onClick={handleAddStudents} disabled={selectedStudentIds.length === 0 || isSavingStudents}>
+            {isSavingStudents ? 'Đang thêm...' : 'Thêm vào lớp'}
+          </Button>
+        </ModalFooter>
       </Modal>
     </div>
   );
 }
+
+
+

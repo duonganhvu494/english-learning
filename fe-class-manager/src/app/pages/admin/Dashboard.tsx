@@ -1,38 +1,78 @@
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Users, BookOpen, DollarSign, CheckCircle, TrendingUp, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
 import Card, { CardBody, CardHeader } from '../../components/ui/Card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { classesApi, getApiErrorMessage, notificationsApi, sessionsApi, workspacesApi } from '@/api';
+import type { ClassResponse, NotificationItem, SessionResponse, WorkspaceDetail } from '@/types';
+import { formatDateTime } from '@/app/utils/format';
+import { resolveWorkspaceId } from '@/app/utils/workspace';
 
 export default function Dashboard() {
-  const stats = [
-    {
-      icon: Users,
-      label: 'Tổng học viên',
-      value: '248',
-      change: '+12%',
-      changeType: 'increase',
-    },
-    {
-      icon: BookOpen,
-      label: 'Lớp hoạt động',
-      value: '12',
-      change: '+2',
-      changeType: 'increase',
-    },
-    {
-      icon: DollarSign,
-      label: 'Doanh thu tháng',
-      value: '45.2M',
-      change: '+8%',
-      changeType: 'increase',
-    },
-    {
-      icon: CheckCircle,
-      label: 'Bài cần chấm',
-      value: '24',
-      change: '-6',
-      changeType: 'decrease',
-    },
-  ];
+  const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
+  const [classes, setClasses] = useState<ClassResponse[]>([]);
+  const [sessions, setSessions] = useState<SessionResponse[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const workspaceId = await resolveWorkspaceId();
+        const [workspaceDetail, classList, inbox] = await Promise.all([
+          workspacesApi.getMyWorkspace(),
+          classesApi.listWorkspaceClasses(workspaceId),
+          notificationsApi.listMyNotifications({ limit: 10 }),
+        ]);
+
+        setWorkspace(workspaceDetail);
+        setClasses(classList);
+        setNotifications(inbox);
+
+        if (classList.length > 0) {
+          const classSessions = await sessionsApi.listClassSessions(classList[0].id);
+          setSessions(classSessions);
+        }
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, 'Không thể tải dashboard'));
+      }
+    };
+
+    void bootstrap();
+  }, []);
+
+  const stats = useMemo(
+    () => [
+      {
+        icon: Users,
+        label: 'Tổng học viên',
+        value: String(workspace?.studentCount ?? 0),
+        change: '-',
+        changeType: 'increase',
+      },
+      {
+        icon: BookOpen,
+        label: 'Lớp hoạt động',
+        value: String(workspace?.classCount ?? classes.length),
+        change: '-',
+        changeType: 'increase',
+      },
+      {
+        icon: DollarSign,
+        label: 'Gói cước',
+        value: workspace ? 'Active' : 'N/A',
+        change: '-',
+        changeType: 'increase',
+      },
+      {
+        icon: CheckCircle,
+        label: 'Thông báo chưa đọc',
+        value: String(notifications.filter((item) => !item.isRead).length),
+        change: '-',
+        changeType: 'decrease',
+      },
+    ],
+    [classes.length, notifications, workspace],
+  );
 
   const revenueData = [
     { month: 'T1', revenue: 32 },
@@ -52,26 +92,29 @@ export default function Dashboard() {
     { day: 'T7', rate: 85 },
   ];
 
-  const todaySchedule = [
-    { time: '08:00 - 10:00', class: 'IELTS Foundation 01', topic: 'Reading Skills', room: 'Phòng A1' },
-    { time: '10:30 - 12:30', class: 'TOEIC Advanced', topic: 'Listening Practice', room: 'Phòng B2' },
-    { time: '14:00 - 16:00', class: 'Business English', topic: 'Presentation Skills', room: 'Phòng A2' },
-  ];
+  const todaySchedule = sessions.slice(0, 5).map((session) => ({
+    id: session.id,
+    title: session.topic,
+    time: `${formatDateTime(session.timeStart)} - ${formatDateTime(session.timeEnd)}`,
+    classId: session.classId,
+  }));
 
-  const pendingTasks = [
-    { task: 'Chấm bài tập Unit 5 - IELTS Foundation 01', count: 8, urgent: true },
-    { task: 'Chấm bài tập Listening - TOEIC Advanced', count: 12, urgent: false },
-    { task: 'Cập nhật điểm danh tuần này', count: 4, urgent: true },
-  ];
+  const pendingTasks = notifications
+    .filter((item) => !item.isRead)
+    .slice(0, 5)
+    .map((item) => ({
+      id: item.id,
+      task: item.title,
+      detail: item.body,
+    }));
 
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Tổng quan</h1>
-        <p className="text-gray-600 mt-1">Chào mừng trở lại! Đây là báo cáo hoạt động của trung tâm</p>
+        <p className="text-gray-600 mt-1">Báo cáo hoạt động của trung tâm</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
@@ -86,7 +129,7 @@ export default function Dashboard() {
                       stat.changeType === 'increase' ? 'text-green-600' : 'text-blue-600'
                     }`}>
                       <TrendingUp className="w-3 h-3 inline mr-1" />
-                      {stat.change} so với tháng trước
+                      {stat.change}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -99,7 +142,6 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -120,7 +162,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader>
-            <h3 className="font-semibold text-gray-900">Tỉ lệ điểm danh tuần này</h3>
+            <h3 className="font-semibold text-gray-900">Tỷ lệ điểm danh tuần này</h3>
           </CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={250}>
@@ -136,22 +178,23 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Today's Schedule & Pending Tasks */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-600" />
-            <h3 className="font-semibold text-gray-900">Lịch dạy hôm nay</h3>
+            <h3 className="font-semibold text-gray-900">Lịch dạy gần nhất</h3>
           </CardHeader>
           <CardBody className="p-0">
             <div className="divide-y divide-gray-200">
-              {todaySchedule.map((item, index) => (
-                <div key={index} className="p-4 hover:bg-gray-50">
+              {todaySchedule.length === 0 && (
+                <div className="p-4 text-sm text-gray-500">Chưa có buổi học nào</div>
+              )}
+              {todaySchedule.map((item) => (
+                <div key={item.id} className="p-4 hover:bg-gray-50">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">{item.class}</p>
-                      <p className="text-sm text-gray-600 mt-1">{item.topic}</p>
-                      <p className="text-xs text-gray-500 mt-1">{item.room}</p>
+                      <p className="font-medium text-gray-900">{item.title}</p>
+                      <p className="text-sm text-gray-600 mt-1">Class: {item.classId}</p>
                     </div>
                     <span className="text-sm text-blue-600 font-medium">{item.time}</span>
                   </div>
@@ -164,25 +207,17 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-blue-600" />
-            <h3 className="font-semibold text-gray-900">Công việc cần làm</h3>
+            <h3 className="font-semibold text-gray-900">Thông báo cần xử lý</h3>
           </CardHeader>
           <CardBody className="p-0">
             <div className="divide-y divide-gray-200">
-              {pendingTasks.map((item, index) => (
-                <div key={index} className="p-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm text-gray-900">{item.task}</p>
-                        {item.urgent && (
-                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                            Gấp
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="ml-4 text-sm font-medium text-blue-600">{item.count} bài</span>
-                  </div>
+              {pendingTasks.length === 0 && (
+                <div className="p-4 text-sm text-gray-500">Không có thông báo chưa đọc</div>
+              )}
+              {pendingTasks.map((item) => (
+                <div key={item.id} className="p-4 hover:bg-gray-50">
+                  <p className="text-sm font-medium text-gray-900">{item.task}</p>
+                  <p className="text-xs text-gray-600 mt-1">{item.detail}</p>
                 </div>
               ))}
             </div>
@@ -192,3 +227,6 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
+

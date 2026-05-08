@@ -125,6 +125,52 @@ export class UsersController {
         return ApiResponse.success(result, 'Users retrieved');
     }
 
+    @Get('me')
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({
+        summary: 'Get my profile',
+        description: 'Returns the profile of the currently authenticated user.',
+    })
+    @ApiCookieAuth('cookieAuth')
+    @ApiEnvelopeResponse({
+        status: 200,
+        description: 'Current user profile retrieved successfully',
+        model: UserProfileResponse,
+        exampleMessage: 'User retrieved',
+        exampleResult: {
+            id: '550e8400-e29b-41d4-a716-446655440000',
+            userName: 'duonganhvu',
+            fullName: 'Duong Anh Vu',
+            email: 'duonganhvu@example.com',
+            mustChangePassword: false,
+            emailVerified: true,
+            role: 'teacher',
+            avatarUrl: null,
+        },
+    })
+    @ApiUnauthorizedResponse({ description: 'User is not authenticated or must change password first' })
+    @ApiBusinessErrorResponses([
+        {
+            status: 401,
+            code: 'AUTH_UNAUTHORIZED',
+            message: 'Unauthorized',
+        },
+        {
+            status: 401,
+            code: 'AUTH_PASSWORD_CHANGE_REQUIRED',
+            message: 'Password change is required before accessing this resource',
+        },
+        {
+            status: 400,
+            code: 'USER_NOT_FOUND',
+            message: 'User not found',
+        },
+    ])
+    async getMe(@Req() req: AuthRequest): Promise<ApiResponse<UserProfileResponse>> {
+        const result = await this.usersService.getUserById(req.user.userId);
+        return ApiResponse.success(result, 'User retrieved');
+    }
+
     @Get(':id')
     @UseGuards(JwtAuthGuard, SuperAdminGuard)
     @ApiOperation({

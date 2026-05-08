@@ -49,6 +49,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       userId: user.id,
       email: user.email,
       emailVerified: !user.emailVerificationRequired || user.emailVerifiedAt !== null,
+      role: user.accountType,
       userName: user.userName,
       fullName: user.fullName,
       jti: payload.jti,

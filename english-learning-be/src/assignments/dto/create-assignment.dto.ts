@@ -9,6 +9,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { AssignmentType } from '../entities/assignment.entity';
 
 export class CreateAssignmentDto {
@@ -43,11 +44,14 @@ export class CreateAssignmentDto {
   timeEnd: string;
 
   @ApiPropertyOptional({
-    enum: AssignmentType,
-    example: AssignmentType.MANUAL,
+    enum: ['MANUAL', 'QUIZ'],
+    example: 'MANUAL',
     description: 'Assignment type. Defaults to manual when omitted.',
   })
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   @IsEnum(AssignmentType, { message: 'type is invalid' })
   type?: AssignmentType;
 

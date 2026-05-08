@@ -1,83 +1,91 @@
-import { Calendar, FileText, BookOpen, Clock, CheckCircle } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Calendar, CheckCircle, FileText, Bell, BookOpen } from 'lucide-react';
 import { Link } from 'react-router';
+import { toast } from 'sonner';
 import Card, { CardBody, CardHeader } from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
+import { getApiErrorMessage, notificationsApi, usersApi } from '@/api';
+import type { NotificationItem, UserProfile } from '@/types';
+import { formatDateTime } from '@/app/utils/format';
+
+function getDataString(
+  data: Record<string, unknown> | null,
+  key: string,
+): string | null {
+  const value = data?.[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
 
 export default function StudentDashboard() {
-  const upcomingSessions = [
-    {
-      id: '1',
-      classId: '1',
-      className: 'IELTS Foundation 01',
-      topic: 'Listening Skills - Part 1',
-      date: '06/05/2026',
-      time: '08:00-10:00',
-      room: 'Phòng A1',
-    },
-    {
-      id: '2',
-      classId: '1',
-      className: 'IELTS Foundation 01',
-      topic: 'Writing Task 1',
-      date: '08/05/2026',
-      time: '08:00-10:00',
-      room: 'Phòng A1',
-    },
-  ];
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  const pendingAssignments = [
-    {
-      id: '1',
-      title: 'Bài tập Reading Comprehension',
-      className: 'IELTS Foundation 01',
-      dueDate: '10/05/2026',
-      dueTime: '23:59',
-      status: 'pending',
-      urgent: true,
-    },
-    {
-      id: '2',
-      title: 'Quiz - Vocabulary Unit 1',
-      className: 'IELTS Foundation 01',
-      dueDate: '08/05/2026',
-      dueTime: '23:59',
-      status: 'pending',
-      urgent: false,
-    },
-  ];
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [me, inbox] = await Promise.all([
+        usersApi.getMe(),
+        notificationsApi.listMyNotifications({ limit: 20 }),
+      ]);
+      setUser(me);
+      setNotifications(inbox);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Không thể tải dashboard học viên'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const recentGrades = [
-    {
-      assignment: 'Bài tập Listening - Unit 2',
-      score: 8.5,
-      maxScore: 10,
-      date: '03/05/2026',
-      feedback: 'Bạn làm rất tốt! Cần cải thiện phần nghe số.',
-    },
-    {
-      assignment: 'Quiz - Grammar Test 1',
-      score: 9.0,
-      maxScore: 10,
-      date: '01/05/2026',
-      feedback: 'Xuất sắc! Tiếp tục phát huy.',
-    },
-  ];
+  useEffect(() => {
+    void loadData();
+  }, []);
 
-  const myClasses = [
-    {
-      id: '1',
-      className: 'IELTS Foundation 01',
-      teacher: 'Nguyễn Thị Lan',
-      schedule: 'Thứ 2, 4, 6 - 08:00-10:00',
-      progress: 40,
-    },
-  ];
+  const unreadCount = useMemo(
+    () => notifications.filter((item) => !item.isRead).length,
+    [notifications],
+  );
+
+  const assignmentNotifications = useMemo(
+    () => notifications.filter((item) => item.type.toLowerCase().includes('assignment')),
+    [notifications],
+  );
+
+  const classLinks = useMemo(() => {
+    const classIdSet = new Set<string>();
+    notifications.forEach((item) => {
+      const classId =
+        getDataString(item.data, 'classId') ??
+        getDataString(item.data, 'class_id');
+      if (classId) {
+        classIdSet.add(classId);
+      }
+    });
+    return Array.from(classIdSet);
+  }, [notifications]);
+
+  const assignmentLinks = useMemo(() => {
+    const assignmentIdSet = new Set<string>();
+    notifications.forEach((item) => {
+      const assignmentId =
+        getDataString(item.data, 'assignmentId') ??
+        getDataString(item.data, 'assignment_id');
+      if (assignmentId) {
+        assignmentIdSet.add(assignmentId);
+      }
+    });
+    return Array.from(assignmentIdSet);
+  }, [notifications]);
 
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Xin chào, Nguyễn Văn A!</h1>
-        <p className="text-gray-600 mt-1">Chúc bạn một ngày học tập hiệu quả</p>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Xin chào, {user?.fullName || 'học viên'}
+        </h1>
+        <p className="text-gray-600 mt-1">
+          Theo dõi thông báo và truy cập nhanh lớp học của bạn
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -85,11 +93,11 @@ export default function StudentDashboard() {
           <CardBody>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-blue-600" />
+                <Bell className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Lớp học</p>
-                <p className="text-2xl font-bold text-gray-900">1</p>
+                <p className="text-sm text-gray-600">Thông báo chưa đọc</p>
+                <p className="text-2xl font-bold text-gray-900">{unreadCount}</p>
               </div>
             </div>
           </CardBody>
@@ -102,8 +110,8 @@ export default function StudentDashboard() {
                 <FileText className="w-6 h-6 text-yellow-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Bài tập chờ nộp</p>
-                <p className="text-2xl font-bold text-gray-900">2</p>
+                <p className="text-sm text-gray-600">Thông báo bài tập</p>
+                <p className="text-2xl font-bold text-gray-900">{assignmentNotifications.length}</p>
               </div>
             </div>
           </CardBody>
@@ -113,11 +121,11 @@ export default function StudentDashboard() {
           <CardBody>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+                <BookOpen className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Tỷ lệ điểm danh</p>
-                <p className="text-2xl font-bold text-gray-900">95%</p>
+                <p className="text-sm text-gray-600">Lớp khả dụng từ dữ liệu</p>
+                <p className="text-2xl font-bold text-gray-900">{classLinks.length}</p>
               </div>
             </div>
           </CardBody>
@@ -128,133 +136,100 @@ export default function StudentDashboard() {
         <Card>
           <CardHeader className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-600" />
-            <h3 className="font-semibold text-gray-900">Lịch học sắp tới</h3>
+            <h3 className="font-semibold text-gray-900">Lớp học truy cập nhanh</h3>
           </CardHeader>
           <CardBody>
-            <div className="space-y-3">
-              {upcomingSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{session.topic}</h4>
-                      <p className="text-sm text-gray-600 mt-1">{session.className}</p>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {session.date}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {session.time}
-                        </span>
-                      </div>
-                    </div>
-                    <Badge variant="info">{session.room}</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="text-sm text-gray-500">Đang tải dữ liệu...</div>
+            ) : classLinks.length === 0 ? (
+              <div className="text-sm text-gray-500">
+                Chưa có classId trong dữ liệu thông báo. Bạn có thể mở lớp từ link được giáo viên chia sẻ.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {classLinks.map((classId) => (
+                  <Link
+                    key={classId}
+                    to={`/student/class/${classId}`}
+                    className="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                  >
+                    <p className="font-medium text-gray-900">Lớp {classId.slice(0, 8)}</p>
+                    <p className="text-xs text-gray-600 mt-1">classId: {classId}</p>
+                  </Link>
+                ))}
+              </div>
+            )}
           </CardBody>
         </Card>
 
         <Card>
           <CardHeader className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-blue-600" />
-            <h3 className="font-semibold text-gray-900">Bài tập cần làm</h3>
+            <h3 className="font-semibold text-gray-900">Bài tập truy cập nhanh</h3>
           </CardHeader>
           <CardBody>
-            <div className="space-y-3">
-              {pendingAssignments.map((assignment) => (
-                <Link
-                  key={assignment.id}
-                  to={`/student/assignment/${assignment.id}`}
-                  className="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium text-gray-900">{assignment.title}</h4>
-                        {assignment.urgent && (
-                          <Badge variant="danger">Gấp</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">{assignment.className}</p>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Hạn nộp: {assignment.dueDate} {assignment.dueTime}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="text-sm text-gray-500">Đang tải dữ liệu...</div>
+            ) : assignmentLinks.length === 0 ? (
+              <div className="text-sm text-gray-500">
+                Chưa có assignmentId trong dữ liệu thông báo.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {assignmentLinks.map((assignmentId) => (
+                  <Link
+                    key={assignmentId}
+                    to={`/student/assignment/${assignmentId}`}
+                    className="block p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                  >
+                    <p className="font-medium text-gray-900">Bài tập {assignmentId.slice(0, 8)}</p>
+                    <p className="text-xs text-gray-600 mt-1">assignmentId: {assignmentId}</p>
+                  </Link>
+                ))}
+              </div>
+            )}
           </CardBody>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <h3 className="font-semibold text-gray-900">Lớp học của tôi</h3>
-          </CardHeader>
-          <CardBody>
-            <div className="space-y-4">
-              {myClasses.map((cls) => (
-                <Link
-                  key={cls.id}
-                  to={`/student/class/${cls.id}`}
-                  className="block p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:shadow-md transition-shadow"
-                >
-                  <h4 className="font-semibold text-gray-900 mb-2">{cls.className}</h4>
-                  <p className="text-sm text-gray-700 mb-1">
-                    <span className="font-medium">Giáo viên:</span> {cls.teacher}
-                  </p>
-                  <p className="text-sm text-gray-700 mb-3">
-                    <span className="font-medium">Lịch học:</span> {cls.schedule}
-                  </p>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-600">Tiến độ học tập</span>
-                      <span className="text-xs font-medium text-blue-600">{cls.progress}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-white rounded-full overflow-hidden">
-                      <div
-                        className="h-2 bg-blue-600"
-                        style={{ width: `${cls.progress}%` }}
-                      ></div>
-                    </div>
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900">Thông báo gần đây</h3>
+          <Badge variant="info">{notifications.length}</Badge>
+        </CardHeader>
+        <CardBody>
+          {isLoading ? (
+            <div className="text-sm text-gray-500">Đang tải dữ liệu...</div>
+          ) : notifications.length === 0 ? (
+            <div className="text-sm text-gray-500">Chưa có thông báo nào</div>
+          ) : (
+            <div className="space-y-3">
+              {notifications.map((item) => (
+                <div key={item.id} className="p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium text-gray-900">{item.title}</p>
+                    {!item.isRead && <Badge variant="warning">Mới</Badge>}
                   </div>
-                </Link>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <h3 className="font-semibold text-gray-900">Điểm gần đây</h3>
-          </CardHeader>
-          <CardBody>
-            <div className="space-y-4">
-              {recentGrades.map((grade, index) => (
-                <div key={index} className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-medium text-gray-900">{grade.assignment}</h4>
-                    <div className="text-right">
-                      <span className="text-2xl font-bold text-blue-600">{grade.score}</span>
-                      <span className="text-gray-600">/{grade.maxScore}</span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 italic">&quot;{grade.feedback}&quot;</p>
-                  <p className="text-xs text-gray-500 mt-2">{grade.date}</p>
+                  <p className="text-sm text-gray-600 mt-1">{item.body}</p>
+                  <p className="text-xs text-gray-500 mt-2">{formatDateTime(item.createdAt)}</p>
                 </div>
               ))}
             </div>
-          </CardBody>
-        </Card>
-      </div>
+          )}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <h3 className="font-semibold text-gray-900">Lưu ý kỹ thuật</h3>
+        </CardHeader>
+        <CardBody>
+          <p className="text-sm text-gray-600">
+            Backend hiện chưa có endpoint “danh sách lớp của học viên”, nên dashboard chỉ tổng hợp dữ
+            liệu có thể suy ra từ thông báo và profile.
+          </p>
+        </CardBody>
+      </Card>
     </div>
   );
 }

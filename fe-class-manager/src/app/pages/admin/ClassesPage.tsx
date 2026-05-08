@@ -1,66 +1,78 @@
-import { useState } from 'react';
-import { Plus, Users, Calendar } from 'lucide-react';
-import { Link } from 'react-router';
-import Button from '../../components/ui/Button';
-import Card, { CardBody } from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import Modal, { ModalBody, ModalFooter } from '../../components/ui/Modal';
-import Input from '../../components/ui/Input';
+﻿import { useEffect, useState } from "react";
+import { Plus, Users, Calendar } from "lucide-react";
+import { Link } from "react-router";
+import { toast } from "sonner";
+import Button from "../../components/ui/Button";
+import Card, { CardBody } from "../../components/ui/Card";
+import Badge from "../../components/ui/Badge";
+import Modal, { ModalBody, ModalFooter } from "../../components/ui/Modal";
+import Input from "../../components/ui/Input";
+import { classesApi, getApiErrorMessage } from "@/api";
+import { resolveWorkspaceId } from "@/app/utils/workspace";
+import type { ClassResponse } from "@/types";
 
 export default function ClassesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [workspaceId, setWorkspaceIdState] = useState<string | null>(null);
+  const [classes, setClasses] = useState<ClassResponse[]>([]);
   const [formData, setFormData] = useState({
-    className: '',
-    description: '',
+    className: "",
+    description: "",
   });
 
-  const classes = [
-    {
-      id: '1',
-      className: 'IELTS Foundation 01',
-      description: 'Lớp học IELTS cơ bản dành cho người mới bắt đầu',
-      teacher: 'Nguyễn Thị Lan',
-      students: 24,
-      sessions: 36,
-      status: 'active',
-      image: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=300&fit=crop',
-    },
-    {
-      id: '2',
-      className: 'TOEIC Advanced',
-      description: 'Lớp học TOEIC nâng cao, mục tiêu 850+',
-      teacher: 'Trần Văn Nam',
-      students: 18,
-      sessions: 30,
-      status: 'active',
-      image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=300&fit=crop',
-    },
-    {
-      id: '3',
-      className: 'Business English',
-      description: 'Tiếng Anh thương mại cho người đi làm',
-      teacher: 'Lê Thị Mai',
-      students: 15,
-      sessions: 24,
-      status: 'active',
-      image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&h=300&fit=crop',
-    },
-    {
-      id: '4',
-      className: 'IELTS Foundation 02',
-      description: 'Lớp học IELTS cơ bản khóa 2',
-      teacher: 'Phạm Văn Hùng',
-      students: 20,
-      sessions: 36,
-      status: 'upcoming',
-      image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&h=300&fit=crop',
-    },
-  ];
+  const loadClasses = async (targetWorkspaceId?: string) => {
+    const activeWorkspaceId = targetWorkspaceId || workspaceId;
+    if (!activeWorkspaceId) {
+      return;
+    }
+    try {
+      const items = await classesApi.listWorkspaceClasses(activeWorkspaceId);
+      setClasses(items);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Không thể tải danh sách lớp học"));
+    }
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const bootstrap = async () => {
+      setIsLoading(true);
+      try {
+        const resolvedWorkspaceId = await resolveWorkspaceId();
+        setWorkspaceIdState(resolvedWorkspaceId);
+        await loadClasses(resolvedWorkspaceId);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "Không thể xác định workspace"));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void bootstrap();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowCreateModal(false);
-    setFormData({ className: '', description: '' });
+    if (!workspaceId || isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await classesApi.createClass(workspaceId, {
+        className: formData.className,
+        description: formData.description.trim() || undefined,
+      });
+      toast.success("Tạo lớp học thanh cong");
+      await loadClasses(workspaceId);
+      setShowCreateModal(false);
+      setFormData({ className: "", description: "" });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Không thể tạo lớp học"));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -68,47 +80,52 @@ export default function ClassesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Quản lý Lớp học</h1>
-          <p className="text-gray-600 mt-1">Tạo và quản lý các lớp học của trung tâm</p>
+          <p className="text-gray-600 mt-1">
+            Tạo và quản lý các lớp học của trung tâm
+          </p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
+        <Button
+          onClick={() => setShowCreateModal(true)}
+          disabled={!workspaceId}
+        >
           <Plus className="w-4 h-4" />
           Tạo lớp học mới
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {!isLoading && classes.length === 0 && (
+          <div className="md:col-span-2 lg:col-span-3 text-center py-16 text-sm text-gray-500 border rounded-lg bg-white">
+            Chưa có lớp học nào
+          </div>
+        )}
         {classes.map((classItem) => (
           <Link key={classItem.id} to={`/admin/classes/${classItem.id}`}>
             <Card hover className="h-full">
-              <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                <img
-                  src={classItem.image}
-                  alt={classItem.className}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <div className="aspect-video w-full overflow-hidden rounded-t-lg bg-gradient-to-br from-blue-100 to-slate-200" />
               <CardBody>
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900">{classItem.className}</h3>
-                  <Badge variant={classItem.status === 'active' ? 'success' : 'warning'}>
-                    {classItem.status === 'active' ? 'Đang diễn ra' : 'Sắp mở'}
-                  </Badge>
+                  <h3 className="font-semibold text-gray-900">
+                    {classItem.className}
+                  </h3>
+                  <Badge variant="success">Đang hoạt động</Badge>
                 </div>
                 <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                  {classItem.description}
+                  {classItem.description || "Không có mô tả"}
                 </p>
                 <div className="space-y-2">
                   <p className="text-sm text-gray-700">
-                    <span className="font-medium">Giáo viên:</span> {classItem.teacher}
+                    <span className="font-medium">Workspace:</span>{" "}
+                    {classItem.workspaceId}
                   </p>
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4" />
-                      <span>{classItem.students} học viên</span>
+                      <span>{classItem.studentCount} học viên</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      <span>{classItem.sessions} buổi</span>
+                      <span>Session quản lý</span>
                     </div>
                   </div>
                 </div>
@@ -118,15 +135,21 @@ export default function ClassesPage() {
         ))}
       </div>
 
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Tạo lớp học mới">
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Tạo lớp học moi"
+      >
         <form onSubmit={handleSubmit}>
           <ModalBody className="space-y-4">
             <Input
-              label="Tên lớp học"
+              label="Ten lop hoc"
               name="className"
-              placeholder="Ví dụ: IELTS Foundation 01"
+              placeholder="Vi du: IELTS Foundation 01"
               value={formData.className}
-              onChange={(e) => setFormData({ ...formData, className: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, className: e.target.value })
+              }
               required
             />
             <div>
@@ -137,17 +160,25 @@ export default function ClassesPage() {
                 name="description"
                 placeholder="Mô tả ngắn về lớp học"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={4}
               />
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => setShowCreateModal(false)} type="button">
-              Hủy
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateModal(false)}
+              type="button"
+            >
+              Huy
             </Button>
-            <Button type="submit">Tạo lớp học</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Đang tạo..." : "Tạo lớp học"}
+            </Button>
           </ModalFooter>
         </form>
       </Modal>
