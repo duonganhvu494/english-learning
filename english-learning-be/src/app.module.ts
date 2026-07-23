@@ -31,6 +31,7 @@ import { AssignmentsModule } from './assignments/assignments.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { CsrfMiddleware } from './auth/middlewares/csrf.middleware';
 import { BillingModule } from './billing/billing.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { BillingModule } from './billing/billing.module';
     AssignmentsModule,
     SubmissionsModule,
     BillingModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

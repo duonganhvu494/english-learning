@@ -8,6 +8,13 @@ Backend hiện không dùng global prefix. Các path dưới đây là path tr�
 |---|---|---|
 | GET | `/` | Hello World endpoint, chưa phải healthcheck production |
 
+## Health
+
+| Method | Path | Ghi chú |
+|---|---|---|
+| GET | `/health` | Liveness check: process NestJS còn sống |
+| GET | `/ready` | Readiness check: PostgreSQL, Redis và S3 config tối thiểu sẵn sàng |
+
 ## Auth
 
 | Method | Path | Ghi chú |
@@ -182,4 +189,3 @@ Backend hiện không dùng global prefix. Các path dưới đây là path tr�
 | POST | `/billing/mock/transactions/:transactionId/pay` | Mock pay transaction |
 | POST | `/billing/mock/transactions/:transactionId/fail` | Mock fail transaction |
 | POST | `/billing/me/subscription/cancel` | Cancel at period end |
-

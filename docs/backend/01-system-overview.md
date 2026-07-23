@@ -92,9 +92,7 @@ RBAC có hai scope:
 - In-process EventEmitter/Cron chưa phù hợp khi chạy nhiều backend instances.
 - Chưa có queue/outbox cho email, notification, billing, cleanup upload.
 - Chưa thấy global pagination strategy cho tất cả list endpoint lớn.
-- Chưa có health/readiness endpoint thực sự.
 - Chưa có structured logging/metrics/request id.
 - Billing provider hiện là mock.
 - Mail fallback có thể log nội dung nhạy cảm nếu cấu hình SMTP thiếu.
 - Upload multipart cần cleanup pending/aborted sessions.
-
