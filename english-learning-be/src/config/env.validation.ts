@@ -84,6 +84,10 @@ export const validateEnvironment = (env: EnvRecord): EnvRecord => {
     errors.push('NODE_ENV must be one of development, test, production');
   }
 
+  if (nodeEnv === 'production' && env.DB_SYNCHRONIZE === 'true') {
+    errors.push('DB_SYNCHRONIZE must be false in production');
+  }
+
   const sameSite = env.COOKIE_SAME_SITE?.trim().toLowerCase();
   if (
     sameSite !== undefined &&
