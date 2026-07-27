@@ -6,7 +6,6 @@ import cookieParser from 'cookie-parser';
 import { AuthSecurityService } from './auth/auth-security.service';
 import { AllExceptionsFilter } from './common/filters/handle-exception.filter';
 import { AppSocketIoAdapter } from './realtime/app-socket.adapter';
-import { setupSwagger } from './swagger/setup-swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -43,9 +42,8 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useWebSocketAdapter(new AppSocketIoAdapter(app, config));
-  setupSwagger(app);
 
-  
+
   console.log("Application is running on: http://localhost:" + (process.env.PORT ?? 3000));
   await app.listen(process.env.PORT ?? 3000);
 }

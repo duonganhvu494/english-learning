@@ -21,7 +21,6 @@ Làm theo checklist:
 - Gắn `JwtAuthGuard`/RBAC/plan guard phù hợp.
 - Kiểm tra workspace/class/session ownership boundary.
 - Dùng response envelope hiện có.
-- Thêm Swagger decorator nếu module đang có.
 - Thêm unit test cho service và controller.
 - Cập nhật `docs/backend/03-api-map.md`.
 

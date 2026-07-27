@@ -1,25 +1,13 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AccountType, User } from '../entities/user.entity';
 
 export class UserProfileResponse {
-    @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
     id: string;
-    @ApiProperty({ example: 'duonganhvu' })
     userName: string;
-    @ApiProperty({ example: 'Duong Anh Vu' })
     fullName: string;
-    @ApiProperty({ example: 'duonganhvu@example.com' })
     email: string;
-    @ApiProperty({ example: false })
     mustChangePassword: boolean;
-    @ApiProperty({ example: true })
     emailVerified: boolean;
-    @ApiProperty({ enum: AccountType, example: AccountType.TEACHER })
     role: string;
-    @ApiPropertyOptional({
-        example: 'https://cdn.example.com/avatars/teacher01.png',
-        nullable: true,
-    })
     avatarUrl?: string;
 
     static fromData(data: {

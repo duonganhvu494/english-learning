@@ -1,25 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
 import {
   PlanFeature,
   PlanFeatureValueType,
 } from '../entities/plan-feature.entity';
 
 export class PlanFeatureValueResponseDto {
-  @ApiProperty({ example: 'max_students' })
   featureKey: string;
 
-  @ApiProperty({
-    enum: PlanFeatureValueType,
-    example: PlanFeatureValueType.NUMBER,
-  })
   valueType: PlanFeatureValueType;
 
-  @ApiProperty({
-    example: 100,
-    nullable: true,
-    description:
-      'Normalized feature value. The actual shape depends on valueType.',
-  })
   value: boolean | number | string | Record<string, unknown> | unknown[] | null;
 
   static fromEntity(feature: PlanFeature): PlanFeatureValueResponseDto {

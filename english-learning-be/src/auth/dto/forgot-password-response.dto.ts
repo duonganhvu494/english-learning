@@ -1,7 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
 
 export class ForgotPasswordResponseDto {
-  @ApiProperty({ example: true })
   sent: boolean;
 
   static fromData(data: { sent: boolean }): ForgotPasswordResponseDto {

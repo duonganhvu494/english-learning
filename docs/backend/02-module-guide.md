@@ -4,9 +4,9 @@ File này giúp dev đọc nhanh từng module trong `english-learning-be/src`.
 
 ## App/common/config
 
-`app.module.ts` load ConfigModule, TypeORM, EventEmitter, ScheduleModule và các business modules. `main.ts` cấu hình CORS, cookie parser, global ValidationPipe, exception filter, socket adapter và Swagger.
+`app.module.ts` load ConfigModule, TypeORM, EventEmitter, ScheduleModule và các business modules. `main.ts` cấu hình CORS, cookie parser, global ValidationPipe, exception filter và socket adapter.
 
-`common` chứa response envelope, exception filter, swagger decorators và utility chung. API response theo dạng:
+`common` chứa response envelope, exception filter và utility chung. API response theo dạng:
 
 ```json
 {

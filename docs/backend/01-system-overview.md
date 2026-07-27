@@ -9,12 +9,12 @@
 - Redis cho OTP, refresh session, token denylist và RBAC cache.
 - S3-compatible storage cho file material/submission.
 - Socket.IO cho realtime notifications.
-- Swagger cho API docs.
+- Markdown API reference ở `docs/backend/03-api-map.md`.
 - EventEmitter và Schedule/Cron cho notification/billing jobs.
 
 Entry points quan trọng:
 
-- `english-learning-be/src/main.ts`: bootstrap app, CORS, cookie parser, validation pipe, exception filter, socket adapter, Swagger.
+- `english-learning-be/src/main.ts`: bootstrap app, CORS, cookie parser, validation pipe, exception filter, socket adapter.
 - `english-learning-be/src/app.module.ts`: load config, TypeORM, EventEmitter, ScheduleModule, và toàn bộ business modules.
 - `english-learning-be/src/config`: env/config theo nhóm database, app, jwt, redis, mail, storage.
 

@@ -164,7 +164,7 @@ Controller chỉ nên làm các việc:
 - Nhận user từ request.
 - Gọi service.
 - Trả `ApiResponse.success(...)`.
-- Gắn guards, decorators, Swagger.
+- Gắn guards, decorators (RBAC, validation).
 
 Controller không nên:
 

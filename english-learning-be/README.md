@@ -135,8 +135,7 @@ Backend được xây bằng:
 - PostgreSQL + TypeORM;
 - Redis cho session/rate limit/token state;
 - AWS S3 cho storage;
-- Socket.IO cho realtime notifications;
-- Swagger cho API docs.
+- Socket.IO cho realtime notifications.
 
 Các module chính đang có trong `src/`:
 
@@ -263,9 +262,9 @@ npm install
 npm run start:dev
 ```
 
-### Bước 4: mở API docs nếu bật Swagger
+### Bước 4: tham khảo API map
 
-Swagger được cấu hình trong backend và có thể bật qua config. Khi chạy local với swagger enabled, bạn có thể dùng API docs để xem nhanh các module và endpoint hiện có.
+API reference: xem `docs/backend/03-api-map.md`.
 
 ## 11. Những lệnh thường dùng
 
