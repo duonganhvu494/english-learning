@@ -1,29 +1,30 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, LessThanOrEqual, MoreThan, Repository } from 'typeorm';
-import { errorPayload } from 'src/common/utils/error-payload.util';
-import { Workspace } from 'src/workspaces/entities/workspace.entity';
-import { Plan } from 'src/workspaces/entities/plan.entity';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, IsNull, LessThanOrEqual, MoreThan, Repository } from "typeorm";
+import { errorPayload } from "src/common/utils/error-payload.util";
+import { Workspace } from "src/workspaces/entities/workspace.entity";
+import { Plan } from "src/workspaces/entities/plan.entity";
 import {
   WorkspaceSubscription,
   WorkspaceSubscriptionSource,
   WorkspaceSubscriptionStatus,
-} from 'src/workspaces/entities/workspace-subscription.entity';
+} from "src/workspaces/entities/workspace-subscription.entity";
 import {
   BillingCycle,
   BillingProvider,
   BillingSubscription,
   BillingSubscriptionStatus,
-} from './entities/billing-subscription.entity';
+} from "./entities/billing-subscription.entity";
 import {
   PaymentTransaction,
   PaymentTransactionStatus,
   PaymentTransactionType,
-} from './entities/payment-transaction.entity';
+} from "./entities/payment-transaction.entity";
+import { StripeService } from "./stripe/stripe.service";
 
 @Injectable()
 export class BillingService {
-  private readonly defaultWorkspacePlanCode = 'free';
+  private readonly defaultWorkspacePlanCode = "free";
 
   constructor(
     @InjectRepository(BillingSubscription)
@@ -40,7 +41,68 @@ export class BillingService {
 
     @InjectRepository(WorkspaceSubscription)
     private readonly workspaceSubscriptionRepo: Repository<WorkspaceSubscription>,
+
+    private readonly stripeService: StripeService,
   ) {}
+
+  async startMyWorkspacePlanSubscription(
+    userId: string,
+    planCode: string,
+  ): Promise<{
+    sessionId: string;
+    checkoutUrl: string;
+  }> {
+    const workspace = await this.getOwnedWorkspaceOrThrow(userId);
+
+    const normalizedPlanCode = planCode.trim().toLowerCase();
+
+    const plan = await this.planRepo.findOne({
+      where: {
+        code: normalizedPlanCode,
+        isPublic: true,
+        isActive: true,
+      },
+    });
+
+    if (!plan) {
+      throw new BadRequestException(
+        errorPayload("Billing plan not found", "BILLING_PLAN_NOT_FOUND"),
+      );
+    }
+
+    if (
+      !Number.isFinite(plan.monthlyPriceCents) ||
+      (plan.monthlyPriceCents ?? 0) <= 0
+    ) {
+      throw new BadRequestException(
+        errorPayload(
+          "Selected plan is not billable",
+          "BILLING_PLAN_NOT_BILLABLE",
+        ),
+      );
+    }
+
+    const existingSubscription = await this.billingSubscriptionRepo.findOne({
+      where: {
+        workspace: { id: workspace.id },
+        endedAt: IsNull(),
+      },
+    });
+
+    if (existingSubscription) {
+      throw new BadRequestException(
+        errorPayload(
+          "Workspace already has an active billing subscription",
+          "BILLING_SUBSCRIPTION_ALREADY_EXISTS",
+        ),
+      );
+    }
+
+    return this.stripeService.createSubscriptionCheckoutSession({
+      workspaceId: workspace.id,
+      planCode: normalizedPlanCode,
+    });
+  }
 
   async getCurrentBillingSubscription(
     workspaceId: string,
@@ -77,17 +139,6 @@ export class BillingService {
     });
   }
 
-  async startMyWorkspacePlanSubscription(
-    userId: string,
-    planCode: string,
-  ): Promise<{
-    billingSubscription: BillingSubscription;
-    paymentTransaction: PaymentTransaction;
-  }> {
-    const workspace = await this.getOwnedWorkspaceOrThrow(userId);
-    return this.startWorkspacePlanSubscription(workspace.id, planCode);
-  }
-
   async markMyTransactionPaid(
     userId: string,
     transactionId: string,
@@ -118,8 +169,8 @@ export class BillingService {
     if (!billingSubscription) {
       throw new BadRequestException(
         errorPayload(
-          'Billing subscription not found',
-          'BILLING_SUBSCRIPTION_NOT_FOUND',
+          "Billing subscription not found",
+          "BILLING_SUBSCRIPTION_NOT_FOUND",
         ),
       );
     }
@@ -163,21 +214,24 @@ export class BillingService {
 
     if (!workspace) {
       throw new BadRequestException(
-        errorPayload('Workspace not found', 'WORKSPACE_NOT_FOUND'),
+        errorPayload("Workspace not found", "WORKSPACE_NOT_FOUND"),
       );
     }
 
     if (!plan) {
       throw new BadRequestException(
-        errorPayload('Billing plan not found', 'BILLING_PLAN_NOT_FOUND'),
+        errorPayload("Billing plan not found", "BILLING_PLAN_NOT_FOUND"),
       );
     }
 
-    if (!Number.isFinite(plan.monthlyPriceCents) || (plan.monthlyPriceCents ?? 0) <= 0) {
+    if (
+      !Number.isFinite(plan.monthlyPriceCents) ||
+      (plan.monthlyPriceCents ?? 0) <= 0
+    ) {
       throw new BadRequestException(
         errorPayload(
-          'Selected plan is not billable',
-          'BILLING_PLAN_NOT_BILLABLE',
+          "Selected plan is not billable",
+          "BILLING_PLAN_NOT_BILLABLE",
         ),
       );
     }
@@ -185,8 +239,8 @@ export class BillingService {
     if (existingSubscription) {
       throw new BadRequestException(
         errorPayload(
-          'Workspace already has an active billing subscription',
-          'BILLING_SUBSCRIPTION_ALREADY_EXISTS',
+          "Workspace already has an active billing subscription",
+          "BILLING_SUBSCRIPTION_ALREADY_EXISTS",
         ),
       );
     }
@@ -195,7 +249,8 @@ export class BillingService {
     const billingPeriodEnd = this.addMonths(billingPeriodStart, 1);
 
     return this.billingSubscriptionRepo.manager.transaction(async (manager) => {
-      const billingSubscriptionRepo = manager.getRepository(BillingSubscription);
+      const billingSubscriptionRepo =
+        manager.getRepository(BillingSubscription);
       const paymentTransactionRepo = manager.getRepository(PaymentTransaction);
 
       const billingSubscription = await billingSubscriptionRepo.save(
@@ -255,8 +310,8 @@ export class BillingService {
     if (!paymentTransaction) {
       throw new BadRequestException(
         errorPayload(
-          'Payment transaction not found',
-          'BILLING_TRANSACTION_NOT_FOUND',
+          "Payment transaction not found",
+          "BILLING_TRANSACTION_NOT_FOUND",
         ),
       );
     }
@@ -264,8 +319,8 @@ export class BillingService {
     if (paymentTransaction.status !== PaymentTransactionStatus.PENDING) {
       throw new BadRequestException(
         errorPayload(
-          'Only pending transactions can be marked as paid',
-          'BILLING_TRANSACTION_STATUS_INVALID',
+          "Only pending transactions can be marked as paid",
+          "BILLING_TRANSACTION_STATUS_INVALID",
         ),
       );
     }
@@ -274,9 +329,11 @@ export class BillingService {
 
     return this.paymentTransactionRepo.manager.transaction(async (manager) => {
       const paymentTransactionRepo = manager.getRepository(PaymentTransaction);
-      const billingSubscriptionRepo = manager.getRepository(BillingSubscription);
-      const workspaceSubscriptionRepo =
-        manager.getRepository(WorkspaceSubscription);
+      const billingSubscriptionRepo =
+        manager.getRepository(BillingSubscription);
+      const workspaceSubscriptionRepo = manager.getRepository(
+        WorkspaceSubscription,
+      );
 
       paymentTransaction.status = PaymentTransactionStatus.PAID;
       paymentTransaction.paidAt = paidAt;
@@ -285,9 +342,8 @@ export class BillingService {
         this.generateMockTransactionRef();
       paymentTransaction.failedAt = null;
       paymentTransaction.failureReason = null;
-      const savedTransaction = await paymentTransactionRepo.save(
-        paymentTransaction,
-      );
+      const savedTransaction =
+        await paymentTransactionRepo.save(paymentTransaction);
 
       const billingSubscription = paymentTransaction.billingSubscription;
       billingSubscription.status = BillingSubscriptionStatus.ACTIVE;
@@ -298,33 +354,34 @@ export class BillingService {
       billingSubscription.currentPeriodEnd = savedTransaction.billingPeriodEnd;
       await billingSubscriptionRepo.save(billingSubscription);
 
-      const activeWorkspaceSubscription = await workspaceSubscriptionRepo.findOne({
-        where: [
-          {
-            workspace: { id: billingSubscription.workspace.id },
-            status: In([
-              WorkspaceSubscriptionStatus.ACTIVE,
-              WorkspaceSubscriptionStatus.TRIALING,
-            ]),
-            endedAt: IsNull(),
+      const activeWorkspaceSubscription =
+        await workspaceSubscriptionRepo.findOne({
+          where: [
+            {
+              workspace: { id: billingSubscription.workspace.id },
+              status: In([
+                WorkspaceSubscriptionStatus.ACTIVE,
+                WorkspaceSubscriptionStatus.TRIALING,
+              ]),
+              endedAt: IsNull(),
+            },
+            {
+              workspace: { id: billingSubscription.workspace.id },
+              status: In([
+                WorkspaceSubscriptionStatus.ACTIVE,
+                WorkspaceSubscriptionStatus.TRIALING,
+              ]),
+              endedAt: MoreThan(savedTransaction.billingPeriodStart),
+            },
+          ],
+          relations: {
+            workspace: true,
+            plan: true,
           },
-          {
-            workspace: { id: billingSubscription.workspace.id },
-            status: In([
-              WorkspaceSubscriptionStatus.ACTIVE,
-              WorkspaceSubscriptionStatus.TRIALING,
-            ]),
-            endedAt: MoreThan(savedTransaction.billingPeriodStart),
+          order: {
+            endedAt: "DESC",
           },
-        ],
-        relations: {
-          workspace: true,
-          plan: true,
-        },
-        order: {
-          endedAt: 'DESC',
-        },
-      });
+        });
 
       if (
         activeWorkspaceSubscription &&
@@ -335,9 +392,8 @@ export class BillingService {
         activeWorkspaceSubscription.status = WorkspaceSubscriptionStatus.ACTIVE;
         activeWorkspaceSubscription.endedAt = savedTransaction.billingPeriodEnd;
         activeWorkspaceSubscription.paymentTransactionId = savedTransaction.id;
-        activeWorkspaceSubscription.note = this.buildWorkspaceSubscriptionNote(
-          savedTransaction,
-        );
+        activeWorkspaceSubscription.note =
+          this.buildWorkspaceSubscriptionNote(savedTransaction);
         await workspaceSubscriptionRepo.save(activeWorkspaceSubscription);
       } else {
         if (activeWorkspaceSubscription) {
@@ -370,7 +426,7 @@ export class BillingService {
 
   async markTransactionFailed(
     transactionId: string,
-    failureReason = 'Mock payment failed',
+    failureReason = "Mock payment failed",
   ): Promise<PaymentTransaction> {
     const paymentTransaction = await this.paymentTransactionRepo.findOne({
       where: { id: transactionId },
@@ -384,8 +440,8 @@ export class BillingService {
     if (!paymentTransaction) {
       throw new BadRequestException(
         errorPayload(
-          'Payment transaction not found',
-          'BILLING_TRANSACTION_NOT_FOUND',
+          "Payment transaction not found",
+          "BILLING_TRANSACTION_NOT_FOUND",
         ),
       );
     }
@@ -393,8 +449,8 @@ export class BillingService {
     if (paymentTransaction.status !== PaymentTransactionStatus.PENDING) {
       throw new BadRequestException(
         errorPayload(
-          'Only pending transactions can be marked as failed',
-          'BILLING_TRANSACTION_STATUS_INVALID',
+          "Only pending transactions can be marked as failed",
+          "BILLING_TRANSACTION_STATUS_INVALID",
         ),
       );
     }
@@ -403,15 +459,15 @@ export class BillingService {
 
     return this.paymentTransactionRepo.manager.transaction(async (manager) => {
       const paymentTransactionRepo = manager.getRepository(PaymentTransaction);
-      const billingSubscriptionRepo = manager.getRepository(BillingSubscription);
+      const billingSubscriptionRepo =
+        manager.getRepository(BillingSubscription);
 
       paymentTransaction.status = PaymentTransactionStatus.FAILED;
       paymentTransaction.failedAt = failedAt;
       paymentTransaction.failureReason = failureReason;
       paymentTransaction.paidAt = null;
-      const savedTransaction = await paymentTransactionRepo.save(
-        paymentTransaction,
-      );
+      const savedTransaction =
+        await paymentTransactionRepo.save(paymentTransaction);
 
       if (
         paymentTransaction.type === PaymentTransactionType.INITIAL_CHARGE &&
@@ -426,7 +482,9 @@ export class BillingService {
         paymentTransaction.billingSubscription.status =
           BillingSubscriptionStatus.PAST_DUE;
       }
-      await billingSubscriptionRepo.save(paymentTransaction.billingSubscription);
+      await billingSubscriptionRepo.save(
+        paymentTransaction.billingSubscription,
+      );
 
       return savedTransaction;
     });
@@ -448,8 +506,8 @@ export class BillingService {
     if (!billingSubscription) {
       throw new BadRequestException(
         errorPayload(
-          'Billing subscription not found',
-          'BILLING_SUBSCRIPTION_NOT_FOUND',
+          "Billing subscription not found",
+          "BILLING_SUBSCRIPTION_NOT_FOUND",
         ),
       );
     }
@@ -460,8 +518,8 @@ export class BillingService {
     ) {
       throw new BadRequestException(
         errorPayload(
-          'Billing subscription is not eligible for renewal',
-          'BILLING_SUBSCRIPTION_STATUS_INVALID',
+          "Billing subscription is not eligible for renewal",
+          "BILLING_SUBSCRIPTION_STATUS_INVALID",
         ),
       );
     }
@@ -469,8 +527,8 @@ export class BillingService {
     if (billingSubscription.cancelAtPeriodEnd) {
       throw new BadRequestException(
         errorPayload(
-          'Billing subscription is set to cancel at period end',
-          'BILLING_SUBSCRIPTION_CANCELLING',
+          "Billing subscription is set to cancel at period end",
+          "BILLING_SUBSCRIPTION_CANCELLING",
         ),
       );
     }
@@ -481,8 +539,8 @@ export class BillingService {
     ) {
       throw new BadRequestException(
         errorPayload(
-          'Billing subscription does not have an active billing period',
-          'BILLING_SUBSCRIPTION_PERIOD_MISSING',
+          "Billing subscription does not have an active billing period",
+          "BILLING_SUBSCRIPTION_PERIOD_MISSING",
         ),
       );
     }
@@ -501,8 +559,8 @@ export class BillingService {
     if (existingTransaction) {
       throw new BadRequestException(
         errorPayload(
-          'A renewal transaction already exists for this billing period',
-          'BILLING_RENEWAL_TRANSACTION_EXISTS',
+          "A renewal transaction already exists for this billing period",
+          "BILLING_RENEWAL_TRANSACTION_EXISTS",
         ),
       );
     }
@@ -598,8 +656,8 @@ export class BillingService {
     if (!billingSubscription) {
       throw new BadRequestException(
         errorPayload(
-          'Billing subscription not found',
-          'BILLING_SUBSCRIPTION_NOT_FOUND',
+          "Billing subscription not found",
+          "BILLING_SUBSCRIPTION_NOT_FOUND",
         ),
       );
     }
@@ -610,8 +668,8 @@ export class BillingService {
     ) {
       throw new BadRequestException(
         errorPayload(
-          'Only active billing subscriptions can be cancelled at period end',
-          'BILLING_SUBSCRIPTION_STATUS_INVALID',
+          "Only active billing subscriptions can be cancelled at period end",
+          "BILLING_SUBSCRIPTION_STATUS_INVALID",
         ),
       );
     }
@@ -633,7 +691,10 @@ export class BillingService {
 
     let finalizedCount = 0;
     for (const subscription of subscriptions) {
-      if (!subscription.currentPeriodEnd || subscription.currentPeriodEnd > at) {
+      if (
+        !subscription.currentPeriodEnd ||
+        subscription.currentPeriodEnd > at
+      ) {
         continue;
       }
 
@@ -658,58 +719,64 @@ export class BillingService {
       if (!freePlan) {
         throw new BadRequestException(
           errorPayload(
-            'Default workspace plan not found',
-            'WORKSPACE_DEFAULT_PLAN_NOT_FOUND',
+            "Default workspace plan not found",
+            "WORKSPACE_DEFAULT_PLAN_NOT_FOUND",
           ),
         );
       }
 
-      await this.billingSubscriptionRepo.manager.transaction(async (manager) => {
-        const billingSubscriptionRepo = manager.getRepository(BillingSubscription);
-        const workspaceSubscriptionRepo =
-          manager.getRepository(WorkspaceSubscription);
+      await this.billingSubscriptionRepo.manager.transaction(
+        async (manager) => {
+          const billingSubscriptionRepo =
+            manager.getRepository(BillingSubscription);
+          const workspaceSubscriptionRepo = manager.getRepository(
+            WorkspaceSubscription,
+          );
 
-        subscription.endedAt = periodEnd;
-        subscription.status = subscription.cancelAtPeriodEnd
-          ? BillingSubscriptionStatus.CANCELLED
-          : BillingSubscriptionStatus.EXPIRED;
-        await billingSubscriptionRepo.save(subscription);
+          subscription.endedAt = periodEnd;
+          subscription.status = subscription.cancelAtPeriodEnd
+            ? BillingSubscriptionStatus.CANCELLED
+            : BillingSubscriptionStatus.EXPIRED;
+          await billingSubscriptionRepo.save(subscription);
 
-        const workspaceSubscription = await workspaceSubscriptionRepo.findOne({
-          where: {
-            workspace: { id: subscription.workspace.id },
-            status: In([
-              WorkspaceSubscriptionStatus.ACTIVE,
-              WorkspaceSubscriptionStatus.TRIALING,
-            ]),
-            source: WorkspaceSubscriptionSource.BILLING_PAYMENT,
-          },
-          order: {
-            endedAt: 'DESC',
-          },
-        });
+          const workspaceSubscription = await workspaceSubscriptionRepo.findOne(
+            {
+              where: {
+                workspace: { id: subscription.workspace.id },
+                status: In([
+                  WorkspaceSubscriptionStatus.ACTIVE,
+                  WorkspaceSubscriptionStatus.TRIALING,
+                ]),
+                source: WorkspaceSubscriptionSource.BILLING_PAYMENT,
+              },
+              order: {
+                endedAt: "DESC",
+              },
+            },
+          );
 
-        if (workspaceSubscription) {
-          workspaceSubscription.status = WorkspaceSubscriptionStatus.EXPIRED;
-          workspaceSubscription.endedAt = periodEnd;
-          await workspaceSubscriptionRepo.save(workspaceSubscription);
-        }
+          if (workspaceSubscription) {
+            workspaceSubscription.status = WorkspaceSubscriptionStatus.EXPIRED;
+            workspaceSubscription.endedAt = periodEnd;
+            await workspaceSubscriptionRepo.save(workspaceSubscription);
+          }
 
-        await workspaceSubscriptionRepo.save(
-          workspaceSubscriptionRepo.create({
-            workspace: subscription.workspace,
-            plan: freePlan,
-            status: WorkspaceSubscriptionStatus.ACTIVE,
-            startedAt: periodEnd,
-            endedAt: null,
-            trialEndsAt: null,
-            cancelledAt: null,
-            source: WorkspaceSubscriptionSource.BILLING_FALLBACK,
-            paymentTransactionId: null,
-            note: 'Reverted to free plan after paid subscription ended',
-          }),
-        );
-      });
+          await workspaceSubscriptionRepo.save(
+            workspaceSubscriptionRepo.create({
+              workspace: subscription.workspace,
+              plan: freePlan,
+              status: WorkspaceSubscriptionStatus.ACTIVE,
+              startedAt: periodEnd,
+              endedAt: null,
+              trialEndsAt: null,
+              cancelledAt: null,
+              source: WorkspaceSubscriptionSource.BILLING_FALLBACK,
+              paymentTransactionId: null,
+              note: "Reverted to free plan after paid subscription ended",
+            }),
+          );
+        },
+      );
 
       finalizedCount += 1;
     }
@@ -751,8 +818,8 @@ export class BillingService {
     if (!workspace) {
       throw new BadRequestException(
         errorPayload(
-          'Current workspace not found',
-          'WORKSPACE_CURRENT_NOT_FOUND',
+          "Current workspace not found",
+          "WORKSPACE_CURRENT_NOT_FOUND",
         ),
       );
     }
@@ -774,8 +841,8 @@ export class BillingService {
     if (!paymentTransaction) {
       throw new BadRequestException(
         errorPayload(
-          'Payment transaction not found',
-          'BILLING_TRANSACTION_NOT_FOUND',
+          "Payment transaction not found",
+          "BILLING_TRANSACTION_NOT_FOUND",
         ),
       );
     }

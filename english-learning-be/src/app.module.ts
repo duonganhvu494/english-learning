@@ -31,6 +31,7 @@ import { AssignmentsModule } from './assignments/assignments.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { CsrfMiddleware } from './auth/middlewares/csrf.middleware';
 import { BillingModule } from './billing/billing.module';
+import { PlansModule } from './plans/plans.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -78,6 +79,7 @@ import { HealthModule } from './health/health.module';
     AssignmentsModule,
     SubmissionsModule,
     BillingModule,
+    PlansModule,
     HealthModule,
   ],
   controllers: [AppController],

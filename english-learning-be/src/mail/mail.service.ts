@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import nodemailer, { type Transporter } from 'nodemailer';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import nodemailer, { type Transporter } from "nodemailer";
 
 @Injectable()
 export class MailService {
@@ -9,17 +9,33 @@ export class MailService {
   private readonly fromAddress: string;
 
   constructor(private readonly config: ConfigService) {
-    const host = this.config.get<string>('mail.host', '').trim();
-    const port = this.config.get<number>('mail.port', 0);
-    const secure = this.config.get<boolean>('mail.secure', false);
-    const user = this.config.get<string>('mail.user', '').trim();
-    const pass = this.config.get<string>('mail.password', '');
+    const host = this.config.get<string>("mail.host", "").trim();
+
+    const port = Number(this.config.get<string | number>("mail.port", 0));
+
+    const secureValue = this.config.get<string | boolean>("mail.secure", false);
+
+    const secure = secureValue === true || secureValue === "true";
+
+    const user = this.config.get<string>("mail.user", "").trim();
+    const pass = this.config.get<string>("mail.password", "");
+
     this.fromAddress = this.config.get<string>(
-      'mail.from',
-      'no-reply@example.local',
+      "mail.from",
+      "no-reply@example.local",
     );
 
+    console.log("[MAIL CONFIG]", {
+      host,
+      port,
+      secure,
+      user,
+      from: this.fromAddress,
+      hasPassword: Boolean(pass),
+    });
+
     if (!host || !Number.isFinite(port) || port <= 0) {
+      this.logger.warn("Mail transport configuration is invalid");
       this.transporter = null;
       return;
     }
@@ -44,16 +60,18 @@ export class MailService {
     otp: string;
     expiresAt: Date;
   }): Promise<void> {
-    const subject = 'Verify your email address';
+    const subject = "Verify your email address";
     const expiresAtText = input.expiresAt.toISOString();
     const text = [
       `Hello ${input.fullName},`,
-      '',
-      'Use the OTP below to verify your email address:',
+      "",
+      "Use the OTP below to verify your email address:",
       input.otp,
-      '',
+      "",
       `This OTP expires at ${expiresAtText}.`,
-    ].join('\n');
+    ].join("\n");
+
+    console.log("text", text);
 
     await this.sendMail({
       to: input.email,
@@ -68,16 +86,16 @@ export class MailService {
     otp: string;
     expiresAt: Date;
   }): Promise<void> {
-    const subject = 'Reset your password';
+    const subject = "Reset your password";
     const expiresAtText = input.expiresAt.toISOString();
     const text = [
       `Hello ${input.fullName},`,
-      '',
-      'Use the OTP below to reset your password:',
+      "",
+      "Use the OTP below to reset your password:",
       input.otp,
-      '',
+      "",
       `This OTP expires at ${expiresAtText}.`,
-    ].join('\n');
+    ].join("\n");
 
     await this.sendMail({
       to: input.email,
@@ -92,16 +110,16 @@ export class MailService {
     userName: string;
     temporaryPassword: string;
   }): Promise<void> {
-    const subject = 'Your student account has been created';
+    const subject = "Your student account has been created";
     const text = [
       `Hello ${input.fullName},`,
-      '',
-      'A student account has been created for you.',
+      "",
+      "A student account has been created for you.",
       `Username: ${input.userName}`,
       `Temporary password: ${input.temporaryPassword}`,
-      '',
-      'Please sign in and change your password as soon as possible.',
-    ].join('\n');
+      "",
+      "Please sign in and change your password as soon as possible.",
+    ].join("\n");
 
     await this.sendMail({
       to: input.email,
@@ -131,9 +149,7 @@ export class MailService {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(
-        `Failed to send email to ${input.to}: ${message}`,
-      );
+      this.logger.error(`Failed to send email to ${input.to}: ${message}`);
     }
   }
 }

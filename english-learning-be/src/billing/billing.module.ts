@@ -7,7 +7,7 @@ import { Plan } from 'src/workspaces/entities/plan.entity';
 import { WorkspaceSubscription } from 'src/workspaces/entities/workspace-subscription.entity';
 import { BillingService } from './billing.service';
 import { BillingController } from './billing.controller';
-import { BillingRecurringJob } from './jobs/billing-recurring.job';
+import { StripeService } from './stripe/stripe.service';
 
 @Module({
   imports: [
@@ -20,7 +20,7 @@ import { BillingRecurringJob } from './jobs/billing-recurring.job';
     ]),
   ],
   controllers: [BillingController],
-  providers: [BillingService, BillingRecurringJob],
+  providers: [BillingService, StripeService,],
   exports: [TypeOrmModule, BillingService],
 })
 export class BillingModule {}

@@ -13,6 +13,7 @@ import { Plan } from 'src/workspaces/entities/plan.entity';
 
 export enum BillingProvider {
   MOCK = 'mock',
+  STRIPE = 'stripe',
 }
 
 export enum BillingCycle {

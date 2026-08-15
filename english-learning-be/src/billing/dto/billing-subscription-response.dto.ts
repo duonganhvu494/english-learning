@@ -1,10 +1,11 @@
-import { PlanResponseDto } from 'src/workspaces/dto/plan-response.dto';
+import { PlanResponseDto } from "src/workspaces/dto/plan-response.dto";
+
 import {
   BillingCycle,
   BillingProvider,
   BillingSubscription,
   BillingSubscriptionStatus,
-} from '../entities/billing-subscription.entity';
+} from "../entities/billing-subscription.entity";
 
 export class BillingSubscriptionResponseDto {
   id: string;
@@ -37,22 +38,32 @@ export class BillingSubscriptionResponseDto {
     billingSubscription: BillingSubscription,
   ): BillingSubscriptionResponseDto {
     const dto = new BillingSubscriptionResponseDto();
+
     dto.id = billingSubscription.id;
     dto.workspaceId = billingSubscription.workspace.id;
     dto.status = billingSubscription.status;
     dto.provider = billingSubscription.provider;
     dto.providerSubscriptionRef =
       billingSubscription.providerSubscriptionRef ?? null;
+
     dto.billingCycle = billingSubscription.billingCycle;
+
     dto.activatedAt = billingSubscription.activatedAt?.toISOString() ?? null;
+
     dto.currentPeriodStart =
       billingSubscription.currentPeriodStart?.toISOString() ?? null;
+
     dto.currentPeriodEnd =
       billingSubscription.currentPeriodEnd?.toISOString() ?? null;
+
     dto.cancelAtPeriodEnd = billingSubscription.cancelAtPeriodEnd;
+
     dto.cancelledAt = billingSubscription.cancelledAt?.toISOString() ?? null;
+
     dto.endedAt = billingSubscription.endedAt?.toISOString() ?? null;
+
     dto.plan = PlanResponseDto.fromEntity(billingSubscription.plan);
+
     return dto;
   }
 }

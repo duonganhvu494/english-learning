@@ -1,37 +1,34 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AssignmentMaterial } from 'src/assignments/entities/assignment-material.entity';
-import { AssignmentQuizQuestionEntity } from 'src/assignments/entities/assignment-quiz-question.entity';
-import { LectureMaterial } from 'src/lectures/entities/lecture-material.entity';
-import { StorageDownloadTarget } from 'src/storage/interfaces/storage-download-target.interface';
-import { S3StorageService } from 'src/storage/s3-storage.service';
-import { validateMultipartUploadRequest } from 'src/storage/utils/storage-upload-validation.util';
-import { User } from 'src/users/entities/user.entity';
-import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
-import { SubmissionEntity } from 'src/submissions/entities/submission.entity';
-import { AbortMaterialUploadDto } from './dto/abort-material-upload.dto';
-import { CompleteMaterialUploadDto } from './dto/complete-material-upload.dto';
-import { InitMaterialUploadDto } from './dto/init-material-upload.dto';
-import { MaterialUploadAbortResponseDto } from './dto/material-upload-abort-response.dto';
-import { MaterialUploadInitResponseDto } from './dto/material-upload-init-response.dto';
-import { MaterialUploadPartSignedResponseDto } from './dto/material-upload-part-signed-response.dto';
-import { MaterialDeleteResponseDto } from './dto/material-delete-response.dto';
-import { MaterialResponseDto } from './dto/material-response.dto';
-import { SignMaterialUploadPartDto } from './dto/sign-material-upload-part.dto';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { AssignmentMaterial } from "src/assignments/entities/assignment-material.entity";
+import { AssignmentQuizQuestionEntity } from "src/assignments/entities/assignment-quiz-question.entity";
+import { LectureMaterial } from "src/lectures/entities/lecture-material.entity";
+import { StorageDownloadTarget } from "src/storage/interfaces/storage-download-target.interface";
+import { S3StorageService } from "src/storage/s3-storage.service";
+import { validateMultipartUploadRequest } from "src/storage/utils/storage-upload-validation.util";
+import { User } from "src/users/entities/user.entity";
+import { WorkspaceAccessService } from "src/rbac/workspace-access.service";
+import { SubmissionEntity } from "src/submissions/entities/submission.entity";
+import { AbortMaterialUploadDto } from "./dto/abort-material-upload.dto";
+import { CompleteMaterialUploadDto } from "./dto/complete-material-upload.dto";
+import { InitMaterialUploadDto } from "./dto/init-material-upload.dto";
+import { MaterialUploadAbortResponseDto } from "./dto/material-upload-abort-response.dto";
+import { MaterialUploadInitResponseDto } from "./dto/material-upload-init-response.dto";
+import { MaterialUploadPartSignedResponseDto } from "./dto/material-upload-part-signed-response.dto";
+import { MaterialDeleteResponseDto } from "./dto/material-delete-response.dto";
+import { MaterialResponseDto } from "./dto/material-response.dto";
+import { SignMaterialUploadPartDto } from "./dto/sign-material-upload-part.dto";
 import {
   Material,
   MaterialCategory,
   MaterialStatus,
-} from './entities/material.entity';
+} from "./entities/material.entity";
 import {
   MaterialUploadSession,
   MaterialUploadSessionStatus,
-} from './entities/material-upload-session.entity';
-import { errorPayload } from 'src/common/utils/error-payload.util';
+} from "./entities/material-upload-session.entity";
+import { errorPayload } from "src/common/utils/error-payload.util";
 
 @Injectable()
 export class MaterialsService {
@@ -74,21 +71,24 @@ export class MaterialsService {
     ]);
     if (!actor) {
       throw new BadRequestException(
-        errorPayload('User not found', 'MATERIAL_ACTOR_NOT_FOUND'),
+        errorPayload("User not found", "MATERIAL_ACTOR_NOT_FOUND"),
       );
     }
 
     const fileName = dto.fileName.trim();
     if (!fileName) {
       throw new BadRequestException(
-        errorPayload('fileName can not be empty', 'MATERIAL_FILE_NAME_REQUIRED'),
+        errorPayload(
+          "fileName can not be empty",
+          "MATERIAL_FILE_NAME_REQUIRED",
+        ),
       );
     }
 
     const title = dto.title?.trim() || fileName;
     if (!title) {
       throw new BadRequestException(
-        errorPayload('title can not be empty', 'MATERIAL_TITLE_REQUIRED'),
+        errorPayload("title can not be empty", "MATERIAL_TITLE_REQUIRED"),
       );
     }
 
@@ -178,8 +178,8 @@ export class MaterialsService {
     if (dto.partNumber > uploadSession.totalParts) {
       throw new BadRequestException(
         errorPayload(
-          'partNumber exceeds totalParts',
-          'MATERIAL_UPLOAD_PART_NUMBER_OUT_OF_RANGE',
+          "partNumber exceeds totalParts",
+          "MATERIAL_UPLOAD_PART_NUMBER_OUT_OF_RANGE",
         ),
       );
     }
@@ -221,8 +221,8 @@ export class MaterialsService {
     if (sortedParts.length !== uploadSession.totalParts) {
       throw new BadRequestException(
         errorPayload(
-          'Uploaded parts do not match totalParts',
-          'MATERIAL_UPLOAD_PARTS_COUNT_MISMATCH',
+          "Uploaded parts do not match totalParts",
+          "MATERIAL_UPLOAD_PARTS_COUNT_MISMATCH",
         ),
       );
     }
@@ -230,8 +230,8 @@ export class MaterialsService {
       if (part.partNumber !== index + 1) {
         throw new BadRequestException(
           errorPayload(
-            'parts must be sequential from 1',
-            'MATERIAL_UPLOAD_PARTS_NOT_SEQUENTIAL',
+            "parts must be sequential from 1",
+            "MATERIAL_UPLOAD_PARTS_NOT_SEQUENTIAL",
           ),
         );
       }
@@ -296,17 +296,20 @@ export class MaterialsService {
     const materials = await this.materialRepo.find({
       where: {
         workspace: { id: workspaceId },
+        status: MaterialStatus.READY,
       },
       relations: {
         workspace: true,
         uploadedBy: true,
       },
       order: {
-        createdAt: 'DESC',
+        createdAt: "DESC",
       },
     });
 
-    return materials.map((material) => MaterialResponseDto.fromEntity(material));
+    return materials.map((material) =>
+      MaterialResponseDto.fromEntity(material),
+    );
   }
 
   async getMaterialDetail(materialId: string): Promise<MaterialResponseDto> {
@@ -320,12 +323,12 @@ export class MaterialsService {
     const material = await this.findMaterialOrThrow(materialId);
     this.ensureMaterialReady(
       material,
-      'Material is not ready for download',
-      'MATERIAL_NOT_READY',
+      "Material is not ready for download",
+      "MATERIAL_NOT_READY",
     );
 
     return {
-      type: 'remote',
+      type: "remote",
       url: await this.s3StorageService.createSignedDownloadUrl({
         bucket: material.bucket,
         objectKey: material.objectKey,
@@ -344,8 +347,8 @@ export class MaterialsService {
     if (lectureUsageCount > 0) {
       throw new BadRequestException(
         errorPayload(
-          'Cannot delete material while it is still attached to lectures',
-          'MATERIAL_IN_USE_BY_LECTURES',
+          "Cannot delete material while it is still attached to lectures",
+          "MATERIAL_IN_USE_BY_LECTURES",
         ),
       );
     }
@@ -358,8 +361,8 @@ export class MaterialsService {
     if (assignmentUsageCount > 0) {
       throw new BadRequestException(
         errorPayload(
-          'Cannot delete material while it is still attached to assignments',
-          'MATERIAL_IN_USE_BY_ASSIGNMENTS',
+          "Cannot delete material while it is still attached to assignments",
+          "MATERIAL_IN_USE_BY_ASSIGNMENTS",
         ),
       );
     }
@@ -372,8 +375,8 @@ export class MaterialsService {
     if (submissionUsageCount > 0) {
       throw new BadRequestException(
         errorPayload(
-          'Cannot delete material while it is still attached to submissions',
-          'MATERIAL_IN_USE_BY_SUBMISSIONS',
+          "Cannot delete material while it is still attached to submissions",
+          "MATERIAL_IN_USE_BY_SUBMISSIONS",
         ),
       );
     }
@@ -386,8 +389,8 @@ export class MaterialsService {
     if (quizQuestionUsageCount > 0) {
       throw new BadRequestException(
         errorPayload(
-          'Cannot delete material while it is still attached to quiz questions',
-          'MATERIAL_IN_USE_BY_QUIZ_QUESTIONS',
+          "Cannot delete material while it is still attached to quiz questions",
+          "MATERIAL_IN_USE_BY_QUIZ_QUESTIONS",
         ),
       );
     }
@@ -408,7 +411,7 @@ export class MaterialsService {
     });
     if (!material) {
       throw new BadRequestException(
-        errorPayload('Material not found', 'MATERIAL_NOT_FOUND'),
+        errorPayload("Material not found", "MATERIAL_NOT_FOUND"),
       );
     }
 
@@ -437,8 +440,8 @@ export class MaterialsService {
     if (!uploadSession) {
       throw new BadRequestException(
         errorPayload(
-          'Upload session not found',
-          'MATERIAL_UPLOAD_SESSION_NOT_FOUND',
+          "Upload session not found",
+          "MATERIAL_UPLOAD_SESSION_NOT_FOUND",
         ),
       );
     }
@@ -452,8 +455,8 @@ export class MaterialsService {
     if (uploadSession.status === MaterialUploadSessionStatus.COMPLETED) {
       throw new BadRequestException(
         errorPayload(
-          'Upload session already completed',
-          'MATERIAL_UPLOAD_SESSION_COMPLETED',
+          "Upload session already completed",
+          "MATERIAL_UPLOAD_SESSION_COMPLETED",
         ),
       );
     }
@@ -461,8 +464,8 @@ export class MaterialsService {
     if (uploadSession.status === MaterialUploadSessionStatus.ABORTED) {
       throw new BadRequestException(
         errorPayload(
-          'Upload session already aborted',
-          'MATERIAL_UPLOAD_SESSION_ABORTED',
+          "Upload session already aborted",
+          "MATERIAL_UPLOAD_SESSION_ABORTED",
         ),
       );
     }
@@ -470,8 +473,8 @@ export class MaterialsService {
     if (uploadSession.status === MaterialUploadSessionStatus.FAILED) {
       throw new BadRequestException(
         errorPayload(
-          'Upload session already failed',
-          'MATERIAL_UPLOAD_SESSION_FAILED',
+          "Upload session already failed",
+          "MATERIAL_UPLOAD_SESSION_FAILED",
         ),
       );
     }
@@ -479,8 +482,8 @@ export class MaterialsService {
     if (uploadSession.expiresAt.getTime() <= Date.now()) {
       throw new BadRequestException(
         errorPayload(
-          'Upload session has expired',
-          'MATERIAL_UPLOAD_SESSION_EXPIRED',
+          "Upload session has expired",
+          "MATERIAL_UPLOAD_SESSION_EXPIRED",
         ),
       );
     }
