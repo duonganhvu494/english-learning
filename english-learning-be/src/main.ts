@@ -1,17 +1,19 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import cookieParser from 'cookie-parser';
-import { AuthSecurityService } from './auth/auth-security.service';
-import { AllExceptionsFilter } from './common/filters/handle-exception.filter';
-import { AppSocketIoAdapter } from './realtime/app-socket.adapter';
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module";
+import { ValidationPipe } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import cookieParser from "cookie-parser";
+import { AuthSecurityService } from "./auth/auth-security.service";
+import { AllExceptionsFilter } from "./common/filters/handle-exception.filter";
+import { AppSocketIoAdapter } from "./realtime/app-socket.adapter";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+  });
   const config = app.get(ConfigService);
   const authSecurityService = app.get(AuthSecurityService);
-  const allowedOrigins = config.get<string[]>('app.cors.allowedOrigins', []);
+  const allowedOrigins = config.get<string[]>("app.cors.allowedOrigins", []);
   const csrfHeaderName = authSecurityService.csrfHeaderName;
   authSecurityService.assertCookieSecurityConfig();
 
@@ -34,17 +36,17 @@ async function bootstrap() {
       callback(new Error(`Origin ${origin} is not allowed by CORS`));
     },
     credentials: true,
-    allowedHeaders: ['Content-Type', csrfHeaderName],
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ["Content-Type", csrfHeaderName],
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
   });
-
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useWebSocketAdapter(new AppSocketIoAdapter(app, config));
 
-
-  console.log("Application is running on: http://localhost:" + (process.env.PORT ?? 3000));
+  console.log(
+    "Application is running on: http://localhost:" + (process.env.PORT ?? 3000),
+  );
   await app.listen(process.env.PORT ?? 3000);
 }
 

@@ -21,7 +21,7 @@ import { AssignmentMaterial } from './entities/assignment-material.entity';
 import { AssignmentQuizAttemptEntity } from './entities/assignment-quiz-attempt.entity';
 import { errorPayload } from 'src/common/utils/error-payload.util';
 import { resolveNextSequentialCode } from 'src/common/utils/sequential-code.util';
-import { WORKSPACE_PLAN_FEATURE_KEYS } from 'src/workspaces/constants/workspace-plan-feature-key.constants';
+import { PLAN_FEATURE_KEYS } from 'src/plans/constants/plan-feature-key.constants';
 import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
 
 @Injectable()
@@ -65,7 +65,7 @@ export class AssignmentsService {
     if (dto.type === AssignmentType.QUIZ) {
       await this.workspaceEntitlementService.assertFeatureEnabled(
         session.classEntity.workspace.id,
-        WORKSPACE_PLAN_FEATURE_KEYS.QUIZ_ASSIGNMENTS,
+        PLAN_FEATURE_KEYS.QUIZ_ASSIGNMENTS,
       );
     }
 

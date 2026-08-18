@@ -8,63 +8,64 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-} from 'typeorm';
+} from "typeorm";
 
-import { Plan } from './plan.entity';
+import { Plan } from "./plan.entity";
 
 export enum PlanBillingInterval {
-  MONTHLY = 'monthly',
+  MONTHLY = "monthly",
 }
 
-@Entity('plan_prices')
+@Entity("plan_prices")
+@Index("idx_plan_prices_plan_active", ["plan", "isActive"])
 @Index(
-  'idx_plan_prices_plan_active',
-  ['plan', 'isActive'],
-)
-@Index(
-  'uq_plan_prices_active_plan_currency_interval',
-  ['plan', 'currency', 'interval'],
+  "uq_plan_prices_active_plan_currency_interval",
+  ["plan", "currency", "interval"],
   {
     unique: true,
     where: '"isActive" = true',
   },
 )
-@Check(
-  'CHK_plan_prices_amount_non_negative',
-  '"amount" >= 0',
-)
+@Index("uq_plan_prices_stripe_price_id", ["stripePriceId"], {
+  unique: true,
+  where: '"stripePriceId" IS NOT NULL',
+})
+@Check("CHK_plan_prices_amount_non_negative", '"amount" >= 0')
 export class PlanPrice {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @ManyToOne(
-    () => Plan,
-    (plan: Plan) => plan.prices,
-    {
-      onDelete: 'CASCADE',
-    },
-  )
+  @ManyToOne(() => Plan, (plan: Plan) => plan.prices, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({
-    name: 'planId',
+    name: "planId",
   })
   plan: Plan;
 
   @Column({
-    type: 'integer',
+    type: "integer",
   })
   amount: number;
 
   @Column({
-    type: 'varchar',
+    type: "varchar",
     length: 3,
   })
   currency: string;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: PlanBillingInterval,
   })
   interval: PlanBillingInterval;
+
+  @Column({
+    type: "varchar",
+    length: 255,
+    nullable: true,
+  })
+  stripePriceId: string | null;
 
   @Column({
     default: true,
@@ -72,12 +73,12 @@ export class PlanPrice {
   isActive: boolean;
 
   @CreateDateColumn({
-    type: 'timestamptz',
+    type: "timestamptz",
   })
   createdAt: Date;
 
   @UpdateDateColumn({
-    type: 'timestamptz',
+    type: "timestamptz",
   })
   updatedAt: Date;
 }

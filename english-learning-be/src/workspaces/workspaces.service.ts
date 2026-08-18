@@ -15,8 +15,8 @@ import {
   WorkspaceSubscription,
   WorkspaceSubscriptionSource,
   WorkspaceSubscriptionStatus,
-} from './entities/workspace-subscription.entity';
-import { Plan } from './entities/plan.entity';
+} from "./entities/workspace-subscription.entity";
+import { PlansService } from "src/plans/plans.service";
 import { CreateWorkspaceDto } from "./dto/create-workspace.dto";
 import { CreateStudentDto } from "src/users/dto/create-student.dto";
 import { UpdateWorkspaceStudentDto } from "./dto/update-workspace-student.dto";
@@ -31,15 +31,12 @@ import { Role } from "src/rbac/entities/role.entity";
 import { WorkspaceAccessService } from "src/rbac/workspace-access.service";
 import { ClassEntity } from "src/classes/entities/class.entity";
 import { ClassStudent } from "src/classes/entities/class-student.entity";
-import { errorPayload } from 'src/common/utils/error-payload.util';
-import { WorkspaceEntitlementService } from './workspace-entitlement.service';
-import { WorkspaceSubscriptionResponseDto } from './dto/workspace-subscription-response.dto';
-import { WorkspaceStudentsService } from './workspace-students.service';
+import { errorPayload } from "src/common/utils/error-payload.util";
+import { WorkspaceSubscriptionResponseDto } from "./dto/workspace-subscription-response.dto";
+import { WorkspaceStudentsService } from "./workspace-students.service";
 
 @Injectable()
 export class WorkspacesService {
-  private readonly defaultWorkspacePlanCode = 'free';
-
   constructor(
     @InjectRepository(Workspace)
     private readonly workspaceRepo: Repository<Workspace>,
@@ -53,9 +50,6 @@ export class WorkspacesService {
     @InjectRepository(Role)
     private readonly roleRepo: Repository<Role>,
 
-    @InjectRepository(Plan)
-    private readonly planRepo: Repository<Plan>,
-
     @InjectRepository(WorkspaceSubscription)
     private readonly workspaceSubscriptionRepo: Repository<WorkspaceSubscription>,
 
@@ -63,20 +57,21 @@ export class WorkspacesService {
     private readonly classRepo: Repository<ClassEntity>,
 
     private readonly workspaceAccessService: WorkspaceAccessService,
-    private readonly workspaceEntitlementService: WorkspaceEntitlementService,
     private readonly workspaceStudentsService: WorkspaceStudentsService,
+    private readonly plansService: PlansService,
   ) {}
 
-  private isUniqueConstraintViolation(error: unknown): error is { code: string } {
+  private isUniqueConstraintViolation(
+    error: unknown,
+  ): error is { code: string } {
     return (
-      typeof error === 'object' &&
+      typeof error === "object" &&
       error !== null &&
-      'code' in error &&
-      typeof (error as { code?: unknown }).code === 'string'
+      "code" in error &&
+      (error as { code?: unknown }).code === "23505"
     );
   }
 
-  // ================= CREATE WORKSPACE =================
   async createWorkspace(
     dto: CreateWorkspaceDto,
     userId: string,
@@ -84,15 +79,15 @@ export class WorkspacesService {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new BadRequestException(
-        errorPayload('User not found', 'WORKSPACE_OWNER_NOT_FOUND'),
+        errorPayload("User not found", "WORKSPACE_OWNER_NOT_FOUND"),
       );
     }
 
     if (user.accountType !== AccountType.TEACHER) {
       throw new ForbiddenException(
         errorPayload(
-          'Only teacher account can create workspace',
-          'WORKSPACE_CREATE_TEACHER_ONLY',
+          "Only teacher account can create workspace",
+          "WORKSPACE_CREATE_TEACHER_ONLY",
         ),
       );
     }
@@ -106,8 +101,8 @@ export class WorkspacesService {
     if (existedWorkspace) {
       throw new BadRequestException(
         errorPayload(
-          'Each teacher can own only one workspace',
-          'WORKSPACE_OWNER_ALREADY_HAS_WORKSPACE',
+          "Each teacher can own only one workspace",
+          "WORKSPACE_OWNER_ALREADY_HAS_WORKSPACE",
         ),
       );
     }
@@ -121,25 +116,11 @@ export class WorkspacesService {
     });
     if (!ownerRole) {
       throw new BadRequestException(
-        errorPayload('Owner role not found', 'WORKSPACE_OWNER_ROLE_NOT_FOUND'),
+        errorPayload("Owner role not found", "WORKSPACE_OWNER_ROLE_NOT_FOUND"),
       );
     }
 
-    const defaultPlan = await this.planRepo.findOne({
-      where: {
-        code: this.defaultWorkspacePlanCode,
-        isPublic: true,
-        isActive: true,
-      },
-    });
-    if (!defaultPlan) {
-      throw new BadRequestException(
-        errorPayload(
-          'Default workspace plan not found',
-          'WORKSPACE_DEFAULT_PLAN_NOT_FOUND',
-        ),
-      );
-    }
+    const defaultPlan = await this.plansService.getDefaultPlan();
 
     const normalizedWorkspaceName = dto.name.trim();
 
@@ -156,8 +137,8 @@ export class WorkspacesService {
       if (this.isUniqueConstraintViolation(error)) {
         throw new BadRequestException(
           errorPayload(
-            'Each teacher can own only one workspace',
-            'WORKSPACE_OWNER_ALREADY_HAS_WORKSPACE',
+            "Each teacher can own only one workspace",
+            "WORKSPACE_OWNER_ALREADY_HAS_WORKSPACE",
           ),
         );
       }
@@ -218,14 +199,14 @@ export class WorkspacesService {
           where: { id: actorUserId },
         }),
         this.memberRepo
-          .createQueryBuilder('member')
-          .innerJoin('member.user', 'user')
-          .innerJoin('member.workspace', 'workspace')
-          .where('workspace.id = :workspaceId', { workspaceId })
-          .andWhere('member.status = :status', {
+          .createQueryBuilder("member")
+          .innerJoin("member.user", "user")
+          .innerJoin("member.workspace", "workspace")
+          .where("workspace.id = :workspaceId", { workspaceId })
+          .andWhere("member.status = :status", {
             status: WorkspaceMemberStatus.ACTIVE,
           })
-          .andWhere('user.accountType = :accountType', {
+          .andWhere("user.accountType = :accountType", {
             accountType: AccountType.STUDENT,
           })
           .getCount(),
@@ -238,7 +219,7 @@ export class WorkspacesService {
 
     if (!workspace) {
       throw new BadRequestException(
-        errorPayload('Workspace not found', 'WORKSPACE_NOT_FOUND'),
+        errorPayload("Workspace not found", "WORKSPACE_NOT_FOUND"),
       );
     }
 
@@ -246,7 +227,7 @@ export class WorkspacesService {
       workspace,
       currentUserRole:
         viewerMembership?.role.name ??
-        (actorUser?.isSuperAdmin ? 'owner' : 'unknown'),
+        (actorUser?.isSuperAdmin ? "owner" : "unknown"),
       studentCount,
       classCount,
     });
@@ -256,9 +237,8 @@ export class WorkspacesService {
     workspaceId: string,
     dto: CreateStudentDto,
   ): Promise<WorkspaceStudentResponseDto> {
-    const workspace = await this.workspaceAccessService.getWorkspaceOrThrow(
-      workspaceId,
-    );
+    const workspace =
+      await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const createdStudent =
       await this.workspaceStudentsService.provisionWorkspaceStudent(
@@ -280,21 +260,23 @@ export class WorkspacesService {
     await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const members = await this.memberRepo
-      .createQueryBuilder('member')
-      .innerJoinAndSelect('member.user', 'user')
-      .innerJoinAndSelect('member.role', 'role')
-      .innerJoin('member.workspace', 'workspace')
-      .where('workspace.id = :workspaceId', { workspaceId })
-      .andWhere('member.status = :status', {
+      .createQueryBuilder("member")
+      .innerJoinAndSelect("member.user", "user")
+      .innerJoinAndSelect("member.role", "role")
+      .innerJoin("member.workspace", "workspace")
+      .where("workspace.id = :workspaceId", { workspaceId })
+      .andWhere("member.status = :status", {
         status: WorkspaceMemberStatus.ACTIVE,
       })
-      .andWhere('user.accountType = :accountType', {
+      .andWhere("user.accountType = :accountType", {
         accountType: AccountType.STUDENT,
       })
-      .orderBy('user.fullName', 'ASC')
+      .orderBy("user.fullName", "ASC")
       .getMany();
 
-    return members.map((member) => WorkspaceStudentListItemDto.fromEntity(member));
+    return members.map((member) =>
+      WorkspaceStudentListItemDto.fromEntity(member),
+    );
   }
 
   async updateWorkspaceStudent(
@@ -318,8 +300,8 @@ export class WorkspacesService {
     if (!member) {
       throw new BadRequestException(
         errorPayload(
-          'Student is not assigned to workspace',
-          'WORKSPACE_STUDENT_NOT_ASSIGNED',
+          "Student is not assigned to workspace",
+          "WORKSPACE_STUDENT_NOT_ASSIGNED",
         ),
       );
     }
@@ -333,8 +315,8 @@ export class WorkspacesService {
       if (emailExist) {
         throw new BadRequestException(
           errorPayload(
-            'Email already exists',
-            'WORKSPACE_STUDENT_EMAIL_ALREADY_EXISTS',
+            "Email already exists",
+            "WORKSPACE_STUDENT_EMAIL_ALREADY_EXISTS",
           ),
         );
       }
@@ -347,8 +329,8 @@ export class WorkspacesService {
       if (userNameExist) {
         throw new BadRequestException(
           errorPayload(
-            'Username already exists',
-            'WORKSPACE_STUDENT_USERNAME_ALREADY_EXISTS',
+            "Username already exists",
+            "WORKSPACE_STUDENT_USERNAME_ALREADY_EXISTS",
           ),
         );
       }
@@ -378,8 +360,8 @@ export class WorkspacesService {
     if (!member) {
       throw new BadRequestException(
         errorPayload(
-          'Student is not assigned to workspace',
-          'WORKSPACE_STUDENT_NOT_ASSIGNED',
+          "Student is not assigned to workspace",
+          "WORKSPACE_STUDENT_NOT_ASSIGNED",
         ),
       );
     }
@@ -414,29 +396,28 @@ export class WorkspacesService {
     });
   }
 
-  // ================= CURRENT USER WORKSPACE =================
   async getMyWorkspace(userId: string): Promise<WorkspaceDetailResponseDto> {
     const members = await this.memberRepo.find({
       where: {
         user: { id: userId },
         status: WorkspaceMemberStatus.ACTIVE,
       },
-      relations: ['workspace', 'role'],
+      relations: ["workspace", "role"],
     });
     if (members.length === 0) {
       throw new BadRequestException(
         errorPayload(
-          'Current workspace not found',
-          'WORKSPACE_CURRENT_NOT_FOUND',
+          "Current workspace not found",
+          "WORKSPACE_CURRENT_NOT_FOUND",
         ),
       );
     }
 
     const currentMembership = [...members].sort((left, right) => {
-      if (left.role?.name === 'owner' && right.role?.name !== 'owner') {
+      if (left.role?.name === "owner" && right.role?.name !== "owner") {
         return -1;
       }
-      if (left.role?.name !== 'owner' && right.role?.name === 'owner') {
+      if (left.role?.name !== "owner" && right.role?.name === "owner") {
         return 1;
       }
 
@@ -457,38 +438,48 @@ export class WorkspacesService {
     if (!workspace) {
       throw new BadRequestException(
         errorPayload(
-          'Current workspace not found',
-          'WORKSPACE_CURRENT_NOT_FOUND',
+          "Current workspace not found",
+          "WORKSPACE_CURRENT_NOT_FOUND",
         ),
       );
     }
+
+    const now = new Date();
+
+    const usableStatuses = [
+      WorkspaceSubscriptionStatus.ACTIVE,
+      WorkspaceSubscriptionStatus.TRIALING,
+    ];
 
     const subscription = await this.workspaceSubscriptionRepo.findOne({
       where: [
         {
           workspace: { id: workspace.id },
+          status: In(usableStatuses),
           endedAt: IsNull(),
         },
         {
           workspace: { id: workspace.id },
-          endedAt: MoreThan(new Date()),
+          status: In(usableStatuses),
+          endedAt: MoreThan(now),
         },
       ],
       relations: {
         workspace: true,
         plan: {
           features: true,
+          prices: true,
         },
       },
       order: {
-        endedAt: 'DESC',
+        startedAt: "DESC",
       },
     });
     if (!subscription) {
       throw new BadRequestException(
         errorPayload(
-          'Workspace subscription not found',
-          'WORKSPACE_SUBSCRIPTION_NOT_FOUND',
+          "Workspace subscription not found",
+          "WORKSPACE_SUBSCRIPTION_NOT_FOUND",
         ),
       );
     }

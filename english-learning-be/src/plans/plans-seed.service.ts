@@ -1,13 +1,19 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
+
+import { ConfigService } from "@nestjs/config";
+
 import { InjectRepository } from "@nestjs/typeorm";
+
 import { Repository } from "typeorm";
 
 import { Plan } from "./entities/plan.entity";
+
 import {
   PlanFeature,
   PlanFeatureValueType,
 } from "./entities/plan-feature.entity";
-import { PlanPrice } from "./entities/plan-price.entity";
+
+import { PlanBillingInterval, PlanPrice } from "./entities/plan-price.entity";
 
 import {
   PLAN_FEATURE_SEEDS,
@@ -26,11 +32,15 @@ export class PlansSeedService implements OnModuleInit {
 
     @InjectRepository(PlanPrice)
     private readonly planPriceRepo: Repository<PlanPrice>,
+
+    private readonly configService: ConfigService,
   ) {}
 
   async onModuleInit(): Promise<void> {
     await this.seedPlans();
+
     await this.seedPlanFeatures();
+
     await this.seedPlanPrices();
   }
 
@@ -44,13 +54,18 @@ export class PlansSeedService implements OnModuleInit {
 
       if (!existing) {
         await this.planRepo.save(this.planRepo.create(planSeed));
+
         continue;
       }
 
       existing.name = planSeed.name;
+
       existing.description = planSeed.description;
+
       existing.isPublic = planSeed.isPublic;
+
       existing.isActive = planSeed.isActive;
+
       existing.sortOrder = planSeed.sortOrder;
 
       await this.planRepo.save(existing);
@@ -77,6 +92,7 @@ export class PlansSeedService implements OnModuleInit {
             plan: {
               id: plan.id,
             },
+
             featureKey: featureSeed.featureKey,
           },
         });
@@ -101,6 +117,7 @@ export class PlansSeedService implements OnModuleInit {
                   : null,
 
               stringValue: null,
+
               jsonValue: null,
             }),
           );
@@ -121,6 +138,7 @@ export class PlansSeedService implements OnModuleInit {
             : null;
 
         existingFeature.stringValue = null;
+
         existingFeature.jsonValue = null;
 
         await this.planFeatureRepo.save(existingFeature);
@@ -143,13 +161,21 @@ export class PlansSeedService implements OnModuleInit {
       for (const priceSeed of priceSeeds) {
         const currency = priceSeed.currency.trim().toUpperCase();
 
+        const stripePriceId = this.resolveStripePriceId(
+          planCode,
+          priceSeed.interval,
+        );
+
         const existingPrice = await this.planPriceRepo.findOne({
           where: {
             plan: {
               id: plan.id,
             },
+
             currency,
+
             interval: priceSeed.interval,
+
             isActive: true,
           },
         });
@@ -158,9 +184,15 @@ export class PlansSeedService implements OnModuleInit {
           await this.planPriceRepo.save(
             this.planPriceRepo.create({
               plan,
+
               amount: priceSeed.amount,
+
               currency,
+
               interval: priceSeed.interval,
+
+              stripePriceId,
+
               isActive: true,
             }),
           );
@@ -169,6 +201,12 @@ export class PlansSeedService implements OnModuleInit {
         }
 
         if (existingPrice.amount === priceSeed.amount) {
+          if (existingPrice.stripePriceId !== stripePriceId) {
+            existingPrice.stripePriceId = stripePriceId;
+
+            await this.planPriceRepo.save(existingPrice);
+          }
+
           continue;
         }
 
@@ -179,13 +217,53 @@ export class PlansSeedService implements OnModuleInit {
         await this.planPriceRepo.save(
           this.planPriceRepo.create({
             plan,
+
             amount: priceSeed.amount,
+
             currency,
+
             interval: priceSeed.interval,
+
+            stripePriceId,
+
             isActive: true,
           }),
         );
       }
     }
+  }
+
+  private resolveStripePriceId(
+    planCode: string,
+    interval: PlanBillingInterval,
+  ): string | null {
+    if (planCode === "free") {
+      return null;
+    }
+
+    if (interval !== PlanBillingInterval.MONTHLY) {
+      throw new Error(`Unsupported Stripe billing interval: ${interval}`);
+    }
+
+    const envKey =
+      planCode === "intermediate"
+        ? "STRIPE_PRICE_INTERMEDIATE_MONTHLY"
+        : planCode === "advanced"
+          ? "STRIPE_PRICE_ADVANCED_MONTHLY"
+          : null;
+
+    if (!envKey) {
+      throw new Error(
+        `Stripe price mapping is not configured for plan: ${planCode}`,
+      );
+    }
+
+    const stripePriceId = this.configService.get<string>(envKey)?.trim();
+
+    if (!stripePriceId) {
+      throw new Error(`${envKey} is not configured`);
+    }
+
+    return stripePriceId;
   }
 }

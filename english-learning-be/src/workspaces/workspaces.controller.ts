@@ -26,8 +26,6 @@ import { WorkspaceDetailResponseDto } from './dto/workspace-detail-response.dto'
 import { WorkspaceStudentResponseDto } from './dto/workspace-student-response.dto';
 import { WorkspaceStudentListItemDto } from './dto/workspace-student-list-item.dto';
 import { RemoveWorkspaceStudentResponseDto } from './dto/remove-workspace-student-response.dto';
-import { WorkspacePlansService } from './workspace-plans.service';
-import { PlanResponseDto } from './dto/plan-response.dto';
 import { WorkspaceSubscriptionResponseDto } from './dto/workspace-subscription-response.dto';
 
 @UseGuards(JwtAuthGuard)
@@ -35,7 +33,6 @@ import { WorkspaceSubscriptionResponseDto } from './dto/workspace-subscription-r
 export class WorkspacesController {
   constructor(
     private readonly service: WorkspacesService,
-    private readonly workspacePlansService: WorkspacePlansService,
   ) {}
 
   @Post()
@@ -47,6 +44,7 @@ export class WorkspacesController {
       dto,
       req.user.userId,
     );
+    console.log('Workspace created:', workspace);
     return ApiResponse.success(workspace, 'Workspace created', 201);
   }
 
@@ -67,12 +65,6 @@ export class WorkspacesController {
       result,
       'Current workspace subscription retrieved',
     );
-  }
-
-  @Get('plans')
-  async listPlans(): Promise<ApiResponse<PlanResponseDto[]>> {
-    const result = await this.workspacePlansService.listPublicPlans();
-    return ApiResponse.success(result, 'Workspace plans retrieved');
   }
 
   @Get(':id')
