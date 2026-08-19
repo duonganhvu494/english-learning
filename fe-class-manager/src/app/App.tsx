@@ -14,7 +14,7 @@ import ClassDetailPage from "./pages/admin/ClassDetailPage";
 import SessionDetailPage from "./pages/admin/SessionDetailPage";
 import SubmissionsPage from "./pages/admin/SubmissionsPage";
 import MaterialsPage from "./pages/admin/MaterialsPage";
-import BillingPage from "./pages/admin/BillingPage";
+import BillingPage from "../app/pages/admin/Billing/BillingPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 import StudentLayout from "./layouts/StudentLayout";
 import StudentDashboard from "./pages/student/StudentDashboard";

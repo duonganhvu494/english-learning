@@ -64,7 +64,7 @@ export default function ClassesPage() {
         className: formData.className,
         description: formData.description.trim() || undefined,
       });
-      toast.success("Tạo lớp học thanh cong");
+      toast.success("Tạo lớp học thành công");
       await loadClasses(workspaceId);
       setShowCreateModal(false);
       setFormData({ className: "", description: "" });
@@ -79,7 +79,7 @@ export default function ClassesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quản lý Lớp học</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Quản lý lớp học</h1>
           <p className="text-gray-600 mt-1">
             Tạo và quản lý các lớp học của trung tâm
           </p>
@@ -138,14 +138,14 @@ export default function ClassesPage() {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Tạo lớp học moi"
+        title="Tạo lớp học mới"
       >
         <form onSubmit={handleSubmit}>
           <ModalBody className="space-y-4">
             <Input
-              label="Ten lop hoc"
+              label="Tên lớp học"
               name="className"
-              placeholder="Vi du: IELTS Foundation 01"
+              placeholder="Ví dụ: IELTS Foundation 01"
               value={formData.className}
               onChange={(e) =>
                 setFormData({ ...formData, className: e.target.value })
@@ -174,7 +174,7 @@ export default function ClassesPage() {
               onClick={() => setShowCreateModal(false)}
               type="button"
             >
-              Huy
+              Huỷ
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Đang tạo..." : "Tạo lớp học"}

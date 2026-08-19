@@ -78,7 +78,7 @@ export default function StudentsPage() {
         fullName: formData.fullName,
         email: formData.email,
       });
-      toast.success('Thêm học viên thanh cong');
+      toast.success('Thêm học viên thành công');
       await loadStudents(workspaceId);
       setShowAddModal(false);
       setFormData({ fullName: '', email: '' });
@@ -93,13 +93,13 @@ export default function StudentsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quản lý Học viên</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Quản lý học viên</h1>
           <p className="text-gray-600 mt-1">Quản lý thông tin và theo dõi học viên</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline">
             <Download className="w-4 h-4" />
-            Xuat Excel
+            Xuất Excel
           </Button>
           <Button variant="outline">
             <Upload className="w-4 h-4" />
@@ -127,7 +127,7 @@ export default function StudentsPage() {
             </div>
             <Button variant="outline">
               <Filter className="w-4 h-4" />
-              Loc
+              Lọc
             </Button>
           </div>
 
@@ -137,8 +137,8 @@ export default function StudentsPage() {
                 <TableHead>Học viên</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Username</TableHead>
-                <TableHead>Vai tro</TableHead>
-                <TableHead>Trang thai</TableHead>
+                <TableHead>Vai trò</TableHead>
+                <TableHead>Trạng thái</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -178,13 +178,13 @@ export default function StudentsPage() {
 
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
             <p className="text-sm text-gray-600">
-              Hien thi {filteredStudents.length} / {students.length} hoc vien
+              Hiển thị {filteredStudents.length} / {students.length} hoc vien
             </p>
           </div>
         </CardBody>
       </Card>
 
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Thêm học viên moi">
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Thêm học viên mới">
         <form onSubmit={handleSubmit}>
           <ModalBody className="space-y-4">
             <Input
@@ -207,7 +207,7 @@ export default function StudentsPage() {
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => setShowAddModal(false)} type="button">
-              Huy
+              Huỷ
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Đang thêm...' : 'Thêm học viên'}

@@ -89,7 +89,7 @@ export default function SettingsPage() {
       });
       setCurrentUserState(updated);
       setCurrentUser(updated);
-      toast.success('Cap nhat profile thanh cong');
+      toast.success('Cập nhật profile thành công');
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Không thể cập nhật profile'));
     } finally {
@@ -108,7 +108,7 @@ export default function SettingsPage() {
         name: workspaceName.trim(),
       });
       setWorkspaceId(createdWorkspace.id);
-      toast.success('Tao workspace thanh cong');
+      toast.success('Tạo workspace thành công');
       await loadData();
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Không thể tạo workspace'));
@@ -130,7 +130,7 @@ export default function SettingsPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Thong tin ca nhan</h3>
+                <h3 className="font-semibold text-gray-900">Thông tin cá nhân</h3>
               </div>
             </CardHeader>
             <CardBody>
@@ -156,7 +156,7 @@ export default function SettingsPage() {
                 />
                 <div className="flex justify-end">
                   <Button type="submit" disabled={isSavingProfile || isLoading}>
-                    {isSavingProfile ? 'Đang lưu...' : 'Luu profile'}
+                    {isSavingProfile ? 'Đang lưu...' : 'Lưu profile'}
                   </Button>
                 </div>
               </form>
@@ -173,7 +173,7 @@ export default function SettingsPage() {
             <CardBody>
               {!workspace && (
                 <div className="space-y-4">
-                  <p className="text-sm text-gray-600">Ban chua co workspace. Tao workspace de bat dau.</p>
+                  <p className="text-sm text-gray-600">Bạn chưa có workspace. Tạo workspace để bắt đầu.</p>
                   <div className="flex gap-3">
                     <Input
                       placeholder="Tên trung tâm"
@@ -196,19 +196,19 @@ export default function SettingsPage() {
                         <Badge variant="success">Đang hoạt động</Badge>
                       </div>
                       <p className="text-sm text-gray-600">
-                        Gia: {activePlan?.monthlyPriceCents !== null && activePlan?.monthlyPriceCents !== undefined
+                        Giá: {activePlan?.monthlyPriceCents !== null && activePlan?.monthlyPriceCents !== undefined
                           ? `${(activePlan.monthlyPriceCents / 100).toLocaleString('vi-VN')} VND / thang`
-                          : 'Lien he'}
+                          : 'Liên hệ'}
                       </p>
                       <p className="text-sm text-gray-600 mt-1">
                         Kỳ tiếp theo: {subscription ? formatDateTime(subscription.startedAt) : 'Chưa có subscription detail'}
                       </p>
                     </div>
-                    <Button variant="outline">Nang cap goi</Button>
+                    <Button variant="outline">Nâng cấp gói</Button>
                   </div>
 
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                    <h5 className="font-medium text-gray-900 mb-3">Tinh nang goi dang chon</h5>
+                    <h5 className="font-medium text-gray-900 mb-3">Tính năng gói đang chọn</h5>
                     <ul className="space-y-2 text-sm text-gray-700">
                       {(activePlan?.features || []).map((feature) => (
                         <li key={feature.featureKey} className="flex items-center gap-2">
@@ -232,7 +232,7 @@ export default function SettingsPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Thong tin trung tam</h3>
+                <h3 className="font-semibold text-gray-900">Thông tin trung tâm</h3>
               </div>
             </CardHeader>
             <CardBody className="space-y-4">
@@ -241,16 +241,16 @@ export default function SettingsPage() {
                 <p className="font-medium text-gray-900">{workspace?.name || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Ma trung tam</p>
+                <p className="text-sm text-gray-600">Mã trung tâm</p>
                 <p className="font-medium text-gray-900 font-mono break-all">{workspace?.id || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Nguoi quan ly</p>
+                <p className="text-sm text-gray-600">Người quản lý</p>
                 <p className="font-medium text-gray-900">{workspace?.owner?.fullName || currentUser?.fullName || '-'}</p>
               </div>
               {workspace && (
-                <Button variant="outline" className="w-full" onClick={() => toast.info('Thong tin workspace da duoc dong bo tu API')}>
-                  Dong bo lai
+                <Button variant="outline" className="w-full" onClick={() => toast.info('Thông tin workspace đã được đồng bộ từ API')}>
+                  Đồng bộ lại
                 </Button>
               )}
             </CardBody>
@@ -260,7 +260,7 @@ export default function SettingsPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Su dung</h3>
+                <h3 className="font-semibold text-gray-900">Sử dụng</h3>
               </div>
             </CardHeader>
             <CardBody className="space-y-4">
@@ -288,15 +288,15 @@ export default function SettingsPage() {
             </CardHeader>
             <CardBody className="space-y-3">
               <label className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Email thong bao</span>
+                <span className="text-sm text-gray-700">Email thông báo</span>
                 <input type="checkbox" defaultChecked className="rounded" />
               </label>
               <label className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Nhac nho bai tap</span>
+                <span className="text-sm text-gray-700">Nhắc nhở bài tập</span>
                 <input type="checkbox" defaultChecked className="rounded" />
               </label>
               <label className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Bao cao tuan</span>
+                <span className="text-sm text-gray-700">Báo cáo tuần</span>
                 <input type="checkbox" className="rounded" />
               </label>
             </CardBody>

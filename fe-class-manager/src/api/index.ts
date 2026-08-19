@@ -10,4 +10,5 @@ export * from './submissions.api';
 export * from './notifications.api';
 export * from './materials.api';
 export * from './billing.api';
+export * from "./plans.api"
 export * from './lectures.api';

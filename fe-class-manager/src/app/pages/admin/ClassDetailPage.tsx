@@ -1,21 +1,47 @@
-﻿import { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router';
-import { ArrowLeft, Plus, Users, Calendar, FileText, UserPlus, Clock } from 'lucide-react';
-import { toast } from 'sonner';
-import Button from '../../components/ui/Button';
-import Card, { CardBody, CardHeader } from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table';
-import Modal, { ModalBody, ModalFooter } from '../../components/ui/Modal';
-import Input from '../../components/ui/Input';
-import { classesApi, getApiErrorMessage, sessionsApi, workspacesApi } from '@/api';
-import type { ClassResponse, ClassStudentListItem, SessionResponse, WorkspaceStudentListItem } from '@/types';
-import { formatDateTime, toIsoFromLocalDateTime } from '@/app/utils/format';
-import { resolveWorkspaceId } from '@/app/utils/workspace';
+﻿import { useEffect, useMemo, useState } from "react";
+import { useParams, Link } from "react-router";
+import {
+  ArrowLeft,
+  Plus,
+  Users,
+  Calendar,
+  FileText,
+  UserPlus,
+  Clock,
+} from "lucide-react";
+import { toast } from "sonner";
+import Button from "../../components/ui/Button";
+import Card, { CardBody, CardHeader } from "../../components/ui/Card";
+import Badge from "../../components/ui/Badge";
+import Table, {
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "../../components/ui/Table";
+import Modal, { ModalBody, ModalFooter } from "../../components/ui/Modal";
+import Input from "../../components/ui/Input";
+import {
+  classesApi,
+  getApiErrorMessage,
+  sessionsApi,
+  workspacesApi,
+} from "@/api";
+import type {
+  ClassResponse,
+  ClassStudentListItem,
+  SessionResponse,
+  WorkspaceStudentListItem,
+} from "@/types";
+import { formatDateTime, toIsoFromLocalDateTime } from "@/app/utils/format";
+import { resolveWorkspaceId } from "@/app/utils/workspace";
 
 export default function ClassDetailPage() {
   const { classId } = useParams();
-  const [activeTab, setActiveTab] = useState<'info' | 'students' | 'sessions'>('info');
+  const [activeTab, setActiveTab] = useState<"info" | "students" | "sessions">(
+    "info",
+  );
   const [showAddSessionModal, setShowAddSessionModal] = useState(false);
   const [showAddStudentsModal, setShowAddStudentsModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,12 +50,14 @@ export default function ClassDetailPage() {
   const [classInfo, setClassInfo] = useState<ClassResponse | null>(null);
   const [students, setStudents] = useState<ClassStudentListItem[]>([]);
   const [sessions, setSessions] = useState<SessionResponse[]>([]);
-  const [workspaceStudents, setWorkspaceStudents] = useState<WorkspaceStudentListItem[]>([]);
+  const [workspaceStudents, setWorkspaceStudents] = useState<
+    WorkspaceStudentListItem[]
+  >([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [sessionFormData, setSessionFormData] = useState({
-    topic: '',
-    timeStart: '',
-    timeEnd: '',
+    topic: "",
+    timeStart: "",
+    timeEnd: "",
   });
 
   const loadData = async () => {
@@ -40,12 +68,13 @@ export default function ClassDetailPage() {
     setIsLoading(true);
     try {
       const workspaceId = await resolveWorkspaceId();
-      const [classList, roster, classSessions, workspaceStudentList] = await Promise.all([
-        classesApi.listWorkspaceClasses(workspaceId),
-        classesApi.getClassStudents(classId),
-        sessionsApi.listClassSessions(classId),
-        workspacesApi.listWorkspaceStudents(workspaceId),
-      ]);
+      const [classList, roster, classSessions, workspaceStudentList] =
+        await Promise.all([
+          classesApi.listWorkspaceClasses(workspaceId),
+          classesApi.getClassStudents(classId),
+          sessionsApi.listClassSessions(classId),
+          workspacesApi.listWorkspaceStudents(workspaceId),
+        ]);
 
       const classDetail = classList.find((item) => item.id === classId) ?? null;
       setClassInfo(classDetail);
@@ -53,7 +82,7 @@ export default function ClassDetailPage() {
       setSessions(classSessions);
       setWorkspaceStudents(workspaceStudentList);
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể tải chi tiết lớp học'));
+      toast.error(getApiErrorMessage(error, "Không thể tải chi tiết lớp học"));
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +94,9 @@ export default function ClassDetailPage() {
 
   const sessionStats = useMemo(() => {
     const now = Date.now();
-    const completed = sessions.filter((session) => new Date(session.timeEnd).getTime() < now).length;
+    const completed = sessions.filter(
+      (session) => new Date(session.timeEnd).getTime() < now,
+    ).length;
     return {
       total: sessions.length,
       completed,
@@ -74,9 +105,13 @@ export default function ClassDetailPage() {
   }, [sessions]);
 
   const availableStudents = useMemo(
-    () => workspaceStudents.filter(
-      (workspaceStudent) => !students.some((student) => student.studentId === workspaceStudent.studentId),
-    ),
+    () =>
+      workspaceStudents.filter(
+        (workspaceStudent) =>
+          !students.some(
+            (student) => student.studentId === workspaceStudent.studentId,
+          ),
+      ),
     [workspaceStudents, students],
   );
 
@@ -93,12 +128,12 @@ export default function ClassDetailPage() {
         timeStart: toIsoFromLocalDateTime(sessionFormData.timeStart),
         timeEnd: toIsoFromLocalDateTime(sessionFormData.timeEnd),
       });
-      toast.success('Tạo buổi học thanh cong');
+      toast.success("Tạo buổi học thành công");
       setShowAddSessionModal(false);
-      setSessionFormData({ topic: '', timeStart: '', timeEnd: '' });
+      setSessionFormData({ topic: "", timeStart: "", timeEnd: "" });
       await loadData();
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể tạo buổi học'));
+      toast.error(getApiErrorMessage(error, "Không thể tạo buổi học"));
     } finally {
       setIsSavingSession(false);
     }
@@ -114,12 +149,12 @@ export default function ClassDetailPage() {
       await classesApi.addClassStudents(classId, {
         studentIds: selectedStudentIds,
       });
-      toast.success('Da them hoc vien vao lop');
+      toast.success("Đã thêm học viên vào lớp");
       setShowAddStudentsModal(false);
       setSelectedStudentIds([]);
       await loadData();
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể thêm học viên vào lớp'));
+      toast.error(getApiErrorMessage(error, "Không thể thêm học viên vào lớp"));
     } finally {
       setIsSavingStudents(false);
     }
@@ -134,17 +169,17 @@ export default function ClassDetailPage() {
       await classesApi.updateClassStudentRole(classId, studentId, {
         roleId: null,
       });
-      toast.success('Da cap nhat role mac dinh');
+      toast.success("Đã cập nhật vai trò mặc định");
       await loadData();
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể cập nhật vai trò'));
+      toast.error(getApiErrorMessage(error, "Không thể cập nhật vai trò"));
     }
   };
 
   const tabs = [
-    { id: 'info', label: 'Thong tin', icon: FileText },
-    { id: 'students', label: 'Học viên', icon: Users },
-    { id: 'sessions', label: 'Buổi học', icon: Calendar },
+    { id: "info", label: "Thông tin", icon: FileText },
+    { id: "students", label: "Học viên", icon: Users },
+    { id: "sessions", label: "Buổi học", icon: Calendar },
   ];
 
   return (
@@ -156,8 +191,12 @@ export default function ClassDetailPage() {
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">{classInfo?.className || 'Class detail'}</h1>
-          <p className="text-gray-600 mt-1">{classInfo?.description || 'Không có mô tả'}</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {classInfo?.className || "Class detail"}
+          </h1>
+          <p className="text-gray-600 mt-1">
+            {classInfo?.description || "Không có mô tả"}
+          </p>
         </div>
         <Badge variant="success">Đang hoạt động</Badge>
       </div>
@@ -169,11 +208,13 @@ export default function ClassDetailPage() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as 'info' | 'students' | 'sessions')}
+                onClick={() =>
+                  setActiveTab(tab.id as "info" | "students" | "sessions")
+                }
                 className={`flex items-center gap-2 pb-3 border-b-2 transition-colors ${
                   activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -184,31 +225,37 @@ export default function ClassDetailPage() {
         </nav>
       </div>
 
-      {activeTab === 'info' && (
+      {activeTab === "info" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <h3 className="font-semibold text-gray-900">Thong tin co ban</h3>
+              <h3 className="font-semibold text-gray-900">Thông tin cơ bản</h3>
             </CardHeader>
             <CardBody className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600">Ten lop</p>
-                <p className="font-medium text-gray-900">{classInfo?.className || '-'}</p>
+                <p className="text-sm text-gray-600">Tên lớp</p>
+                <p className="font-medium text-gray-900">
+                  {classInfo?.className || "-"}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Mô tả</p>
-                <p className="font-medium text-gray-900">{classInfo?.description || '-'}</p>
+                <p className="font-medium text-gray-900">
+                  {classInfo?.description || "-"}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Workspace</p>
-                <p className="font-medium text-gray-900 break-all">{classInfo?.workspaceId || '-'}</p>
+                <p className="font-medium text-gray-900 break-all">
+                  {classInfo?.workspaceId || "-"}
+                </p>
               </div>
             </CardBody>
           </Card>
 
           <Card>
             <CardHeader>
-              <h3 className="font-semibold text-gray-900">Thong ke</h3>
+              <h3 className="font-semibold text-gray-900">Thống kê</h3>
             </CardHeader>
             <CardBody className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
@@ -216,7 +263,9 @@ export default function ClassDetailPage() {
                   <Users className="w-8 h-8 text-blue-600" />
                   <div>
                     <p className="text-sm text-gray-600">Tổng học viên</p>
-                    <p className="text-2xl font-bold text-gray-900">{students.length}</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {students.length}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -224,8 +273,10 @@ export default function ClassDetailPage() {
                 <div className="flex items-center gap-3">
                   <Calendar className="w-8 h-8 text-green-600" />
                   <div>
-                    <p className="text-sm text-gray-600">Tong buoi hoc</p>
-                    <p className="text-2xl font-bold text-gray-900">{sessionStats.total}</p>
+                    <p className="text-sm text-gray-600">Tổng buổi học</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {sessionStats.total}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -233,8 +284,10 @@ export default function ClassDetailPage() {
                 <div className="flex items-center gap-3">
                   <Clock className="w-8 h-8 text-yellow-600" />
                   <div>
-                    <p className="text-sm text-gray-600">Da hoan thanh</p>
-                    <p className="text-2xl font-bold text-gray-900">{sessionStats.completed}</p>
+                    <p className="text-sm text-gray-600">Đã hoàn thành</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {sessionStats.completed}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -243,7 +296,7 @@ export default function ClassDetailPage() {
         </div>
       )}
 
-      {activeTab === 'students' && (
+      {activeTab === "students" && (
         <Card>
           <CardHeader className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">Danh sách học viên</h3>
@@ -258,17 +311,20 @@ export default function ClassDetailPage() {
                 <TableRow>
                   <TableHead>Học viên</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Role hien tai</TableHead>
-                  <TableHead>Thao tac</TableHead>
+                  <TableHead>Role hiện tại</TableHead>
+                  <TableHead>Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {!isLoading && students.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4}>
-                      <div className="text-center py-8 text-sm text-gray-500">Lop chua co hoc vien</div>
-                    </TableCell>
-                  </TableRow>
+  <TableCell
+    colSpan={4}
+    className="text-center py-8 text-sm text-gray-500"
+  >
+    Lớp chưa có học viên
+  </TableCell>
+</TableRow>
                 )}
                 {students.map((student) => (
                   <TableRow key={student.studentId}>
@@ -284,8 +340,10 @@ export default function ClassDetailPage() {
                     </TableCell>
                     <TableCell>{student.email}</TableCell>
                     <TableCell>
-                      <Badge variant={student.classRoleName ? 'info' : 'default'}>
-                        {student.classRoleName || 'student'}
+                      <Badge
+                        variant={student.classRoleName ? "info" : "default"}
+                      >
+                        {student.classRoleName || "student"}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -293,7 +351,7 @@ export default function ClassDetailPage() {
                         onClick={() => handleResetRole(student.studentId)}
                         className="text-sm text-blue-600 hover:underline"
                       >
-                        Reset role mac dinh
+                        Reset role mặc định
                       </button>
                     </TableCell>
                   </TableRow>
@@ -304,10 +362,10 @@ export default function ClassDetailPage() {
         </Card>
       )}
 
-      {activeTab === 'sessions' && (
+      {activeTab === "sessions" && (
         <Card>
           <CardHeader className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Lich su buoi hoc</h3>
+            <h3 className="font-semibold text-gray-900">Lịch sử buổi học</h3>
             <Button size="sm" onClick={() => setShowAddSessionModal(true)}>
               <Plus className="w-4 h-4" />
               Tạo buổi học
@@ -316,10 +374,13 @@ export default function ClassDetailPage() {
           <CardBody>
             <div className="space-y-3">
               {!isLoading && sessions.length === 0 && (
-                <div className="text-center py-8 text-sm text-gray-500 border rounded-lg">Chưa có buổi học nào</div>
+                <div className="text-center py-8 text-sm text-gray-500 border rounded-lg">
+                  Chưa có buổi học nào
+                </div>
               )}
               {sessions.map((session) => {
-                const isCompleted = new Date(session.timeEnd).getTime() < Date.now();
+                const isCompleted =
+                  new Date(session.timeEnd).getTime() < Date.now();
                 return (
                   <Link
                     key={session.id}
@@ -328,13 +389,16 @@ export default function ClassDetailPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium text-gray-900">{session.topic}</h4>
+                        <h4 className="font-medium text-gray-900">
+                          {session.topic}
+                        </h4>
                         <p className="text-sm text-gray-600 mt-1">
-                          {formatDateTime(session.timeStart)} - {formatDateTime(session.timeEnd)}
+                          {formatDateTime(session.timeStart)} -{" "}
+                          {formatDateTime(session.timeEnd)}
                         </p>
                       </div>
-                      <Badge variant={isCompleted ? 'success' : 'warning'}>
-                        {isCompleted ? 'Da hoan thanh' : 'Sap dien ra'}
+                      <Badge variant={isCompleted ? "success" : "warning"}>
+                        {isCompleted ? "Da hoan thanh" : "Sap dien ra"}
                       </Badge>
                     </div>
                   </Link>
@@ -345,50 +409,80 @@ export default function ClassDetailPage() {
         </Card>
       )}
 
-      <Modal isOpen={showAddSessionModal} onClose={() => setShowAddSessionModal(false)} title="Tạo buổi học moi">
+      <Modal
+        isOpen={showAddSessionModal}
+        onClose={() => setShowAddSessionModal(false)}
+        title="Tạo buổi học mới"
+      >
         <form onSubmit={handleAddSession}>
           <ModalBody className="space-y-4">
             <Input
-              label="Chu de buoi hoc"
+              label="Chủ đề buổi học"
               name="topic"
-              placeholder="Vi du: Reading Skills - Part 1"
+              placeholder="Ví dụ: Reading Skills - Part 1"
               value={sessionFormData.topic}
-              onChange={(e) => setSessionFormData({ ...sessionFormData, topic: e.target.value })}
+              onChange={(e) =>
+                setSessionFormData({
+                  ...sessionFormData,
+                  topic: e.target.value,
+                })
+              }
               required
             />
             <Input
-              label="Thoi gian bat dau"
+              label="Thời gian bắt đầu"
               type="datetime-local"
               name="timeStart"
               value={sessionFormData.timeStart}
-              onChange={(e) => setSessionFormData({ ...sessionFormData, timeStart: e.target.value })}
+              onChange={(e) =>
+                setSessionFormData({
+                  ...sessionFormData,
+                  timeStart: e.target.value,
+                })
+              }
               required
             />
             <Input
-              label="Thoi gian ket thuc"
+              label="Thời gian kết thúc"
               type="datetime-local"
               name="timeEnd"
               value={sessionFormData.timeEnd}
-              onChange={(e) => setSessionFormData({ ...sessionFormData, timeEnd: e.target.value })}
+              onChange={(e) =>
+                setSessionFormData({
+                  ...sessionFormData,
+                  timeEnd: e.target.value,
+                })
+              }
               required
             />
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => setShowAddSessionModal(false)} type="button">
-              Huy
+            <Button
+              variant="outline"
+              onClick={() => setShowAddSessionModal(false)}
+              type="button"
+            >
+              Hủy
             </Button>
             <Button type="submit" disabled={isSavingSession}>
-              {isSavingSession ? 'Đang tạo...' : 'Tạo buổi học'}
+              {isSavingSession ? "Đang tạo..." : "Tạo buổi học"}
             </Button>
           </ModalFooter>
         </form>
       </Modal>
 
-      <Modal isOpen={showAddStudentsModal} onClose={() => setShowAddStudentsModal(false)} title="Thêm học viên vao lop" size="lg">
+      <Modal
+        isOpen={showAddStudentsModal}
+        onClose={() => setShowAddStudentsModal(false)}
+        title="Thêm học viên vào lớp"
+        size="lg"
+      >
         <ModalBody>
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {availableStudents.length === 0 && (
-              <div className="text-sm text-gray-500 py-6 text-center">Không còn học viên nào để thêm</div>
+              <div className="text-sm text-gray-500 py-6 text-center">
+                Không còn học viên nào để thêm
+              </div>
             )}
             {availableStudents.map((student) => {
               const isSelected = selectedStudentIds.includes(student.studentId);
@@ -405,13 +499,17 @@ export default function ClassDetailPage() {
                         if (event.target.checked) {
                           return [...prev, student.studentId];
                         }
-                        return prev.filter((item) => item !== student.studentId);
+                        return prev.filter(
+                          (item) => item !== student.studentId,
+                        );
                       });
                     }}
                     className="mt-1"
                   />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{student.fullName}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {student.fullName}
+                    </p>
                     <p className="text-xs text-gray-600">{student.email}</p>
                   </div>
                 </label>
@@ -420,17 +518,21 @@ export default function ClassDetailPage() {
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button variant="outline" onClick={() => setShowAddStudentsModal(false)} type="button">
-            Huy
+          <Button
+            variant="outline"
+            onClick={() => setShowAddStudentsModal(false)}
+            type="button"
+          >
+            Huỷ
           </Button>
-          <Button onClick={handleAddStudents} disabled={selectedStudentIds.length === 0 || isSavingStudents}>
-            {isSavingStudents ? 'Đang thêm...' : 'Thêm vào lớp'}
+          <Button
+            onClick={handleAddStudents}
+            disabled={selectedStudentIds.length === 0 || isSavingStudents}
+          >
+            {isSavingStudents ? "Đang thêm..." : "Thêm vào lớp"}
           </Button>
         </ModalFooter>
       </Modal>
     </div>
   );
 }
-
-
-

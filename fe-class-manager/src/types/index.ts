@@ -9,5 +9,6 @@ export * from './submissions';
 export * from './notifications';
 export * from './materials';
 export * from './billing';
+export * from "./plans";
 export * from './lectures';
 export * from './auth';

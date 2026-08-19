@@ -180,6 +180,8 @@ export default function MaterialsPage() {
         body: selectedFile,
       });
 
+      console.log("uploadResult", uploadResult);
+
       if (!uploadResult.ok) {
         throw new Error(`Upload thất bại (${uploadResult.status})`);
       }

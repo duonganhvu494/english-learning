@@ -1,17 +1,19 @@
 import type {
   BillingSubscriptionResponse,
-  MarkPaymentFailedDto,
-  PaymentTransactionResponse,
+  ChangeBillingPlanDto,
   StartBillingSubscriptionDto,
   StartBillingSubscriptionResponse,
-} from '@/types';
-import { authApi } from './auth.api';
-import { http, unwrap } from './http';
+} from "@/types";
+
+import { authApi } from "./auth.api";
+import { http, unwrap } from "./http";
 
 export const billingApi = {
-  async getMySubscription(): Promise<BillingSubscriptionResponse | null> {
+  async getMySubscription(): Promise<
+    BillingSubscriptionResponse | null
+  > {
     return unwrap<BillingSubscriptionResponse | null>(
-      http.get('/billing/me/subscription'),
+      http.get("/billing/me/subscription"),
     );
   },
 
@@ -19,34 +21,35 @@ export const billingApi = {
     payload: StartBillingSubscriptionDto,
   ): Promise<StartBillingSubscriptionResponse> {
     await authApi.ensureCsrfToken();
+
     return unwrap<StartBillingSubscriptionResponse>(
-      http.post('/billing/me/subscription', payload),
+      http.post(
+        "/billing/me/subscription",
+        payload,
+      ),
+    );
+  },
+
+  async changePlan(
+    payload: ChangeBillingPlanDto,
+  ): Promise<BillingSubscriptionResponse> {
+    await authApi.ensureCsrfToken();
+
+    return unwrap<BillingSubscriptionResponse>(
+      http.patch(
+        "/billing/me/subscription/plan",
+        payload,
+      ),
     );
   },
 
   async cancelSubscription(): Promise<BillingSubscriptionResponse> {
     await authApi.ensureCsrfToken();
+
     return unwrap<BillingSubscriptionResponse>(
-      http.post('/billing/me/subscription/cancel'),
-    );
-  },
-
-  async payMockTransaction(
-    transactionId: string,
-  ): Promise<PaymentTransactionResponse> {
-    await authApi.ensureCsrfToken();
-    return unwrap<PaymentTransactionResponse>(
-      http.post(`/billing/mock/transactions/${transactionId}/pay`),
-    );
-  },
-
-  async failMockTransaction(
-    transactionId: string,
-    payload: MarkPaymentFailedDto,
-  ): Promise<PaymentTransactionResponse> {
-    await authApi.ensureCsrfToken();
-    return unwrap<PaymentTransactionResponse>(
-      http.post(`/billing/mock/transactions/${transactionId}/fail`, payload),
+      http.post(
+        "/billing/me/subscription/cancel",
+      ),
     );
   },
 };
