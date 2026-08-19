@@ -1,20 +1,72 @@
 import type {
+  AbortMaterialUploadDto,
+  CompleteMaterialUploadDto,
   InitSubmissionUploadDto,
+  MaterialUploadAbortResponse,
+  MaterialUploadInitResponse,
+  MaterialUploadPartSignedResponse,
   ReviewSubmissionDto,
+  SignMaterialUploadPartDto,
   SubmissionResponse,
-  SubmissionUploadInitResponse,
-} from '@/types';
-import { authApi } from './auth.api';
-import { http, unwrap } from './http';
+} from "@/types";
+
+import { authApi } from "./auth.api";
+import { http, unwrap } from "./http";
 
 export const submissionsApi = {
   async initMyUpload(
     assignmentId: string,
     payload: InitSubmissionUploadDto,
-  ): Promise<SubmissionUploadInitResponse> {
+  ): Promise<MaterialUploadInitResponse> {
     await authApi.ensureCsrfToken();
-    return unwrap<SubmissionUploadInitResponse>(
-      http.post(`/assignments/${assignmentId}/submissions/me/upload-init`, payload),
+
+    return unwrap<MaterialUploadInitResponse>(
+      http.post(
+        `/assignments/${assignmentId}/submissions/me/upload-init`,
+        payload,
+      ),
+    );
+  },
+
+  async signMyUploadPart(
+    assignmentId: string,
+    payload: SignMaterialUploadPartDto,
+  ): Promise<MaterialUploadPartSignedResponse> {
+    await authApi.ensureCsrfToken();
+
+    return unwrap<MaterialUploadPartSignedResponse>(
+      http.post(
+        `/assignments/${assignmentId}/submissions/me/upload-sign-part`,
+        payload,
+      ),
+    );
+  },
+
+  async completeMyUpload(
+    assignmentId: string,
+    payload: CompleteMaterialUploadDto,
+  ): Promise<SubmissionResponse> {
+    await authApi.ensureCsrfToken();
+
+    return unwrap<SubmissionResponse>(
+      http.post(
+        `/assignments/${assignmentId}/submissions/me/upload-complete`,
+        payload,
+      ),
+    );
+  },
+
+  async abortMyUpload(
+    assignmentId: string,
+    payload: AbortMaterialUploadDto,
+  ): Promise<MaterialUploadAbortResponse> {
+    await authApi.ensureCsrfToken();
+
+    return unwrap<MaterialUploadAbortResponse>(
+      http.post(
+        `/assignments/${assignmentId}/submissions/me/upload-abort`,
+        payload,
+      ),
     );
   },
 
@@ -24,7 +76,9 @@ export const submissionsApi = {
     );
   },
 
-  async listAssignmentSubmissions(assignmentId: string): Promise<SubmissionResponse[]> {
+  async listAssignmentSubmissions(
+    assignmentId: string,
+  ): Promise<SubmissionResponse[]> {
     return unwrap<SubmissionResponse[]>(
       http.get(`/assignments/${assignmentId}/submissions`),
     );
@@ -45,8 +99,12 @@ export const submissionsApi = {
     payload: ReviewSubmissionDto,
   ): Promise<SubmissionResponse> {
     await authApi.ensureCsrfToken();
+
     return unwrap<SubmissionResponse>(
-      http.patch(`/assignments/${assignmentId}/submissions/${studentId}/review`, payload),
+      http.patch(
+        `/assignments/${assignmentId}/submissions/${studentId}/review`,
+        payload,
+      ),
     );
   },
 };

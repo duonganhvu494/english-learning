@@ -1,4 +1,8 @@
-import { clearAuthStorage, setCsrfHeaderName, setCsrfToken } from '@/app/utils/client-storage';
+import {
+  clearAuthStorage,
+  setCsrfHeaderName,
+  setCsrfToken,
+} from "@/app/utils/client-storage";
 import type {
   CsrfTokenResult,
   ForgotPasswordDto,
@@ -11,18 +15,16 @@ import type {
   UserProfile,
   VerifyEmailOtpDto,
   VerifyEmailResponse,
-} from '@/types';
-import { http, unwrap } from './http';
+} from "@/types";
+import { http, unwrap } from "./http";
 
 let csrfPromise: Promise<CsrfTokenResult> | null = null;
 
 export const authApi = {
   async getCsrfToken(): Promise<CsrfTokenResult> {
-    const result = await unwrap<CsrfTokenResult>(
-      http.get('/auth/csrf-token'),
-    );
+    const result = await unwrap<CsrfTokenResult>(http.get("/auth/csrf-token"));
     setCsrfToken(result.csrfToken);
-    setCsrfHeaderName(result.headerName || 'x-csrf-token');
+    setCsrfHeaderName(result.headerName || "x-csrf-token");
     return result;
   },
 
@@ -37,40 +39,61 @@ export const authApi = {
 
   async login(payload: LoginDto): Promise<UserProfile> {
     await this.ensureCsrfToken();
-    const user = await unwrap<UserProfile>(http.post('/auth/login', payload));
+    const user = await unwrap<UserProfile>(http.post("/auth/login", payload));
 
-    // Backend rotates csrf cookie on successful login, refresh FE copy immediately.
+    console.log("User logged in:", user);
     await this.getCsrfToken();
     return user;
   },
 
   async logout(): Promise<void> {
     await this.ensureCsrfToken();
-    await unwrap<null>(http.post('/auth/logout'));
+    await unwrap<null>(http.post("/auth/logout"));
     clearAuthStorage();
   },
 
-  async verifyEmailOtp(payload: VerifyEmailOtpDto): Promise<VerifyEmailResponse> {
+  async verifyEmailOtp(
+    payload: VerifyEmailOtpDto,
+  ): Promise<VerifyEmailResponse> {
     return unwrap<VerifyEmailResponse>(
-      http.post('/auth/verify-email-otp', payload),
+      http.post("/auth/verify-email-otp", payload),
     );
   },
 
-  async resendEmailOtp(payload: ResendEmailOtpDto): Promise<OtpChallengeResponse> {
+  async resendEmailOtp(
+    payload: ResendEmailOtpDto,
+  ): Promise<OtpChallengeResponse> {
     return unwrap<OtpChallengeResponse>(
-      http.post('/auth/resend-email-otp', payload),
+      http.post("/auth/resend-email-otp", payload),
     );
   },
 
-  async forgotPassword(payload: ForgotPasswordDto): Promise<ForgotPasswordResponse> {
+  async forgotPassword(
+    payload: ForgotPasswordDto,
+  ): Promise<ForgotPasswordResponse> {
     return unwrap<ForgotPasswordResponse>(
-      http.post('/auth/forgot-password', payload),
+      http.post("/auth/forgot-password", payload),
     );
   },
 
-  async resetPassword(payload: ResetPasswordDto): Promise<ResetPasswordResponse> {
+  async resetPassword(
+    payload: ResetPasswordDto,
+  ): Promise<ResetPasswordResponse> {
     return unwrap<ResetPasswordResponse>(
-      http.post('/auth/reset-password', payload),
+      http.post("/auth/reset-password", payload),
     );
+  },
+
+  async changePassword(payload: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<UserProfile> {
+    await this.ensureCsrfToken();
+
+    const result = await unwrap<{
+      user: UserProfile;
+    }>(http.post("/auth/change-password", payload));
+
+    return result.user;
   },
 };

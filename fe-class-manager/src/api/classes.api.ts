@@ -6,9 +6,9 @@ import type {
   ClassStudentsResponse,
   CreateClassDto,
   UpdateClassStudentRoleDto,
-} from '@/types';
-import { authApi } from './auth.api';
-import { http, unwrap } from './http';
+} from "@/types";
+import { authApi } from "./auth.api";
+import { http, unwrap } from "./http";
 
 export const classesApi = {
   async createClass(
@@ -28,7 +28,13 @@ export const classesApi = {
   },
 
   async getClassStudents(classId: string): Promise<ClassRosterResponse> {
-    return unwrap<ClassRosterResponse>(http.get(`/classes/${classId}/students`));
+    return unwrap<ClassRosterResponse>(
+      http.get(`/classes/${classId}/students`),
+    );
+  },
+
+  async listMyClasses(): Promise<ClassResponse[]> {
+    return unwrap<ClassResponse[]>(http.get("/me/classes"));
   },
 
   async addClassStudents(

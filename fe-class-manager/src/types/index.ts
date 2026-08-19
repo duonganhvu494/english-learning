@@ -5,6 +5,7 @@ export * from './classes';
 export * from './sessions';
 export * from './attendances';
 export * from './assignments';
+export * from './assignment-quiz.types';
 export * from './submissions';
 export * from './notifications';
 export * from './materials';

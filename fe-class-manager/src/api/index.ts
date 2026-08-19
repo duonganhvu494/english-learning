@@ -6,6 +6,7 @@ export * from './classes.api';
 export * from './sessions.api';
 export * from './attendances.api';
 export * from './assignments.api';
+export * from './assignment-quiz.api';
 export * from './submissions.api';
 export * from './notifications.api';
 export * from './materials.api';

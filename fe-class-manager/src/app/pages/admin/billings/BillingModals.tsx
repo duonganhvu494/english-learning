@@ -1,8 +1,8 @@
 import { AlertCircle } from "lucide-react";
 
-import Button from "../../../components/ui/Button";
+import Button from "@/app/components/ui/Button";
 
-import Modal, { ModalBody, ModalFooter } from "../../../components/ui/Modal";
+import Modal, { ModalBody, ModalFooter } from "@/app/components/ui/Modal";
 
 import type { BillingSubscriptionResponse, PlanResponse } from "@/types";
 

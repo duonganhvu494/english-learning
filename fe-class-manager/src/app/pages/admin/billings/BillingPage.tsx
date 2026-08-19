@@ -11,11 +11,11 @@ import {
 
 import { toast } from "sonner";
 
-import Button from "../../../components/ui/Button";
+import Button from "@/app/components/ui/Button";
 
-import Card, { CardBody } from "../../../components/ui/Card";
+import Card, { CardBody } from "@/app/components/ui/Card";
 
-import Badge from "../../../components/ui/Badge";
+import Badge from "@/app/components/ui/Badge";
 
 import { billingApi, getApiErrorMessage, plansApi, workspacesApi } from "@/api";
 
