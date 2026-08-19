@@ -47,11 +47,11 @@ export type FailedPaymentInput = {
 
 @Injectable()
 export class BillingPaymentService {
+  private readonly renewalBufferMinutes = 90;
   constructor(
     @InjectRepository(PaymentTransaction)
     private readonly paymentTransactionRepo: Repository<PaymentTransaction>,
   ) {}
-
 
   async applySuccessfulPayment(
     transactionId: string,
@@ -275,7 +275,6 @@ export class BillingPaymentService {
         return paymentTransaction;
       }
 
-
       if (
         paymentTransaction.status === PaymentTransactionStatus.FAILED &&
         paymentTransaction.providerTransactionRef ===
@@ -464,7 +463,10 @@ export class BillingPaymentService {
   ): Promise<void> {
     workspaceSubscription.status = WorkspaceSubscriptionStatus.ACTIVE;
 
-    workspaceSubscription.endedAt = paymentTransaction.billingPeriodEnd;
+    workspaceSubscription.endedAt = this.addMinutes(
+      paymentTransaction.billingPeriodEnd,
+      this.renewalBufferMinutes,
+    );
 
     workspaceSubscription.paymentTransactionId = paymentTransaction.id;
 
@@ -501,7 +503,10 @@ export class BillingPaymentService {
 
         startedAt: paymentTransaction.billingPeriodStart,
 
-        endedAt: paymentTransaction.billingPeriodEnd,
+        endedAt: this.addMinutes(
+          paymentTransaction.billingPeriodEnd,
+          this.renewalBufferMinutes,
+        ),
 
         source: WorkspaceSubscriptionSource.BILLING_PAYMENT,
 
@@ -528,5 +533,9 @@ export class BillingPaymentService {
       `${paymentTransaction.plan.code} ` +
       `plan from Stripe payment`
     );
+  }
+
+  private addMinutes(date: Date, minutes: number): Date {
+    return new Date(date.getTime() + minutes * 60 * 1000);
   }
 }

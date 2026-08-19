@@ -1,37 +1,34 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { RbacService } from 'src/rbac/rbac.service';
-import { Role } from 'src/rbac/entities/role.entity';
-import { AccountType, User } from 'src/users/entities/user.entity';
-import { CreateStudentDto } from 'src/users/dto/create-student.dto';
-import { UserProfileResponse } from 'src/users/dto/user-profile-response.dto';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, Repository } from "typeorm";
+import { RbacService } from "src/rbac/rbac.service";
+import { Role } from "src/rbac/entities/role.entity";
+import { AccountType, User } from "src/users/entities/user.entity";
+import { CreateStudentDto } from "src/users/dto/create-student.dto";
+import { UserProfileResponse } from "src/users/dto/user-profile-response.dto";
 import {
   WorkspaceMember,
   WorkspaceMemberStatus,
-} from 'src/workspaces/entities/workspace-member.entity';
-import { AddClassStudentsDto } from './dto/add-class-students.dto';
-import { ClassDeleteResponseDto } from './dto/class-delete-response.dto';
-import { ClassRosterResponseDto } from './dto/class-roster-response.dto';
-import { ClassResponseDto } from './dto/class-response.dto';
-import { ClassStudentListItemDto } from './dto/class-student-list-item.dto';
-import { ClassStudentRoleResponseDto } from './dto/class-student-role-response.dto';
-import { ClassStudentsResponseDto } from './dto/class-students-response.dto';
-import { CreateClassStudentResponseDto } from './dto/create-class-student-response.dto';
-import { CreateClassDto } from './dto/create-class.dto';
-import { UpdateClassStudentRoleDto } from './dto/update-class-student-role.dto';
-import { UpdateClassDto } from './dto/update-class.dto';
-import { ClassEntity } from './entities/class.entity';
-import { ClassStudent } from './entities/class-student.entity';
-import { WorkspaceAccessService } from 'src/rbac/workspace-access.service';
-import { errorPayload } from 'src/common/utils/error-payload.util';
-import { ClassStudentsAddedEvent } from './events/class-students-added.event';
-import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
-import { WorkspaceStudentsService } from 'src/workspaces/workspace-students.service';
+} from "src/workspaces/entities/workspace-member.entity";
+import { AddClassStudentsDto } from "./dto/add-class-students.dto";
+import { ClassDeleteResponseDto } from "./dto/class-delete-response.dto";
+import { ClassRosterResponseDto } from "./dto/class-roster-response.dto";
+import { ClassResponseDto } from "./dto/class-response.dto";
+import { ClassStudentListItemDto } from "./dto/class-student-list-item.dto";
+import { ClassStudentRoleResponseDto } from "./dto/class-student-role-response.dto";
+import { ClassStudentsResponseDto } from "./dto/class-students-response.dto";
+import { CreateClassStudentResponseDto } from "./dto/create-class-student-response.dto";
+import { CreateClassDto } from "./dto/create-class.dto";
+import { UpdateClassStudentRoleDto } from "./dto/update-class-student-role.dto";
+import { UpdateClassDto } from "./dto/update-class.dto";
+import { ClassEntity } from "./entities/class.entity";
+import { ClassStudent } from "./entities/class-student.entity";
+import { WorkspaceAccessService } from "src/rbac/workspace-access.service";
+import { errorPayload } from "src/common/utils/error-payload.util";
+import { ClassStudentsAddedEvent } from "./events/class-students-added.event";
+import { WorkspaceEntitlementService } from "src/workspaces/workspace-entitlement.service";
+import { WorkspaceStudentsService } from "src/workspaces/workspace-students.service";
 
 @Injectable()
 export class ClassesService {
@@ -78,8 +75,8 @@ export class ClassesService {
     if (existedClass) {
       throw new BadRequestException(
         errorPayload(
-          'You already have a class with this name in this workspace',
-          'CLASS_NAME_ALREADY_EXISTS',
+          "You already have a class with this name in this workspace",
+          "CLASS_NAME_ALREADY_EXISTS",
         ),
       );
     }
@@ -95,45 +92,41 @@ export class ClassesService {
     return ClassResponseDto.fromEntity(savedClass);
   }
 
-  async listWorkspaceClasses(
-    workspaceId: string,
-  ): Promise<ClassResponseDto[]> {
+  async listWorkspaceClasses(workspaceId: string): Promise<ClassResponseDto[]> {
     await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
     const classes = await this.classRepo
-      .createQueryBuilder('class')
-      .innerJoinAndSelect('class.workspace', 'workspace')
-      .where('workspace.id = :workspaceId', { workspaceId })
-      .loadRelationCountAndMap('class.studentCount', 'class.classStudents')
-      .orderBy('class.className', 'ASC')
+      .createQueryBuilder("class")
+      .innerJoinAndSelect("class.workspace", "workspace")
+      .where("workspace.id = :workspaceId", { workspaceId })
+      .loadRelationCountAndMap("class.studentCount", "class.classStudents")
+      .orderBy("class.className", "ASC")
       .getMany();
 
-    return classes.map((classEntity) => ClassResponseDto.fromEntity(classEntity));
+    return classes.map((classEntity) =>
+      ClassResponseDto.fromEntity(classEntity),
+    );
   }
 
-  async getClassDetail(
-    classId: string,
-  ): Promise<ClassResponseDto> {
+  async getClassDetail(classId: string): Promise<ClassResponseDto> {
     await this.workspaceAccessService.getClassOrThrow(classId);
 
     const classEntity = await this.classRepo
-      .createQueryBuilder('class')
-      .innerJoinAndSelect('class.workspace', 'workspace')
-      .where('class.id = :classId', { classId })
-      .loadRelationCountAndMap('class.studentCount', 'class.classStudents')
+      .createQueryBuilder("class")
+      .innerJoinAndSelect("class.workspace", "workspace")
+      .where("class.id = :classId", { classId })
+      .loadRelationCountAndMap("class.studentCount", "class.classStudents")
       .getOne();
     if (!classEntity) {
       throw new BadRequestException(
-        errorPayload('Class not found', 'CLASS_NOT_FOUND'),
+        errorPayload("Class not found", "CLASS_NOT_FOUND"),
       );
     }
 
     return ClassResponseDto.fromEntity(classEntity);
   }
 
-  async getClassStudents(
-    classId: string,
-  ): Promise<ClassRosterResponseDto> {
+  async getClassStudents(classId: string): Promise<ClassRosterResponseDto> {
     await this.workspaceAccessService.getClassOrThrow(classId);
 
     const assignments = await this.classStudentRepo.find({
@@ -146,7 +139,7 @@ export class ClassesService {
       },
       order: {
         student: {
-          fullName: 'ASC',
+          fullName: "ASC",
         },
       },
     });
@@ -173,7 +166,7 @@ export class ClassesService {
     });
     if (!classEntity) {
       throw new BadRequestException(
-        errorPayload('Class not found', 'CLASS_NOT_FOUND'),
+        errorPayload("Class not found", "CLASS_NOT_FOUND"),
       );
     }
 
@@ -192,8 +185,8 @@ export class ClassesService {
       if (existedClass && existedClass.id !== classEntity.id) {
         throw new BadRequestException(
           errorPayload(
-            'You already have a class with this name in this workspace',
-            'CLASS_NAME_ALREADY_EXISTS',
+            "You already have a class with this name in this workspace",
+            "CLASS_NAME_ALREADY_EXISTS",
           ),
         );
       }
@@ -213,17 +206,15 @@ export class ClassesService {
     classId: string,
     dto: AddClassStudentsDto,
   ): Promise<ClassStudentsResponseDto> {
-    const classEntity = await this.workspaceAccessService.getClassOrThrow(
-      classId,
-    );
+    const classEntity =
+      await this.workspaceAccessService.getClassOrThrow(classId);
     const normalizedStudentIds = [...new Set(dto.studentIds)];
     const workspaceStudents = await this.getWorkspaceStudentsForClass(
       classEntity.workspace.id,
       normalizedStudentIds,
     );
-    const defaultStudentRole = await this.rbacService.ensureDefaultClassStudentRole(
-      classId,
-    );
+    const defaultStudentRole =
+      await this.rbacService.ensureDefaultClassStudentRole(classId);
     const existingAssignments = await this.classStudentRepo.find({
       where: {
         classEntity: { id: classId },
@@ -295,9 +286,8 @@ export class ClassesService {
     classId: string,
     dto: CreateStudentDto,
   ): Promise<CreateClassStudentResponseDto> {
-    const classEntity = await this.workspaceAccessService.getClassOrThrow(
-      classId,
-    );
+    const classEntity =
+      await this.workspaceAccessService.getClassOrThrow(classId);
     const defaultClassStudentRole =
       await this.rbacService.ensureDefaultClassStudentRole(classId);
     const createdStudent =
@@ -320,7 +310,7 @@ export class ClassesService {
       return CreateClassStudentResponseDto.fromData({
         classId,
         workspaceId: classEntity.workspace.id,
-        mode: 'already_assigned',
+        mode: "already_assigned",
         workspaceRole: createdStudent.workspaceRole.name,
         classRoleId: existingAssignment.role?.id || defaultClassStudentRole.id,
         classRoleName:
@@ -350,7 +340,7 @@ export class ClassesService {
     return CreateClassStudentResponseDto.fromData({
       classId,
       workspaceId: classEntity.workspace.id,
-      mode: createdStudent.mode === 'created' ? 'created' : 'attached',
+      mode: createdStudent.mode === "created" ? "created" : "attached",
       workspaceRole: createdStudent.workspaceRole.name,
       classRoleId: defaultClassStudentRole.id,
       classRoleName: defaultClassStudentRole.name,
@@ -376,8 +366,8 @@ export class ClassesService {
     if (!assignment) {
       throw new BadRequestException(
         errorPayload(
-          'Student is not assigned to class',
-          'CLASS_STUDENT_NOT_ASSIGNED',
+          "Student is not assigned to class",
+          "CLASS_STUDENT_NOT_ASSIGNED",
         ),
       );
     }
@@ -397,9 +387,7 @@ export class ClassesService {
     });
   }
 
-  async deleteClass(
-    classId: string,
-  ): Promise<ClassDeleteResponseDto> {
+  async deleteClass(classId: string): Promise<ClassDeleteResponseDto> {
     await this.workspaceAccessService.getClassOrThrow(classId);
 
     await this.classRepo.manager.transaction(async (manager) => {
@@ -425,7 +413,7 @@ export class ClassesService {
         await manager
           .createQueryBuilder()
           .delete()
-          .from('role_permissions')
+          .from("role_permissions")
           .where('"roleId" IN (:...classRoleIds)', { classRoleIds })
           .execute();
 
@@ -436,6 +424,30 @@ export class ClassesService {
     });
 
     return ClassDeleteResponseDto.fromData({ classId });
+  }
+
+  async listMyClasses(studentId: string): Promise<ClassResponseDto[]> {
+    const memberships = await this.classStudentRepo.find({
+      where: {
+        student: {
+          id: studentId,
+        },
+      },
+      relations: {
+        classEntity: {
+          workspace: true,
+        },
+      },
+      order: {
+        classEntity: {
+          className: "ASC",
+        },
+      },
+    });
+
+    return memberships.map((membership) =>
+      ClassResponseDto.fromEntity(membership.classEntity),
+    );
   }
 
   async updateClassStudentRole(
@@ -457,8 +469,8 @@ export class ClassesService {
     if (!assignment) {
       throw new BadRequestException(
         errorPayload(
-          'Student is not assigned to class',
-          'CLASS_STUDENT_NOT_ASSIGNED',
+          "Student is not assigned to class",
+          "CLASS_STUDENT_NOT_ASSIGNED",
         ),
       );
     }
@@ -494,12 +506,14 @@ export class ClassesService {
     });
 
     const foundStudentIds = new Set(members.map((member) => member.user.id));
-    const missingStudentIds = studentIds.filter((id) => !foundStudentIds.has(id));
+    const missingStudentIds = studentIds.filter(
+      (id) => !foundStudentIds.has(id),
+    );
     if (missingStudentIds.length > 0) {
       throw new BadRequestException(
         errorPayload(
-          `Students do not belong to workspace: ${missingStudentIds.join(', ')}`,
-          'CLASS_STUDENTS_OUTSIDE_WORKSPACE',
+          `Students do not belong to workspace: ${missingStudentIds.join(", ")}`,
+          "CLASS_STUDENTS_OUTSIDE_WORKSPACE",
         ),
       );
     }
@@ -524,7 +538,7 @@ export class ClassesService {
     });
     if (!role) {
       throw new BadRequestException(
-        errorPayload('Class role not found', 'CLASS_ROLE_NOT_FOUND'),
+        errorPayload("Class role not found", "CLASS_ROLE_NOT_FOUND"),
       );
     }
 

@@ -470,14 +470,20 @@ export class AssignmentsQuizService {
       )
       .map((classStudent) => {
         const attempt = attemptMap.get(classStudent.student.id);
-        if (!attempt) {
-          return AssignmentQuizAttemptResponseDto.empty({
-            assignmentId,
-            studentId: classStudent.student.id,
-          });
-        }
 
-        return AssignmentQuizAttemptResponseDto.fromEntity(attempt);
+        const response = attempt
+          ? AssignmentQuizAttemptResponseDto.fromEntity(attempt)
+          : AssignmentQuizAttemptResponseDto.empty({
+              assignmentId,
+              studentId: classStudent.student.id,
+            });
+
+        // Teacher result screen cần thông tin hiển thị học viên.
+        // Không để frontend phải join thêm API chỉ để lấy tên/email.
+        return Object.assign(response, {
+          studentName: classStudent.student.fullName,
+          studentEmail: classStudent.student.email,
+        });
       });
   }
 
@@ -490,15 +496,22 @@ export class AssignmentsQuizService {
       assignment,
       studentId,
     );
-    const attempt = await this.loadQuizAttempt(assignmentId, classStudent.student.id);
-    if (!attempt) {
-      return AssignmentQuizAttemptResponseDto.empty({
-        assignmentId,
-        studentId: classStudent.student.id,
-      });
-    }
+    const attempt = await this.loadQuizAttempt(
+      assignmentId,
+      classStudent.student.id,
+    );
 
-    return AssignmentQuizAttemptResponseDto.fromEntity(attempt);
+    const response = attempt
+      ? AssignmentQuizAttemptResponseDto.fromEntity(attempt)
+      : AssignmentQuizAttemptResponseDto.empty({
+          assignmentId,
+          studentId: classStudent.student.id,
+        });
+
+    return Object.assign(response, {
+      studentName: classStudent.student.fullName,
+      studentEmail: classStudent.student.email,
+    });
   }
 
   private async getQuizQuestionManagement(

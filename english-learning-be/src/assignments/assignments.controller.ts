@@ -9,36 +9,36 @@ import {
   Req,
   Res,
   UseGuards,
-} from '@nestjs/common';
-import type { Response } from 'express';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import type { AuthRequest } from 'src/auth/interfaces/auth-request.interface';
-import { ApiResponse } from 'src/common/dto/api-response.dto';
+} from "@nestjs/common";
+import type { Response } from "express";
+import { JwtAuthGuard } from "src/auth/guards/jwt-auth.guard";
+import type { AuthRequest } from "src/auth/interfaces/auth-request.interface";
+import { ApiResponse } from "src/common/dto/api-response.dto";
 import {
   RequireAnyAccess,
   requirePermissionAccess,
   requireRoleAccess,
-} from 'src/rbac/decorators/require-any-access.decorator';
-import { RequirePermission } from 'src/rbac/decorators/require-permission.decorator';
-import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
-import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
-import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
-import { AssignmentsQuizService } from './assignments-quiz.service';
-import { AssignmentsService } from './assignments.service';
-import { AssignmentDeleteResponseDto } from './dto/assignment-delete-response.dto';
-import { AssignmentQuizAttemptResponseDto } from './dto/assignment-quiz-attempt-response.dto';
-import { AssignmentQuizManagementResponseDto } from './dto/assignment-quiz-management-response.dto';
-import { AssignmentQuizOptionDeleteResponseDto } from './dto/assignment-quiz-option-delete-response.dto';
-import { AssignmentQuizQuestionDeleteResponseDto } from './dto/assignment-quiz-question-delete-response.dto';
-import { AssignmentQuizQuestionManagementResponseDto } from './dto/assignment-quiz-question-management-response.dto';
-import { AssignmentQuizResponseDto } from './dto/assignment-quiz-response.dto';
-import { AssignmentResponseDto } from './dto/assignment-response.dto';
-import { CreateAssignmentQuizOptionDto } from './dto/create-assignment-quiz-option.dto';
-import { CreateAssignmentQuizQuestionDto } from './dto/create-assignment-quiz-question.dto';
-import { CreateAssignmentDto } from './dto/create-assignment.dto';
-import { SubmitAssignmentQuizAttemptDto } from './dto/submit-assignment-quiz-attempt.dto';
-import { UpdateAssignmentQuizOptionDto } from './dto/update-assignment-quiz-option.dto';
-import { UpdateAssignmentQuizQuestionDto } from './dto/update-assignment-quiz-question.dto';
+} from "src/rbac/decorators/require-any-access.decorator";
+import { RequirePermission } from "src/rbac/decorators/require-permission.decorator";
+import { RequireRoles } from "src/rbac/decorators/require-roles.decorator";
+import { RbacPermissionGuard } from "src/rbac/guards/rbac-permission.guard";
+import { WorkspacePlanGuard } from "src/rbac/guards/workspace-plan.guard";
+import { AssignmentsQuizService } from "./assignments-quiz.service";
+import { AssignmentsService } from "./assignments.service";
+import { AssignmentDeleteResponseDto } from "./dto/assignment-delete-response.dto";
+import { AssignmentQuizAttemptResponseDto } from "./dto/assignment-quiz-attempt-response.dto";
+import { AssignmentQuizManagementResponseDto } from "./dto/assignment-quiz-management-response.dto";
+import { AssignmentQuizOptionDeleteResponseDto } from "./dto/assignment-quiz-option-delete-response.dto";
+import { AssignmentQuizQuestionDeleteResponseDto } from "./dto/assignment-quiz-question-delete-response.dto";
+import { AssignmentQuizQuestionManagementResponseDto } from "./dto/assignment-quiz-question-management-response.dto";
+import { AssignmentQuizResponseDto } from "./dto/assignment-quiz-response.dto";
+import { AssignmentResponseDto } from "./dto/assignment-response.dto";
+import { CreateAssignmentQuizOptionDto } from "./dto/create-assignment-quiz-option.dto";
+import { CreateAssignmentQuizQuestionDto } from "./dto/create-assignment-quiz-question.dto";
+import { CreateAssignmentDto } from "./dto/create-assignment.dto";
+import { SubmitAssignmentQuizAttemptDto } from "./dto/submit-assignment-quiz-attempt.dto";
+import { UpdateAssignmentQuizOptionDto } from "./dto/update-assignment-quiz-option.dto";
+import { UpdateAssignmentQuizQuestionDto } from "./dto/update-assignment-quiz-question.dto";
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -48,15 +48,15 @@ export class AssignmentsController {
     private readonly assignmentsQuizService: AssignmentsQuizService,
   ) {}
 
-  @Post('sessions/:sessionId/assignments')
+  @Post("sessions/:sessionId/assignments")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'session',
-    scopeResourceIdParam: 'sessionId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "session",
+    scopeResourceIdParam: "sessionId",
   })
   async createAssignment(
-    @Param('sessionId') sessionId: string,
+    @Param("sessionId") sessionId: string,
     @Body() dto: CreateAssignmentDto,
     @Req() req: AuthRequest,
   ): Promise<ApiResponse<AssignmentResponseDto>> {
@@ -66,97 +66,113 @@ export class AssignmentsController {
       req.user.userId,
     );
 
-    return ApiResponse.success(result, 'Assignment created', 201);
+    return ApiResponse.success(result, "Assignment created", 201);
   }
 
-  @Get('sessions/:sessionId/assignments')
+  @Get("sessions/:sessionId/assignments")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
-    requireRoleAccess(['owner'], {
-      scopeType: 'workspace',
-      scopeResourceType: 'session',
-      scopeResourceIdParam: 'sessionId',
+    requireRoleAccess(["owner"], {
+      scopeType: "workspace",
+      scopeResourceType: "session",
+      scopeResourceIdParam: "sessionId",
     }),
-    requirePermissionAccess('read', 'assignment', {
-      scopeType: 'class',
-      scopeResourceType: 'session',
-      scopeResourceIdParam: 'sessionId',
+    requirePermissionAccess("read", "assignment", {
+      scopeType: "class",
+      scopeResourceType: "session",
+      scopeResourceIdParam: "sessionId",
     }),
   ])
-  async listSessionAssignments(@Param('sessionId') sessionId: string): Promise<ApiResponse<AssignmentResponseDto[]>> {
-    const result = await this.assignmentsService.listSessionAssignments(
-      sessionId,
-    );
+  async listSessionAssignments(
+    @Param("sessionId") sessionId: string,
+  ): Promise<ApiResponse<AssignmentResponseDto[]>> {
+    const result =
+      await this.assignmentsService.listSessionAssignments(sessionId);
 
-    return ApiResponse.success(result, 'Session assignments fetched');
+    return ApiResponse.success(result, "Session assignments fetched");
   }
 
-  @Get('assignments/:assignmentId')
+  @Get("me/assignments")
+  async listMyAssignments(
+    @Req() req: AuthRequest,
+  ): Promise<ApiResponse<AssignmentResponseDto[]>> {
+    const result = await this.assignmentsService.listMyAssignments(
+      req.user.userId,
+    );
+
+    return ApiResponse.success(result, "My assignments fetched");
+  }
+
+  @Get("assignments/:assignmentId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
-    requireRoleAccess(['owner'], {
-      scopeType: 'workspace',
-      scopeResourceType: 'assignment',
-      scopeResourceIdParam: 'assignmentId',
+    requireRoleAccess(["owner"], {
+      scopeType: "workspace",
+      scopeResourceType: "assignment",
+      scopeResourceIdParam: "assignmentId",
     }),
-    requirePermissionAccess('read', 'assignment', {
-      scopeType: 'class',
-      scopeResourceType: 'assignment',
-      scopeResourceIdParam: 'assignmentId',
+    requirePermissionAccess("read", "assignment", {
+      scopeType: "class",
+      scopeResourceType: "assignment",
+      scopeResourceIdParam: "assignmentId",
     }),
   ])
-  async getAssignmentDetail(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<AssignmentResponseDto>> {
-    const result = await this.assignmentsService.getAssignmentDetail(
-      assignmentId,
-    );
+  async getAssignmentDetail(
+    @Param("assignmentId") assignmentId: string,
+  ): Promise<ApiResponse<AssignmentResponseDto>> {
+    const result =
+      await this.assignmentsService.getAssignmentDetail(assignmentId);
 
-    return ApiResponse.success(result, 'Assignment detail fetched');
+    return ApiResponse.success(result, "Assignment detail fetched");
   }
 
-  @Get('assignments/:assignmentId/quiz/manage')
+  @Get("assignments/:assignmentId/quiz/manage")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
-  async getQuizManagement(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<AssignmentQuizManagementResponseDto>> {
-    const result = await this.assignmentsQuizService.getQuizManagement(
-      assignmentId,
-    );
+  async getQuizManagement(
+    @Param("assignmentId") assignmentId: string,
+  ): Promise<ApiResponse<AssignmentQuizManagementResponseDto>> {
+    const result =
+      await this.assignmentsQuizService.getQuizManagement(assignmentId);
 
-    return ApiResponse.success(result, 'Assignment quiz management fetched');
+    return ApiResponse.success(result, "Assignment quiz management fetched");
   }
 
-  @Get('assignments/:assignmentId/quiz')
+  @Get("assignments/:assignmentId/quiz")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
-    requireRoleAccess(['owner'], {
-      scopeType: 'workspace',
-      scopeResourceType: 'assignment',
-      scopeResourceIdParam: 'assignmentId',
+    requireRoleAccess(["owner"], {
+      scopeType: "workspace",
+      scopeResourceType: "assignment",
+      scopeResourceIdParam: "assignmentId",
     }),
-    requirePermissionAccess('read', 'assignment', {
-      scopeType: 'class',
-      scopeResourceType: 'assignment',
-      scopeResourceIdParam: 'assignmentId',
+    requirePermissionAccess("read", "assignment", {
+      scopeType: "class",
+      scopeResourceType: "assignment",
+      scopeResourceIdParam: "assignmentId",
     }),
   ])
-  async getQuiz(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<AssignmentQuizResponseDto>> {
+  async getQuiz(
+    @Param("assignmentId") assignmentId: string,
+  ): Promise<ApiResponse<AssignmentQuizResponseDto>> {
     const result = await this.assignmentsQuizService.getQuiz(assignmentId);
 
-    return ApiResponse.success(result, 'Assignment quiz fetched');
+    return ApiResponse.success(result, "Assignment quiz fetched");
   }
 
-  @Post('assignments/:assignmentId/quiz/questions')
+  @Post("assignments/:assignmentId/quiz/questions")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
   async createQuizQuestion(
-    @Param('assignmentId') assignmentId: string,
+    @Param("assignmentId") assignmentId: string,
     @Body() dto: CreateAssignmentQuizQuestionDto,
   ): Promise<ApiResponse<AssignmentQuizQuestionManagementResponseDto>> {
     const result = await this.assignmentsQuizService.createQuizQuestion(
@@ -164,19 +180,19 @@ export class AssignmentsController {
       dto,
     );
 
-    return ApiResponse.success(result, 'Assignment quiz question created', 201);
+    return ApiResponse.success(result, "Assignment quiz question created", 201);
   }
 
-  @Patch('assignments/:assignmentId/quiz/questions/:questionId')
+  @Patch("assignments/:assignmentId/quiz/questions/:questionId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
   async updateQuizQuestion(
-    @Param('assignmentId') assignmentId: string,
-    @Param('questionId') questionId: string,
+    @Param("assignmentId") assignmentId: string,
+    @Param("questionId") questionId: string,
     @Body() dto: UpdateAssignmentQuizQuestionDto,
   ): Promise<ApiResponse<AssignmentQuizQuestionManagementResponseDto>> {
     const result = await this.assignmentsQuizService.updateQuizQuestion(
@@ -185,38 +201,38 @@ export class AssignmentsController {
       dto,
     );
 
-    return ApiResponse.success(result, 'Assignment quiz question updated');
+    return ApiResponse.success(result, "Assignment quiz question updated");
   }
 
-  @Delete('assignments/:assignmentId/quiz/questions/:questionId')
+  @Delete("assignments/:assignmentId/quiz/questions/:questionId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
   async deleteQuizQuestion(
-    @Param('assignmentId') assignmentId: string,
-    @Param('questionId') questionId: string,
-  ): Promise<ApiResponse<{ questionId: string; }>> {
+    @Param("assignmentId") assignmentId: string,
+    @Param("questionId") questionId: string,
+  ): Promise<ApiResponse<{ questionId: string }>> {
     const result = await this.assignmentsQuizService.deleteQuizQuestion(
       assignmentId,
       questionId,
     );
 
-    return ApiResponse.success(result, 'Assignment quiz question deleted');
+    return ApiResponse.success(result, "Assignment quiz question deleted");
   }
 
-  @Post('assignments/:assignmentId/quiz/questions/:questionId/options')
+  @Post("assignments/:assignmentId/quiz/questions/:questionId/options")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
   async createQuizOption(
-    @Param('assignmentId') assignmentId: string,
-    @Param('questionId') questionId: string,
+    @Param("assignmentId") assignmentId: string,
+    @Param("questionId") questionId: string,
     @Body() dto: CreateAssignmentQuizOptionDto,
   ): Promise<ApiResponse<AssignmentQuizQuestionManagementResponseDto>> {
     const result = await this.assignmentsQuizService.createQuizOption(
@@ -225,19 +241,19 @@ export class AssignmentsController {
       dto,
     );
 
-    return ApiResponse.success(result, 'Assignment quiz option created', 201);
+    return ApiResponse.success(result, "Assignment quiz option created", 201);
   }
 
-  @Patch('assignments/:assignmentId/quiz/options/:optionId')
+  @Patch("assignments/:assignmentId/quiz/options/:optionId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
   async updateQuizOption(
-    @Param('assignmentId') assignmentId: string,
-    @Param('optionId') optionId: string,
+    @Param("assignmentId") assignmentId: string,
+    @Param("optionId") optionId: string,
     @Body() dto: UpdateAssignmentQuizOptionDto,
   ): Promise<ApiResponse<AssignmentQuizQuestionManagementResponseDto>> {
     const result = await this.assignmentsQuizService.updateQuizOption(
@@ -246,48 +262,48 @@ export class AssignmentsController {
       dto,
     );
 
-    return ApiResponse.success(result, 'Assignment quiz option updated');
+    return ApiResponse.success(result, "Assignment quiz option updated");
   }
 
-  @Delete('assignments/:assignmentId/quiz/options/:optionId')
+  @Delete("assignments/:assignmentId/quiz/options/:optionId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
   async deleteQuizOption(
-    @Param('assignmentId') assignmentId: string,
-    @Param('optionId') optionId: string,
-  ): Promise<ApiResponse<{ optionId: string; }>> {
+    @Param("assignmentId") assignmentId: string,
+    @Param("optionId") optionId: string,
+  ): Promise<ApiResponse<{ optionId: string }>> {
     const result = await this.assignmentsQuizService.deleteQuizOption(
       assignmentId,
       optionId,
     );
 
-    return ApiResponse.success(result, 'Assignment quiz option deleted');
+    return ApiResponse.success(result, "Assignment quiz option deleted");
   }
 
   @Get(
-    'assignments/:assignmentId/quiz/questions/:questionId/materials/:materialId/download',
+    "assignments/:assignmentId/quiz/questions/:questionId/materials/:materialId/download",
   )
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
-    requireRoleAccess(['owner'], {
-      scopeType: 'workspace',
-      scopeResourceType: 'assignment',
-      scopeResourceIdParam: 'assignmentId',
+    requireRoleAccess(["owner"], {
+      scopeType: "workspace",
+      scopeResourceType: "assignment",
+      scopeResourceIdParam: "assignmentId",
     }),
-    requirePermissionAccess('read', 'assignment', {
-      scopeType: 'class',
-      scopeResourceType: 'assignment',
-      scopeResourceIdParam: 'assignmentId',
+    requirePermissionAccess("read", "assignment", {
+      scopeType: "class",
+      scopeResourceType: "assignment",
+      scopeResourceIdParam: "assignmentId",
     }),
   ])
   async downloadQuizQuestionMaterial(
-    @Param('assignmentId') assignmentId: string,
-    @Param('questionId') questionId: string,
-    @Param('materialId') materialId: string,
+    @Param("assignmentId") assignmentId: string,
+    @Param("questionId") questionId: string,
+    @Param("materialId") materialId: string,
     @Res() res: Response,
   ): Promise<void> {
     const result =
@@ -300,15 +316,15 @@ export class AssignmentsController {
     return res.redirect(result.url);
   }
 
-  @Post('assignments/:assignmentId/quiz/attempts/me/start')
+  @Post("assignments/:assignmentId/quiz/attempts/me/start")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequirePermission('read', 'assignment', {
-    scopeType: 'class',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequirePermission("read", "assignment", {
+    scopeType: "class",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
   async startMyQuizAttempt(
-    @Param('assignmentId') assignmentId: string,
+    @Param("assignmentId") assignmentId: string,
     @Req() req: AuthRequest,
   ): Promise<ApiResponse<AssignmentQuizAttemptResponseDto>> {
     const result = await this.assignmentsQuizService.startMyQuizAttempt(
@@ -316,18 +332,18 @@ export class AssignmentsController {
       req.user.userId,
     );
 
-    return ApiResponse.success(result, 'Assignment quiz attempt started', 201);
+    return ApiResponse.success(result, "Assignment quiz attempt started", 201);
   }
 
-  @Get('assignments/:assignmentId/quiz/attempts/me')
+  @Get("assignments/:assignmentId/quiz/attempts/me")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequirePermission('read', 'assignment', {
-    scopeType: 'class',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequirePermission("read", "assignment", {
+    scopeType: "class",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
   async getMyQuizAttempt(
-    @Param('assignmentId') assignmentId: string,
+    @Param("assignmentId") assignmentId: string,
     @Req() req: AuthRequest,
   ): Promise<ApiResponse<AssignmentQuizAttemptResponseDto>> {
     const result = await this.assignmentsQuizService.getMyQuizAttempt(
@@ -335,18 +351,18 @@ export class AssignmentsController {
       req.user.userId,
     );
 
-    return ApiResponse.success(result, 'My assignment quiz attempt fetched');
+    return ApiResponse.success(result, "My assignment quiz attempt fetched");
   }
 
-  @Post('assignments/:assignmentId/quiz/attempts/me/submit')
+  @Post("assignments/:assignmentId/quiz/attempts/me/submit")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequirePermission('read', 'assignment', {
-    scopeType: 'class',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequirePermission("read", "assignment", {
+    scopeType: "class",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
   async submitMyQuizAttempt(
-    @Param('assignmentId') assignmentId: string,
+    @Param("assignmentId") assignmentId: string,
     @Body() dto: SubmitAssignmentQuizAttemptDto,
     @Req() req: AuthRequest,
   ): Promise<ApiResponse<AssignmentQuizAttemptResponseDto>> {
@@ -356,79 +372,83 @@ export class AssignmentsController {
       dto,
     );
 
-    return ApiResponse.success(result, 'Assignment quiz submitted');
+    return ApiResponse.success(result, "Assignment quiz submitted");
   }
 
-  @Get('assignments/:assignmentId/quiz/attempts')
+  @Get("assignments/:assignmentId/quiz/attempts")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
-  async listQuizAttempts(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<AssignmentQuizAttemptResponseDto[]>> {
-    const result = await this.assignmentsQuizService.listQuizAttempts(
-      assignmentId,
-    );
+  async listQuizAttempts(
+    @Param("assignmentId") assignmentId: string,
+  ): Promise<ApiResponse<AssignmentQuizAttemptResponseDto[]>> {
+    const result =
+      await this.assignmentsQuizService.listQuizAttempts(assignmentId);
 
-    return ApiResponse.success(result, 'Assignment quiz attempts fetched');
+    return ApiResponse.success(result, "Assignment quiz attempts fetched");
   }
 
-  @Get('assignments/:assignmentId/quiz/attempts/:studentId')
+  @Get("assignments/:assignmentId/quiz/attempts/:studentId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
   async getQuizAttempt(
-    @Param('assignmentId') assignmentId: string,
-    @Param('studentId') studentId: string,
+    @Param("assignmentId") assignmentId: string,
+    @Param("studentId") studentId: string,
   ): Promise<ApiResponse<AssignmentQuizAttemptResponseDto>> {
     const result = await this.assignmentsQuizService.getQuizAttempt(
       assignmentId,
       studentId,
     );
 
-    return ApiResponse.success(result, 'Assignment quiz attempt fetched');
+    return ApiResponse.success(result, "Assignment quiz attempt fetched");
   }
 
-  @Get('assignments/:assignmentId/materials/:materialId/download')
+  @Get("assignments/:assignmentId/materials/:materialId/download")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
   @RequireAnyAccess([
-    requireRoleAccess(['owner'], {
-      scopeType: 'workspace',
-      scopeResourceType: 'assignment',
-      scopeResourceIdParam: 'assignmentId',
+    requireRoleAccess(["owner"], {
+      scopeType: "workspace",
+      scopeResourceType: "assignment",
+      scopeResourceIdParam: "assignmentId",
     }),
-    requirePermissionAccess('read', 'assignment', {
-      scopeType: 'class',
-      scopeResourceType: 'assignment',
-      scopeResourceIdParam: 'assignmentId',
+    requirePermissionAccess("read", "assignment", {
+      scopeType: "class",
+      scopeResourceType: "assignment",
+      scopeResourceIdParam: "assignmentId",
     }),
   ])
   async downloadAssignmentMaterial(
-    @Param('assignmentId') assignmentId: string,
-    @Param('materialId') materialId: string,
+    @Param("assignmentId") assignmentId: string,
+    @Param("materialId") materialId: string,
     @Res() res: Response,
   ): Promise<void> {
-    const result = await this.assignmentsService.getAssignmentMaterialDownloadTarget(
-      assignmentId,
-      materialId,
-    );
+    const result =
+      await this.assignmentsService.getAssignmentMaterialDownloadTarget(
+        assignmentId,
+        materialId,
+      );
     return res.redirect(result.url);
   }
 
-  @Delete('assignments/:assignmentId')
+  @Delete("assignments/:assignmentId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'assignment',
-    scopeResourceIdParam: 'assignmentId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "assignment",
+    scopeResourceIdParam: "assignmentId",
   })
-  async deleteAssignment(@Param('assignmentId') assignmentId: string): Promise<ApiResponse<AssignmentDeleteResponseDto>> {
+  async deleteAssignment(
+    @Param("assignmentId") assignmentId: string,
+  ): Promise<ApiResponse<AssignmentDeleteResponseDto>> {
     const result = await this.assignmentsService.deleteAssignment(assignmentId);
 
-    return ApiResponse.success(result, 'Assignment deleted');
+    return ApiResponse.success(result, "Assignment deleted");
   }
 }
