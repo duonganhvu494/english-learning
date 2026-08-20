@@ -44,6 +44,11 @@ export class MailService {
       host,
       port,
       secure,
+
+      pool: true,
+      maxConnections: 2,
+      maxMessages: 100,
+
       auth:
         user && pass
           ? {
@@ -134,11 +139,14 @@ export class MailService {
     text: string;
   }): Promise<void> {
     if (!this.transporter) {
-      this.logger.warn(
-        `Mail transport is not configured. Email to ${input.to} was not delivered. Subject: ${input.subject}. Content: ${input.text}`,
-      );
-      return;
+      const message = "Mail transport is not configured";
+
+      this.logger.error(message);
+
+      throw new Error(message);
     }
+
+    const start = performance.now();
 
     try {
       await this.transporter.sendMail({
@@ -147,9 +155,16 @@ export class MailService {
         subject: input.subject,
         text: input.text,
       });
+
+      this.logger.log(
+        `Email sent to ${input.to} in ${(performance.now() - start).toFixed(2)}ms`,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+
       this.logger.error(`Failed to send email to ${input.to}: ${message}`);
+
+      throw error;
     }
   }
 }

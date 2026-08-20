@@ -1,16 +1,17 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
-import { IsNull, Repository } from 'typeorm';
-import { errorPayload } from 'src/common/utils/error-payload.util';
-import { MailService } from 'src/mail/mail.service';
-import { Role } from 'src/rbac/entities/role.entity';
-import { CreateStudentDto } from 'src/users/dto/create-student.dto';
-import { AccountType, User } from 'src/users/entities/user.entity';
-import { WorkspaceEntitlementService } from './workspace-entitlement.service';
-import { WorkspaceMember } from './entities/workspace-member.entity';
-import { Workspace } from './entities/workspace.entity';
-import { StudentProvisioningMode } from './types/student-provisioning-mode.type';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import * as bcrypt from "bcrypt";
+import { IsNull, Repository } from "typeorm";
+import { errorPayload } from "src/common/utils/error-payload.util";
+import { MailService } from "src/mail/mail.service";
+import { Role } from "src/rbac/entities/role.entity";
+import { CreateStudentDto } from "src/users/dto/create-student.dto";
+import { AccountType, User } from "src/users/entities/user.entity";
+import { WorkspaceEntitlementService } from "./workspace-entitlement.service";
+import { WorkspaceMember } from "./entities/workspace-member.entity";
+import { Workspace } from "./entities/workspace.entity";
+import { StudentProvisioningMode } from "./types/student-provisioning-mode.type";
+import { MailQueueService } from "src/mail/queue/mail-queue.service";
 
 export type ProvisionedWorkspaceStudent = {
   mode: StudentProvisioningMode;
@@ -36,7 +37,7 @@ export class WorkspaceStudentsService {
     @InjectRepository(WorkspaceMember)
     private readonly memberRepo: Repository<WorkspaceMember>,
 
-    private readonly mailService: MailService,
+    private readonly mailQueueService: MailQueueService,
     private readonly workspaceEntitlementService: WorkspaceEntitlementService,
   ) {}
 
@@ -46,7 +47,7 @@ export class WorkspaceStudentsService {
   ): Promise<ProvisionedWorkspaceStudent> {
     const workspaceStudentRole = await this.roleRepo.findOne({
       where: {
-        name: 'student',
+        name: "student",
         isSystem: true,
         workspaceId: IsNull(),
       },
@@ -54,8 +55,8 @@ export class WorkspaceStudentsService {
     if (!workspaceStudentRole) {
       throw new BadRequestException(
         errorPayload(
-          'Student role not found',
-          'WORKSPACE_STUDENT_ROLE_NOT_FOUND',
+          "Student role not found",
+          "WORKSPACE_STUDENT_ROLE_NOT_FOUND",
         ),
       );
     }
@@ -75,8 +76,8 @@ export class WorkspaceStudentsService {
           if (existingUser.accountType !== AccountType.STUDENT) {
             throw new BadRequestException(
               errorPayload(
-                'Email already belongs to another account',
-                'WORKSPACE_STUDENT_EMAIL_BELONGS_TO_ANOTHER_ACCOUNT',
+                "Email already belongs to another account",
+                "WORKSPACE_STUDENT_EMAIL_BELONGS_TO_ANOTHER_ACCOUNT",
               ),
             );
           }
@@ -84,8 +85,8 @@ export class WorkspaceStudentsService {
           if (!existingUser.isActive) {
             throw new BadRequestException(
               errorPayload(
-                'Student account is inactive',
-                'WORKSPACE_STUDENT_ACCOUNT_INACTIVE',
+                "Student account is inactive",
+                "WORKSPACE_STUDENT_ACCOUNT_INACTIVE",
               ),
             );
           }
@@ -102,7 +103,7 @@ export class WorkspaceStudentsService {
 
           if (existingMember) {
             return {
-              mode: 'already_assigned' as const,
+              mode: "already_assigned" as const,
               user: existingUser,
               workspaceRole: existingMember.role || workspaceStudentRole,
             };
@@ -120,7 +121,7 @@ export class WorkspaceStudentsService {
           await memberRepo.save(member);
 
           return {
-            mode: 'attached' as const,
+            mode: "attached" as const,
             user: existingUser,
             workspaceRole: workspaceStudentRole,
           };
@@ -157,7 +158,7 @@ export class WorkspaceStudentsService {
         await memberRepo.save(member);
 
         return {
-          mode: 'created' as const,
+          mode: "created" as const,
           plainPassword,
           user: savedUser,
           workspaceRole: workspaceStudentRole,
@@ -165,7 +166,7 @@ export class WorkspaceStudentsService {
       },
     );
 
-    if (createdStudent.mode === 'created') {
+    if (createdStudent.mode === "created") {
       await this.sendProvisionedStudentCredentials(createdStudent);
     }
 
@@ -178,8 +179,8 @@ export class WorkspaceStudentsService {
 
   private generateRandomPassword(length = 10): string {
     const chars =
-      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+[]{}|;:,.<>?';
-    let password = '';
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+[]{}|;:,.<>?";
+    let password = "";
     for (let i = 0; i < length; i++) {
       password += chars[Math.floor(Math.random() * chars.length)];
     }
@@ -189,7 +190,7 @@ export class WorkspaceStudentsService {
   private async sendProvisionedStudentCredentials(
     createdStudent: CreatedWorkspaceStudentDraft,
   ): Promise<void> {
-    await this.mailService.sendStudentProvisionedCredentials({
+    await this.mailQueueService.enqueueStudentCredentials({
       email: createdStudent.user.email,
       fullName: createdStudent.user.fullName,
       userName: createdStudent.user.userName,
@@ -216,11 +217,11 @@ export class WorkspaceStudentsService {
   private buildUserNameBase(fullName: string): string {
     const normalized = fullName
       .trim()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '');
+      .replace(/[^a-z0-9]+/g, "");
 
-    return normalized || 'student';
+    return normalized || "student";
   }
 }

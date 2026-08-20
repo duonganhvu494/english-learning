@@ -4,22 +4,24 @@ import {
   HttpStatus,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import type { StringValue } from 'ms';
-import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
-import { AuthSessionsService } from 'src/auth/redis/auth-sessions.service';
-import { errorPayload } from 'src/common/utils/error-payload.util';
-import { UserProfileResponse } from 'src/users/dto/user-profile-response.dto';
-import { UsersService } from 'src/users/users.service';
-import { AuthOtpService } from 'src/auth/redis/auth-otp.service';
-import { ForgotPasswordResponseDto } from './dto/forgot-password-response.dto';
-import { OtpChallengeResponseDto } from './dto/otp-challenge-response.dto';
-import { ResetPasswordResponseDto } from './dto/reset-password-response.dto';
-import { VerifyEmailResponseDto } from './dto/verify-email-response.dto';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
+import type { StringValue } from "ms";
+import * as bcrypt from "bcrypt";
+import { randomUUID } from "crypto";
+import { AuthSessionsService } from "src/auth/redis/auth-sessions.service";
+import { errorPayload } from "src/common/utils/error-payload.util";
+import { UserProfileResponse } from "src/users/dto/user-profile-response.dto";
+import { UsersService } from "src/users/users.service";
+import { AuthOtpService } from "src/auth/redis/auth-otp.service";
+import { ForgotPasswordResponseDto } from "./dto/forgot-password-response.dto";
+import { OtpChallengeResponseDto } from "./dto/otp-challenge-response.dto";
+import { ResetPasswordResponseDto } from "./dto/reset-password-response.dto";
+import { VerifyEmailResponseDto } from "./dto/verify-email-response.dto";
+import { JwtPayload } from "./interfaces/jwt-payload.interface";
+import { PendingRegistrationService } from "./redis/pending-registration.service";
+import { MailQueueService } from "src/mail/queue/mail-queue.service";
 
 @Injectable()
 export class AuthService {
@@ -29,12 +31,14 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly authSessionsService: AuthSessionsService,
+    private readonly pendingRegistrationService: PendingRegistrationService,
+     private readonly mailQueueService: MailQueueService,
   ) {}
 
   async signIn(
     identifier: string,
     password: string,
-    ipAddress = 'unknown',
+    ipAddress = "unknown",
   ): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -49,16 +53,15 @@ export class AuthService {
     if (isRateLimited) {
       throw new HttpException(
         errorPayload(
-          'Too many login attempts. Please try again later.',
-          'AUTH_LOGIN_RATE_LIMITED',
+          "Too many login attempts. Please try again later.",
+          "AUTH_LOGIN_RATE_LIMITED",
         ),
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
-    const user = await this.usersService.findByEmailOrUserName(
-      normalizedIdentifier,
-    );
+    const user =
+      await this.usersService.findByEmailOrUserName(normalizedIdentifier);
     if (!user) {
       await this.authSessionsService.recordFailedLoginAttempt(
         normalizedIdentifier,
@@ -66,8 +69,8 @@ export class AuthService {
       );
       throw new UnauthorizedException(
         errorPayload(
-          'Username or email is not registered',
-          'AUTH_USERNAME_NOT_REGISTERED',
+          "Username or email is not registered",
+          "AUTH_USERNAME_NOT_REGISTERED",
         ),
       );
     }
@@ -78,7 +81,7 @@ export class AuthService {
         normalizedIpAddress,
       );
       throw new UnauthorizedException(
-        errorPayload('Account is disabled', 'AUTH_ACCOUNT_DISABLED'),
+        errorPayload("Account is disabled", "AUTH_ACCOUNT_DISABLED"),
       );
     }
 
@@ -89,8 +92,8 @@ export class AuthService {
       );
       throw new UnauthorizedException(
         errorPayload(
-          'Email verification is required before login',
-          'AUTH_EMAIL_NOT_VERIFIED',
+          "Email verification is required before login",
+          "AUTH_EMAIL_NOT_VERIFIED",
         ),
       );
     }
@@ -102,7 +105,7 @@ export class AuthService {
         normalizedIpAddress,
       );
       throw new UnauthorizedException(
-        errorPayload('Password is incorrect', 'AUTH_PASSWORD_INCORRECT'),
+        errorPayload("Password is incorrect", "AUTH_PASSWORD_INCORRECT"),
       );
     }
 
@@ -128,7 +131,7 @@ export class AuthService {
   ): Promise<{ accessToken: string; refreshToken: string }> {
     if (!payload.jti) {
       throw new UnauthorizedException(
-        errorPayload('Invalid refresh session', 'AUTH_REFRESH_SESSION_INVALID'),
+        errorPayload("Invalid refresh session", "AUTH_REFRESH_SESSION_INVALID"),
       );
     }
 
@@ -174,15 +177,15 @@ export class AuthService {
     const user = await this.usersService.findByIdWithPassword(userId);
     if (!user || !user.isActive) {
       throw new UnauthorizedException(
-        errorPayload('Unauthorized', 'AUTH_UNAUTHORIZED'),
+        errorPayload("Unauthorized", "AUTH_UNAUTHORIZED"),
       );
     }
 
     if (currentPassword === newPassword) {
       throw new BadRequestException(
         errorPayload(
-          'New password must be different from current password',
-          'AUTH_NEW_PASSWORD_MUST_DIFFERENT',
+          "New password must be different from current password",
+          "AUTH_NEW_PASSWORD_MUST_DIFFERENT",
         ),
       );
     }
@@ -191,8 +194,8 @@ export class AuthService {
     if (!matchPass) {
       throw new UnauthorizedException(
         errorPayload(
-          'Current password is incorrect',
-          'AUTH_CURRENT_PASSWORD_INCORRECT',
+          "Current password is incorrect",
+          "AUTH_CURRENT_PASSWORD_INCORRECT",
         ),
       );
     }
@@ -219,48 +222,49 @@ export class AuthService {
   }
 
   async verifyEmailOtp(
-    email: string,
+    registrationId: string,
     otp: string,
   ): Promise<VerifyEmailResponseDto> {
-    const normalizedEmail = this.normalizeEmail(email);
-    const user = await this.usersService.findByEmail(normalizedEmail);
+    const pendingRegistration =
+      await this.pendingRegistrationService.find(registrationId);
 
-    if (!user || !user.isActive) {
+    if (!pendingRegistration) {
       throw new BadRequestException(
         errorPayload(
-          'Verification request is invalid',
-          'AUTH_EMAIL_VERIFICATION_INVALID',
+          "Registration request is invalid or expired",
+          "AUTH_REGISTRATION_INVALID",
         ),
       );
-    }
-
-    if (!user.emailVerificationRequired) {
-      return VerifyEmailResponseDto.fromData({
-        emailVerified: true,
-        user: UserProfileResponse.fromEntity(user),
-      });
     }
 
     const verificationStatus =
-      await this.authOtpService.verifyEmailVerificationOtp(user.id, otp);
-    if (verificationStatus === 'expired') {
+      await this.authOtpService.verifyEmailVerificationOtp(registrationId, otp);
+
+    if (verificationStatus === "expired") {
       throw new BadRequestException(
         errorPayload(
-          'Verification OTP has expired',
-          'AUTH_EMAIL_VERIFICATION_OTP_EXPIRED',
-        ),
-      );
-    }
-    if (verificationStatus !== 'valid') {
-      throw new BadRequestException(
-        errorPayload(
-          'Verification OTP is invalid',
-          'AUTH_EMAIL_VERIFICATION_OTP_INVALID',
+          "Verification OTP has expired",
+          "AUTH_EMAIL_VERIFICATION_OTP_EXPIRED",
         ),
       );
     }
 
-    const verifiedUser = await this.usersService.markEmailVerified(user.id);
+    if (verificationStatus !== "valid") {
+      throw new BadRequestException(
+        errorPayload(
+          "Verification OTP is invalid",
+          "AUTH_EMAIL_VERIFICATION_OTP_INVALID",
+        ),
+      );
+    }
+
+    const verifiedUser =
+      await this.usersService.createVerifiedUserFromPending(
+        pendingRegistration,
+      );
+
+    await this.pendingRegistrationService.remove(registrationId);
+
     return VerifyEmailResponseDto.fromData({
       emailVerified: true,
       user: verifiedUser,
@@ -268,44 +272,33 @@ export class AuthService {
   }
 
   async resendEmailVerificationOtp(
-    email: string,
+    registrationId: string,
   ): Promise<OtpChallengeResponseDto> {
-    const normalizedEmail = this.normalizeEmail(email);
-    const user = await this.usersService.findByEmail(normalizedEmail);
+    const pendingRegistration =
+      await this.pendingRegistrationService.find(registrationId);
 
-    if (!user) {
-      throw new BadRequestException(
-        errorPayload('Email is not registered', 'AUTH_EMAIL_NOT_REGISTERED'),
-      );
-    }
-
-    if (!user.isActive) {
-      throw new UnauthorizedException(
-        errorPayload('Account is disabled', 'AUTH_ACCOUNT_DISABLED'),
-      );
-    }
-
-    if (!user.emailVerificationRequired) {
-      throw new BadRequestException(
-        errorPayload('Email is already verified', 'AUTH_EMAIL_ALREADY_VERIFIED'),
-      );
-    }
-
-    const expiresAt = await this.usersService.issueEmailVerificationChallenge(
-      normalizedEmail,
-    );
-    if (!expiresAt) {
+    if (!pendingRegistration) {
       throw new BadRequestException(
         errorPayload(
-          'Unable to issue verification OTP',
-          'AUTH_EMAIL_VERIFICATION_UNAVAILABLE',
+          "Registration request is invalid or expired",
+          "AUTH_REGISTRATION_INVALID",
         ),
       );
     }
 
+    const challenge =
+      await this.authOtpService.issueEmailVerificationOtp(registrationId);
+
+    await this.mailQueueService.enqueueEmailVerificationOtp({
+      email: pendingRegistration.email,
+      fullName: pendingRegistration.fullName,
+      otp: challenge.code,
+      expiresAt: challenge.expiresAt,
+    });
+
     return OtpChallengeResponseDto.fromData({
-      email: normalizedEmail,
-      expiresAt,
+      email: pendingRegistration.email,
+      expiresAt: challenge.expiresAt,
     });
   }
 
@@ -322,15 +315,14 @@ export class AuthService {
     newPassword: string,
   ): Promise<ResetPasswordResponseDto> {
     const normalizedEmail = this.normalizeEmail(email);
-    const user = await this.usersService.findByEmailWithPassword(
-      normalizedEmail,
-    );
+    const user =
+      await this.usersService.findByEmailWithPassword(normalizedEmail);
 
     if (!user || !user.isActive) {
       throw new BadRequestException(
         errorPayload(
-          'Password reset OTP is invalid',
-          'AUTH_PASSWORD_RESET_OTP_INVALID',
+          "Password reset OTP is invalid",
+          "AUTH_PASSWORD_RESET_OTP_INVALID",
         ),
       );
     }
@@ -339,19 +331,19 @@ export class AuthService {
       user.id,
       otp,
     );
-    if (verificationStatus === 'expired') {
+    if (verificationStatus === "expired") {
       throw new BadRequestException(
         errorPayload(
-          'Password reset OTP has expired',
-          'AUTH_PASSWORD_RESET_OTP_EXPIRED',
+          "Password reset OTP has expired",
+          "AUTH_PASSWORD_RESET_OTP_EXPIRED",
         ),
       );
     }
-    if (verificationStatus !== 'valid') {
+    if (verificationStatus !== "valid") {
       throw new BadRequestException(
         errorPayload(
-          'Password reset OTP is invalid',
-          'AUTH_PASSWORD_RESET_OTP_INVALID',
+          "Password reset OTP is invalid",
+          "AUTH_PASSWORD_RESET_OTP_INVALID",
         ),
       );
     }
@@ -360,8 +352,8 @@ export class AuthService {
     if (isSamePassword) {
       throw new BadRequestException(
         errorPayload(
-          'New password must be different from current password',
-          'AUTH_NEW_PASSWORD_MUST_DIFFERENT',
+          "New password must be different from current password",
+          "AUTH_NEW_PASSWORD_MUST_DIFFERENT",
         ),
       );
     }
@@ -378,7 +370,7 @@ export class AuthService {
   }
 
   private async issueTokens(
-    identity: Omit<JwtPayload, 'jti'>,
+    identity: Omit<JwtPayload, "jti">,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const accessJti = randomUUID();
     const refreshJti = randomUUID();
@@ -407,17 +399,17 @@ export class AuthService {
 
   private signAccessToken(payload: JwtPayload): Promise<string> {
     return this.jwtService.signAsync(payload, {
-      secret: this.config.getOrThrow<string>('jwt.secret'),
-      expiresIn: this.config.get<string>('jwt.expiresIn', '15m') as StringValue,
+      secret: this.config.getOrThrow<string>("jwt.secret"),
+      expiresIn: this.config.get<string>("jwt.expiresIn", "15m") as StringValue,
     });
   }
 
   private signRefreshToken(payload: JwtPayload): Promise<string> {
     return this.jwtService.signAsync(payload, {
-      secret: this.config.getOrThrow<string>('jwt.refreshSecret'),
+      secret: this.config.getOrThrow<string>("jwt.refreshSecret"),
       expiresIn: this.config.get<string>(
-        'jwt.refreshExpiresIn',
-        '7d',
+        "jwt.refreshExpiresIn",
+        "7d",
       ) as StringValue,
     });
   }
@@ -430,9 +422,12 @@ export class AuthService {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(refreshToken, {
-        secret: this.config.getOrThrow<string>('jwt.refreshSecret'),
-      });
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(
+        refreshToken,
+        {
+          secret: this.config.getOrThrow<string>("jwt.refreshSecret"),
+        },
+      );
 
       if (payload.jti) {
         await this.authSessionsService.revokeRefreshSession(
@@ -445,15 +440,20 @@ export class AuthService {
     }
   }
 
-  private async extractRefreshJti(refreshToken?: string): Promise<string | null> {
+  private async extractRefreshJti(
+    refreshToken?: string,
+  ): Promise<string | null> {
     if (!refreshToken) {
       return null;
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(refreshToken, {
-        secret: this.config.getOrThrow<string>('jwt.refreshSecret'),
-      });
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(
+        refreshToken,
+        {
+          secret: this.config.getOrThrow<string>("jwt.refreshSecret"),
+        },
+      );
       return payload.jti ?? null;
     } catch {
       return null;
@@ -466,9 +466,12 @@ export class AuthService {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(accessToken, {
-        secret: this.config.getOrThrow<string>('jwt.secret'),
-      });
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(
+        accessToken,
+        {
+          secret: this.config.getOrThrow<string>("jwt.secret"),
+        },
+      );
 
       if (!payload.jti || !payload.exp) {
         return;
@@ -487,12 +490,12 @@ export class AuthService {
 
   private normalizeIpAddress(ipAddress: string): string {
     const normalized = ipAddress.trim();
-    return normalized.length > 0 ? normalized : 'unknown';
+    return normalized.length > 0 ? normalized : "unknown";
   }
 
   private normalizeLoginIdentifier(identifier: string): string {
     const normalizedIdentifier = identifier.trim();
-    return normalizedIdentifier.includes('@')
+    return normalizedIdentifier.includes("@")
       ? normalizedIdentifier.toLowerCase()
       : normalizedIdentifier;
   }
