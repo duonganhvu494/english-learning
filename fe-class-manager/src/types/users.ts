@@ -29,17 +29,8 @@ export interface UserProfile {
 }
 
 export interface RegisterUserResult {
-  user: {
-    id: string;
-    fullName: string;
-    userName: string;
-    email: string;
-    accountType: string;
-    isActive: boolean;
-    isSuperAdmin: boolean;
-    mustChangePassword: boolean;
-    emailVerified: boolean;
-  };
+  registrationId: string;
+  email: string;
   emailVerificationRequired: boolean;
   emailVerificationExpiresAt: string;
 }

@@ -3,22 +3,26 @@ import type {
   RegisterUserResult,
   UpdateUserDto,
   UserProfile,
-} from '@/types';
-import { authApi } from './auth.api';
-import { http, unwrap } from './http';
+} from "@/types";
+import { authApi } from "./auth.api";
+import { http, unwrap } from "./http";
 
 export const usersApi = {
   async register(payload: CreateUserDto): Promise<RegisterUserResult> {
     await authApi.ensureCsrfToken();
-    return unwrap<RegisterUserResult>(http.post('/users/register', payload));
+    return unwrap<RegisterUserResult>(http.post("/users/register", payload));
   },
 
   async getMe(): Promise<UserProfile> {
-    return unwrap<UserProfile>(http.get('/users/me'));
+    return unwrap<UserProfile>(http.get("/users/me"));
   },
 
   async updateMe(payload: UpdateUserDto): Promise<UserProfile> {
     await authApi.ensureCsrfToken();
-    return unwrap<UserProfile>(http.patch('/users/me', payload));
+    return unwrap<UserProfile>(http.patch("/users/me", payload));
+  },
+
+  async verifyEmailChangeOtp(payload: { otp: string }): Promise<UserProfile> {
+    return unwrap<UserProfile>(http.post("/users/me/email/verify", payload));
   },
 };

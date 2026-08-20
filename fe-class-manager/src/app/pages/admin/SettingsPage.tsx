@@ -1,63 +1,102 @@
-﻿import { useEffect, useMemo, useState } from 'react';
-import { CreditCard, Building2, Users, Bell, User } from 'lucide-react';
-import { toast } from 'sonner';
-import Card, { CardBody, CardHeader } from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
-import { getApiErrorMessage, usersApi, workspacesApi } from '@/api';
-import type { PlanResponse, UserProfile, WorkspaceDetail, WorkspaceSubscriptionResponse } from '@/types';
-import { formatDateTime } from '@/app/utils/format';
-import { setCurrentUser, setWorkspaceId } from '@/app/utils/client-storage';
+﻿import { useEffect, useState } from "react";
+import {
+  Building2,
+  Mail,
+  ShieldCheck,
+  User,
+  Users,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import Button from "@/app/components/ui/Button";
+import Card, { CardBody } from "@/app/components/ui/Card";
+import Badge from "@/app/components/ui/Badge";
+import Input from "@/app/components/ui/Input";
+
+import {
+  getApiErrorMessage,
+  usersApi,
+  workspacesApi,
+} from "@/api";
+
+import type {
+  UserProfile,
+  WorkspaceDetail,
+} from "@/types";
+
+import {
+  setCurrentUser,
+  setWorkspaceId,
+} from "@/app/utils/client-storage";
 
 export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
-  const [currentUser, setCurrentUserState] = useState<UserProfile | null>(null);
-  const [workspace, setWorkspace] = useState<WorkspaceDetail | null>(null);
-  const [subscription, setSubscription] = useState<WorkspaceSubscriptionResponse | null>(null);
-  const [plans, setPlans] = useState<PlanResponse[]>([]);
+
+  const [currentUser, setCurrentUserState] =
+    useState<UserProfile | null>(null);
+
+  const [workspace, setWorkspace] =
+    useState<WorkspaceDetail | null>(null);
+
+  // Profile
   const [profileForm, setProfileForm] = useState({
-    fullName: '',
-    userName: '',
-    email: '',
+    fullName: "",
+    userName: "",
   });
-  const [workspaceName, setWorkspaceName] = useState('');
+
+  const [isSavingProfile, setIsSavingProfile] =
+    useState(false);
+
+  // Email
+  const [email, setEmail] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [otp, setOtp] = useState("");
+
+  const [isRequestingEmail, setIsRequestingEmail] =
+    useState(false);
+
+  const [isVerifyingEmail, setIsVerifyingEmail] =
+    useState(false);
+
+  // Workspace
+  const [workspaceName, setWorkspaceName] = useState("");
+
+  const [isCreatingWorkspace, setIsCreatingWorkspace] =
+    useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
+
     try {
       const me = await usersApi.getMe();
+
       setCurrentUserState(me);
       setCurrentUser(me);
+
       setProfileForm({
         fullName: me.fullName,
         userName: me.userName,
-        email: me.email,
       });
 
-      const availablePlans = await workspacesApi.getPlans();
-      setPlans(availablePlans);
+      setEmail(me.email);
 
       try {
-        const myWorkspace = await workspacesApi.getMyWorkspace();
+        const myWorkspace =
+          await workspacesApi.getMyWorkspace();
+
         setWorkspace(myWorkspace);
         setWorkspaceName(myWorkspace.name);
         setWorkspaceId(myWorkspace.id);
-
-        try {
-          const mySubscription = await workspacesApi.getMySubscription();
-          setSubscription(mySubscription);
-        } catch {
-          setSubscription(null);
-        }
       } catch {
         setWorkspace(null);
-        setSubscription(null);
       }
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể tải dữ liệu cài đặt'));
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Không thể tải thông tin cài đặt",
+        ),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -67,245 +106,591 @@ export default function SettingsPage() {
     void loadData();
   }, []);
 
-  const activePlan = useMemo(() => {
-    if (subscription?.plan) {
-      return subscription.plan;
-    }
-    return plans.find((plan) => plan.code === 'free') || plans[0] || null;
-  }, [plans, subscription]);
+  // =========================================================
+  // PROFILE
+  // =========================================================
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveProfile = async (
+    event: React.FormEvent,
+  ) => {
+    event.preventDefault();
+
     if (isSavingProfile) {
       return;
     }
 
     setIsSavingProfile(true);
+
     try {
       const updated = await usersApi.updateMe({
-        fullName: profileForm.fullName,
-        userName: profileForm.userName,
-        email: profileForm.email,
+        fullName: profileForm.fullName.trim(),
+        userName: profileForm.userName.trim(),
       });
+
       setCurrentUserState(updated);
       setCurrentUser(updated);
-      toast.success('Cập nhật profile thành công');
+
+      setProfileForm({
+        fullName: updated.fullName,
+        userName: updated.userName,
+      });
+
+      toast.success("Cập nhật thông tin thành công");
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể cập nhật profile'));
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Không thể cập nhật thông tin",
+        ),
+      );
     } finally {
       setIsSavingProfile(false);
     }
   };
 
+  // =========================================================
+  // EMAIL
+  // =========================================================
+
+  const handleRequestEmailChange = async () => {
+    if (!currentUser || isRequestingEmail) {
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      toast.error("Vui lòng nhập email mới");
+      return;
+    }
+
+    if (
+      normalizedEmail ===
+      currentUser.email.toLowerCase()
+    ) {
+      toast.info("Đây đã là email hiện tại của bạn");
+      return;
+    }
+
+    setIsRequestingEmail(true);
+
+    try {
+      await usersApi.updateMe({
+        email: normalizedEmail,
+      });
+
+      setPendingEmail(normalizedEmail);
+      setOtp("");
+
+      toast.success(
+        `Mã xác thực đã được gửi đến ${normalizedEmail}`,
+      );
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Không thể gửi mã xác thực",
+        ),
+      );
+    } finally {
+      setIsRequestingEmail(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (
+      !pendingEmail ||
+      otp.length !== 6 ||
+      isVerifyingEmail
+    ) {
+      return;
+    }
+
+    setIsVerifyingEmail(true);
+
+    try {
+      const updated =
+        await usersApi.verifyEmailChangeOtp({
+          otp,
+        });
+
+      setCurrentUserState(updated);
+      setCurrentUser(updated);
+
+      setEmail(updated.email);
+      setPendingEmail("");
+      setOtp("");
+
+      toast.success("Đổi email thành công");
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Mã xác thực không chính xác",
+        ),
+      );
+    } finally {
+      setIsVerifyingEmail(false);
+    }
+  };
+
+  const handleResendEmailOtp = async () => {
+    if (!pendingEmail || isRequestingEmail) {
+      return;
+    }
+
+    setIsRequestingEmail(true);
+
+    try {
+      await usersApi.updateMe({
+        email: pendingEmail,
+      });
+
+      setOtp("");
+
+      toast.success("Đã gửi lại mã xác thực");
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Không thể gửi lại mã xác thực",
+        ),
+      );
+    } finally {
+      setIsRequestingEmail(false);
+    }
+  };
+
+  const handleCancelEmailChange = () => {
+    setPendingEmail("");
+    setOtp("");
+    setEmail(currentUser?.email ?? "");
+  };
+
+  // =========================================================
+  // WORKSPACE
+  // =========================================================
+
   const handleCreateWorkspace = async () => {
-    if (!workspaceName.trim() || isCreatingWorkspace) {
+    const normalizedName = workspaceName.trim();
+
+    if (!normalizedName || isCreatingWorkspace) {
       return;
     }
 
     setIsCreatingWorkspace(true);
+
     try {
-      const createdWorkspace = await workspacesApi.createWorkspace({
-        name: workspaceName.trim(),
-      });
-      setWorkspaceId(createdWorkspace.id);
-      toast.success('Tạo workspace thành công');
+      const created =
+        await workspacesApi.createWorkspace({
+          name: normalizedName,
+        });
+
+      setWorkspaceId(created.id);
+
+      toast.success("Tạo trung tâm thành công");
+
       await loadData();
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể tạo workspace'));
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Không thể tạo trung tâm",
+        ),
+      );
     } finally {
       setIsCreatingWorkspace(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <p className="text-sm text-gray-500">
+          Đang tải cài đặt...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Cài đặt</h1>
-        <p className="text-gray-600 mt-1">Quản lý profile, workspace và gói cước</p>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Cài đặt
+        </h1>
+
+        <p className="text-gray-600 mt-1">
+          Quản lý thông tin tài khoản và workspace.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <User className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Thông tin cá nhân</h3>
+      {/* ================================================= */}
+      {/* ACCOUNT */}
+      {/* ================================================= */}
+
+      <div>
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900">
+            Tài khoản
+          </h2>
+
+          <p className="text-sm text-gray-600 mt-1">
+            Cập nhật thông tin cá nhân của bạn.
+          </p>
+        </div>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <User className="w-6 h-6 text-blue-600" />
               </div>
-            </CardHeader>
-            <CardBody>
-              <form onSubmit={handleSaveProfile} className="space-y-4">
-                <Input
-                  label="Họ và tên"
-                  value={profileForm.fullName}
-                  onChange={(e) => setProfileForm((prev) => ({ ...prev, fullName: e.target.value }))}
-                  required
-                />
-                <Input
-                  label="Username"
-                  value={profileForm.userName}
-                  onChange={(e) => setProfileForm((prev) => ({ ...prev, userName: e.target.value }))}
-                  required
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  value={profileForm.email}
-                  onChange={(e) => setProfileForm((prev) => ({ ...prev, email: e.target.value }))}
-                  required
-                />
+
+              <form
+                onSubmit={handleSaveProfile}
+                className="flex-1 space-y-4"
+              >
+                <div>
+                  <h3 className="font-semibold text-gray-900">
+                    Thông tin cá nhân
+                  </h3>
+
+                  <p className="text-sm text-gray-600 mt-1">
+                    Thay đổi tên hiển thị và username.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Họ và tên"
+                    value={profileForm.fullName}
+                    onChange={(event) =>
+                      setProfileForm((prev) => ({
+                        ...prev,
+                        fullName: event.target.value,
+                      }))
+                    }
+                    required
+                  />
+
+                  <Input
+                    label="Username"
+                    value={profileForm.userName}
+                    onChange={(event) =>
+                      setProfileForm((prev) => ({
+                        ...prev,
+                        userName: event.target.value,
+                      }))
+                    }
+                    required
+                  />
+                </div>
+
                 <div className="flex justify-end">
-                  <Button type="submit" disabled={isSavingProfile || isLoading}>
-                    {isSavingProfile ? 'Đang lưu...' : 'Lưu profile'}
+                  <Button
+                    type="submit"
+                    disabled={isSavingProfile}
+                  >
+                    {isSavingProfile
+                      ? "Đang lưu..."
+                      : "Lưu thay đổi"}
                   </Button>
                 </div>
               </form>
-            </CardBody>
-          </Card>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Gói cước hiện tại</h3>
+      {/* ================================================= */}
+      {/* EMAIL */}
+      {/* ================================================= */}
+
+      <div>
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900">
+            Email
+          </h2>
+
+          <p className="text-sm text-gray-600 mt-1">
+            Email mới cần được xác thực trước khi thay thế
+            email hiện tại.
+          </p>
+        </div>
+
+        <Card>
+          <CardBody>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Mail className="w-6 h-6 text-green-600" />
               </div>
-            </CardHeader>
+
+              <div className="flex-1 min-w-0">
+                {!pendingEmail ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">
+                        Địa chỉ email
+                      </h3>
+
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-sm text-gray-600">
+                          {currentUser?.email}
+                        </span>
+
+                        <Badge variant="success">
+                          Đã xác thực
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="max-w-xl">
+                      <Input
+                        label="Email mới"
+                        type="email"
+                        value={email}
+                        onChange={(event) =>
+                          setEmail(event.target.value)
+                        }
+                        placeholder="example@gmail.com"
+                      />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        disabled={isRequestingEmail}
+                        onClick={handleRequestEmailChange}
+                      >
+                        {isRequestingEmail
+                          ? "Đang gửi..."
+                          : "Gửi mã xác thực"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900">
+                          Xác thực email mới
+                        </h3>
+
+                        <Badge variant="warning">
+                          Chờ xác thực
+                        </Badge>
+                      </div>
+
+                      <p className="text-sm text-gray-600 mt-1">
+                        Mã xác thực đã được gửi đến{" "}
+                        <strong>{pendingEmail}</strong>.
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                      <div className="flex gap-3">
+                        <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+
+                        <div>
+                          <p className="font-medium text-blue-900">
+                            Kiểm tra email của bạn
+                          </p>
+
+                          <p className="text-sm text-blue-800 mt-1">
+                            Nhập mã OTP gồm 6 chữ số để xác
+                            nhận địa chỉ email mới.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="max-w-sm">
+                      <Input
+                        label="Mã OTP"
+                        value={otp}
+                        maxLength={6}
+                        onChange={(event) =>
+                          setOtp(
+                            event.target.value
+                              .replace(/\D/g, "")
+                              .slice(0, 6),
+                          )
+                        }
+                        placeholder="Nhập 6 chữ số"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isRequestingEmail}
+                        onClick={handleResendEmailOtp}
+                      >
+                        {isRequestingEmail
+                          ? "Đang gửi..."
+                          : "Gửi lại mã"}
+                      </Button>
+
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleCancelEmailChange}
+                        >
+                          Hủy
+                        </Button>
+
+                        <Button
+                          type="button"
+                          disabled={
+                            otp.length !== 6 ||
+                            isVerifyingEmail
+                          }
+                          onClick={handleVerifyEmail}
+                        >
+                          {isVerifyingEmail
+                            ? "Đang xác thực..."
+                            : "Xác thực"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* ================================================= */}
+      {/* WORKSPACE */}
+      {/* ================================================= */}
+
+      <div>
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900">
+            Workspace
+          </h2>
+
+          <p className="text-sm text-gray-600 mt-1">
+            Thông tin trung tâm và mức sử dụng hiện tại.
+          </p>
+        </div>
+
+        {!workspace ? (
+          <Card>
             <CardBody>
-              {!workspace && (
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">Bạn chưa có workspace. Tạo workspace để bắt đầu.</p>
-                  <div className="flex gap-3">
-                    <Input
-                      placeholder="Tên trung tâm"
-                      value={workspaceName}
-                      onChange={(e) => setWorkspaceName(e.target.value)}
-                    />
-                    <Button onClick={handleCreateWorkspace} disabled={isCreatingWorkspace}>
-                      {isCreatingWorkspace ? 'Đang tạo...' : 'Tạo trung tâm'}
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-6 h-6 text-yellow-600" />
+                </div>
+
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">
+                      Chưa có workspace
+                    </h3>
+
+                    <p className="text-sm text-gray-600 mt-1">
+                      Tạo trung tâm để bắt đầu quản lý lớp
+                      học và học viên.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Tên trung tâm"
+                        value={workspaceName}
+                        onChange={(event) =>
+                          setWorkspaceName(
+                            event.target.value,
+                          )
+                        }
+                      />
+                    </div>
+
+                    <Button
+                      type="button"
+                      disabled={isCreatingWorkspace}
+                      onClick={handleCreateWorkspace}
+                    >
+                      {isCreatingWorkspace
+                        ? "Đang tạo..."
+                        : "Tạo trung tâm"}
                     </Button>
                   </div>
                 </div>
-              )}
-
-              {workspace && (
-                <>
-                  <div className="flex items-start justify-between mb-6">
-                    <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h4 className="text-2xl font-bold text-gray-900">{activePlan?.name || 'N/A'}</h4>
-                        <Badge variant="success">Đang hoạt động</Badge>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Giá: {activePlan?.monthlyPriceCents !== null && activePlan?.monthlyPriceCents !== undefined
-                          ? `${(activePlan.monthlyPriceCents / 100).toLocaleString('vi-VN')} VND / thang`
-                          : 'Liên hệ'}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Kỳ tiếp theo: {subscription ? formatDateTime(subscription.startedAt) : 'Chưa có subscription detail'}
-                      </p>
-                    </div>
-                    <Button variant="outline">Nâng cấp gói</Button>
+              </div>
+            </CardBody>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <CardBody>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-6 h-6 text-blue-600" />
                   </div>
 
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                    <h5 className="font-medium text-gray-900 mb-3">Tính năng gói đang chọn</h5>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      {(activePlan?.features || []).map((feature) => (
-                        <li key={feature.featureKey} className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
-                          <span>{feature.featureKey}: {feature.valueString ?? feature.valueNumber ?? String(feature.valueBoolean)}</span>
-                        </li>
-                      ))}
-                      {(activePlan?.features || []).length === 0 && (
-                        <li className="text-gray-500">Không có thông tin feature</li>
-                      )}
-                    </ul>
+                  <div className="min-w-0">
+                    <p className="text-sm text-gray-600">
+                      Trung tâm
+                    </p>
+
+                    <p className="text-lg font-bold text-gray-900 mt-1 truncate">
+                      {workspace.name}
+                    </p>
                   </div>
-                </>
-              )}
-            </CardBody>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Thông tin trung tâm</h3>
-              </div>
-            </CardHeader>
-            <CardBody className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-600">Tên trung tâm</p>
-                <p className="font-medium text-gray-900">{workspace?.name || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Mã trung tâm</p>
-                <p className="font-medium text-gray-900 font-mono break-all">{workspace?.id || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Người quản lý</p>
-                <p className="font-medium text-gray-900">{workspace?.owner?.fullName || currentUser?.fullName || '-'}</p>
-              </div>
-              {workspace && (
-                <Button variant="outline" className="w-full" onClick={() => toast.info('Thông tin workspace đã được đồng bộ từ API')}>
-                  Đồng bộ lại
-                </Button>
-              )}
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Sử dụng</h3>
-              </div>
-            </CardHeader>
-            <CardBody className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-gray-600">Học viên</p>
-                  <p className="text-sm font-medium text-gray-900">{workspace?.studentCount ?? 0}</p>
                 </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-gray-600">Lớp học</p>
-                  <p className="text-sm font-medium text-gray-900">{workspace?.classCount ?? 0}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
+              </CardBody>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Bell className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Thông báo</h3>
-              </div>
-            </CardHeader>
-            <CardBody className="space-y-3">
-              <label className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Email thông báo</span>
-                <input type="checkbox" defaultChecked className="rounded" />
-              </label>
-              <label className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Nhắc nhở bài tập</span>
-                <input type="checkbox" defaultChecked className="rounded" />
-              </label>
-              <label className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Báo cáo tuần</span>
-                <input type="checkbox" className="rounded" />
-              </label>
-            </CardBody>
-          </Card>
-        </div>
+            <Card>
+              <CardBody>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Users className="w-6 h-6 text-green-600" />
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600">
+                      Học viên
+                    </p>
+
+                    <p className="text-xl font-bold text-gray-900 mt-1">
+                      {workspace.studentCount ?? 0}
+                    </p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardBody>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-6 h-6 text-yellow-600" />
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600">
+                      Lớp học
+                    </p>
+
+                    <p className="text-xl font-bold text-gray-900 mt-1">
+                      {workspace.classCount ?? 0}
+                    </p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-
-
