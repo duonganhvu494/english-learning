@@ -2,28 +2,28 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, MoreThan, Repository } from 'typeorm';
-import { ClassEntity } from 'src/classes/entities/class.entity';
-import { errorPayload } from 'src/common/utils/error-payload.util';
-import { AccountType } from 'src/users/entities/user.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, IsNull, MoreThan, Repository } from "typeorm";
+import { ClassEntity } from "src/classes/entities/class.entity";
+import { errorPayload } from "src/common/utils/error-payload.util";
+import { AccountType } from "src/users/entities/user.entity";
 import {
   WorkspaceMember,
   WorkspaceMemberStatus,
-} from './entities/workspace-member.entity';
+} from "./entities/workspace-member.entity";
 import {
   PlanFeature,
   PlanFeatureValueType,
-} from './entities/plan-feature.entity';
+} from "src/plans/entities/plan-feature.entity";
 import {
   WorkspaceSubscription,
   WorkspaceSubscriptionStatus,
-} from './entities/workspace-subscription.entity';
+} from "./entities/workspace-subscription.entity";
 import {
-  WORKSPACE_PLAN_FEATURE_KEYS,
-  WorkspacePlanFeatureKey,
-} from './constants/workspace-plan-feature-key.constants';
+  PLAN_FEATURE_KEYS,
+  PlanFeatureKey,
+} from "src/plans/constants/plan-feature-key.constants";
 
 @Injectable()
 export class WorkspaceEntitlementService {
@@ -40,7 +40,7 @@ export class WorkspaceEntitlementService {
 
   async assertFeatureEnabled(
     workspaceId: string,
-    featureKey: WorkspacePlanFeatureKey,
+    featureKey: PlanFeatureKey,
   ): Promise<void> {
     const feature = await this.getFeatureOrThrow(workspaceId, featureKey);
 
@@ -64,17 +64,17 @@ export class WorkspaceEntitlementService {
   async assertStudentQuotaAvailable(workspaceId: string): Promise<void> {
     const studentLimit = await this.getNumberFeatureOrThrow(
       workspaceId,
-      WORKSPACE_PLAN_FEATURE_KEYS.MAX_STUDENTS,
+      PLAN_FEATURE_KEYS.MAX_STUDENTS,
     );
     const activeStudentCount = await this.memberRepo
-      .createQueryBuilder('member')
-      .innerJoin('member.user', 'user')
-      .innerJoin('member.workspace', 'workspace')
-      .where('workspace.id = :workspaceId', { workspaceId })
-      .andWhere('member.status = :status', {
+      .createQueryBuilder("member")
+      .innerJoin("member.user", "user")
+      .innerJoin("member.workspace", "workspace")
+      .where("workspace.id = :workspaceId", { workspaceId })
+      .andWhere("member.status = :status", {
         status: WorkspaceMemberStatus.ACTIVE,
       })
-      .andWhere('user.accountType = :accountType', {
+      .andWhere("user.accountType = :accountType", {
         accountType: AccountType.STUDENT,
       })
       .getCount();
@@ -83,7 +83,7 @@ export class WorkspaceEntitlementService {
       throw new ForbiddenException(
         errorPayload(
           `Current workspace plan allows up to ${studentLimit} students`,
-          'WORKSPACE_PLAN_MAX_STUDENTS_REACHED',
+          "WORKSPACE_PLAN_MAX_STUDENTS_REACHED",
         ),
       );
     }
@@ -92,7 +92,7 @@ export class WorkspaceEntitlementService {
   async assertClassQuotaAvailable(workspaceId: string): Promise<void> {
     const classLimit = await this.getNumberFeatureOrThrow(
       workspaceId,
-      WORKSPACE_PLAN_FEATURE_KEYS.MAX_CLASSES,
+      PLAN_FEATURE_KEYS.MAX_CLASSES,
     );
     const currentClassCount = await this.classRepo.count({
       where: {
@@ -104,7 +104,7 @@ export class WorkspaceEntitlementService {
       throw new ForbiddenException(
         errorPayload(
           `Current workspace plan allows up to ${classLimit} classes`,
-          'WORKSPACE_PLAN_MAX_CLASSES_REACHED',
+          "WORKSPACE_PLAN_MAX_CLASSES_REACHED",
         ),
       );
     }
@@ -112,7 +112,7 @@ export class WorkspaceEntitlementService {
 
   private async getFeatureOrThrow(
     workspaceId: string,
-    featureKey: WorkspacePlanFeatureKey,
+    featureKey: PlanFeatureKey,
   ): Promise<PlanFeature> {
     const subscription = await this.getCurrentSubscriptionOrThrow(workspaceId);
     const feature = subscription.plan.features.find(
@@ -123,7 +123,7 @@ export class WorkspaceEntitlementService {
       throw new BadRequestException(
         errorPayload(
           `Workspace plan feature is not configured: ${featureKey}`,
-          'WORKSPACE_PLAN_FEATURE_NOT_CONFIGURED',
+          "WORKSPACE_PLAN_FEATURE_NOT_CONFIGURED",
         ),
       );
     }
@@ -133,7 +133,7 @@ export class WorkspaceEntitlementService {
 
   private async getNumberFeatureOrThrow(
     workspaceId: string,
-    featureKey: WorkspacePlanFeatureKey,
+    featureKey: PlanFeatureKey,
   ): Promise<number> {
     const feature = await this.getFeatureOrThrow(workspaceId, featureKey);
 
@@ -144,7 +144,7 @@ export class WorkspaceEntitlementService {
       throw new BadRequestException(
         errorPayload(
           `Workspace plan feature is not configured as a number: ${featureKey}`,
-          'WORKSPACE_PLAN_FEATURE_TYPE_INVALID',
+          "WORKSPACE_PLAN_FEATURE_TYPE_INVALID",
         ),
       );
     }
@@ -154,7 +154,7 @@ export class WorkspaceEntitlementService {
       throw new BadRequestException(
         errorPayload(
           `Workspace plan feature has an invalid numeric value: ${featureKey}`,
-          'WORKSPACE_PLAN_FEATURE_VALUE_INVALID',
+          "WORKSPACE_PLAN_FEATURE_VALUE_INVALID",
         ),
       );
     }
@@ -166,14 +166,22 @@ export class WorkspaceEntitlementService {
     workspaceId: string,
   ): Promise<WorkspaceSubscription> {
     const now = new Date();
+
+    const usableStatuses = [
+      WorkspaceSubscriptionStatus.ACTIVE,
+      WorkspaceSubscriptionStatus.TRIALING,
+    ];
+
     const subscription = await this.workspaceSubscriptionRepo.findOne({
       where: [
         {
           workspace: { id: workspaceId },
+          status: In(usableStatuses),
           endedAt: IsNull(),
         },
         {
           workspace: { id: workspaceId },
+          status: In(usableStatuses),
           endedAt: MoreThan(now),
         },
       ],
@@ -183,52 +191,41 @@ export class WorkspaceEntitlementService {
         },
       },
       order: {
-        endedAt: 'DESC',
+        startedAt: "DESC",
       },
     });
 
     if (!subscription) {
       throw new BadRequestException(
         errorPayload(
-          'Workspace subscription not found',
-          'WORKSPACE_SUBSCRIPTION_NOT_FOUND',
+          "Workspace subscription not found",
+          "WORKSPACE_SUBSCRIPTION_NOT_FOUND",
         ),
-      );
-    }
-
-    if (
-      subscription.status !== WorkspaceSubscriptionStatus.ACTIVE &&
-      subscription.status !== WorkspaceSubscriptionStatus.TRIALING
-    ) {
-      throw new ForbiddenException(
-        errorPayload('Workspace plan is not active', 'WORKSPACE_PLAN_INACTIVE'),
       );
     }
 
     return subscription;
   }
 
-  private getDisabledFeatureMessage(
-    featureKey: WorkspacePlanFeatureKey,
-  ): string {
+  private getDisabledFeatureMessage(featureKey: PlanFeatureKey): string {
     switch (featureKey) {
-      case WORKSPACE_PLAN_FEATURE_KEYS.CUSTOM_ROLES:
-        return 'Current workspace plan does not allow custom roles';
-      case WORKSPACE_PLAN_FEATURE_KEYS.QUIZ_ASSIGNMENTS:
-        return 'Current workspace plan does not allow quiz assignments';
+      case PLAN_FEATURE_KEYS.CUSTOM_ROLES:
+        return "Current workspace plan does not allow custom roles";
+      case PLAN_FEATURE_KEYS.QUIZ_ASSIGNMENTS:
+        return "Current workspace plan does not allow quiz assignments";
       default:
         return `Current workspace plan does not allow feature: ${featureKey}`;
     }
   }
 
-  private getDisabledFeatureCode(featureKey: WorkspacePlanFeatureKey): string {
+  private getDisabledFeatureCode(featureKey: PlanFeatureKey): string {
     switch (featureKey) {
-      case WORKSPACE_PLAN_FEATURE_KEYS.CUSTOM_ROLES:
-        return 'WORKSPACE_PLAN_CUSTOM_ROLES_DISABLED';
-      case WORKSPACE_PLAN_FEATURE_KEYS.QUIZ_ASSIGNMENTS:
-        return 'WORKSPACE_PLAN_QUIZ_ASSIGNMENTS_DISABLED';
+      case PLAN_FEATURE_KEYS.CUSTOM_ROLES:
+        return "WORKSPACE_PLAN_CUSTOM_ROLES_DISABLED";
+      case PLAN_FEATURE_KEYS.QUIZ_ASSIGNMENTS:
+        return "WORKSPACE_PLAN_QUIZ_ASSIGNMENTS_DISABLED";
       default:
-        return 'WORKSPACE_PLAN_FEATURE_DISABLED';
+        return "WORKSPACE_PLAN_FEATURE_DISABLED";
     }
   }
 }

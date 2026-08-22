@@ -1,17 +1,23 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
-import { errorPayload } from 'src/common/utils/error-payload.util';
-import { MailService } from 'src/mail/mail.service';
-import { AuthSessionsService } from 'src/auth/redis/auth-sessions.service';
-import { AuthOtpService } from 'src/auth/redis/auth-otp.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { RegisterUserResponseDto } from './dto/register-user-response.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { UserProfileResponse } from './dto/user-profile-response.dto';
-import { UserResponseDto } from './dto/user-response.dto';
-import { AccountType, User } from './entities/user.entity';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import * as bcrypt from "bcrypt";
+import { errorPayload } from "src/common/utils/error-payload.util";
+import { AuthSessionsService } from "src/auth/redis/auth-sessions.service";
+import { AuthOtpService } from "src/auth/redis/auth-otp.service";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { RegisterUserResponseDto } from "./dto/register-user-response.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { UserProfileResponse } from "./dto/user-profile-response.dto";
+import { UserResponseDto } from "./dto/user-response.dto";
+import { AccountType, User } from "./entities/user.entity";
+import { MailQueueService } from "src/mail/queue/mail-queue.service";
+import {
+  PendingRegistration,
+  PendingRegistrationService,
+} from "src/auth/redis/pending-registration.service";
+
+import { PendingEmailChangeService } from "src/auth/redis/pending-email-change.service";
 
 @Injectable()
 export class UsersService {
@@ -19,58 +25,144 @@ export class UsersService {
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
     private readonly authSessionsService: AuthSessionsService,
-    private readonly mailService: MailService,
     private readonly authOtpService: AuthOtpService,
+    private readonly mailQueueService: MailQueueService,
+    private readonly pendingRegistrationService: PendingRegistrationService,
+    private readonly pendingEmailChangeService: PendingEmailChangeService,
   ) {}
 
   async register(dto: CreateUserDto): Promise<RegisterUserResponseDto> {
+    const totalStart = performance.now();
+
+    let start = performance.now();
+
     const normalizedInput = this.normalizeCreateUserInput(dto);
+
+    console.log(
+      `[REGISTER] normalize: ${(performance.now() - start).toFixed(2)}ms`,
+    );
+
+    start = performance.now();
+
     const existingUser = await this.usersRepo.findOne({
       where: [
-        { email: normalizedInput.email },
-        { userName: normalizedInput.userName },
+        {
+          email: normalizedInput.email,
+        },
+        {
+          userName: normalizedInput.userName,
+        },
       ],
     });
+
+    console.log(
+      `[REGISTER] check existing user: ${(performance.now() - start).toFixed(2)}ms`,
+    );
+
     if (existingUser) {
       throw new BadRequestException(
         errorPayload(
-          'Email or username already exists',
-          'USER_CREDENTIALS_ALREADY_EXIST',
+          "Email or username already exists",
+          "USER_CREDENTIALS_ALREADY_EXIST",
         ),
       );
     }
 
+    start = performance.now();
+
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    const user = this.usersRepo.create({
+    console.log(
+      `[REGISTER] bcrypt hash: ${(performance.now() - start).toFixed(2)}ms`,
+    );
+
+    start = performance.now();
+
+    const pendingRegistration = await this.pendingRegistrationService.create({
       fullName: normalizedInput.fullName,
       email: normalizedInput.email,
       userName: normalizedInput.userName,
-      password: hashedPassword,
-      mustChangePassword: false,
-      accountType: AccountType.TEACHER,
-      isActive: true,
-      isSuperAdmin: false,
-      emailVerificationRequired: true,
-      emailVerifiedAt: null,
+      hashedPassword,
     });
 
-    const savedUser = await this.usersRepo.save(user);
-    const verificationChallenge = await this.authOtpService.issueEmailVerificationOtp(
-      savedUser.id,
+    console.log(
+      `[REGISTER] save pending registration: ${(performance.now() - start).toFixed(2)}ms`,
     );
-    await this.mailService.sendEmailVerificationOtp({
-      email: savedUser.email,
-      fullName: savedUser.fullName,
+
+    start = performance.now();
+
+    const verificationChallenge =
+      await this.authOtpService.issueEmailVerificationOtp(
+        pendingRegistration.registrationId,
+      );
+
+    console.log(
+      `[REGISTER] issue OTP: ${(performance.now() - start).toFixed(2)}ms`,
+    );
+
+    start = performance.now();
+
+    await this.mailQueueService.enqueueEmailVerificationOtp({
+      email: pendingRegistration.email,
+      fullName: pendingRegistration.fullName,
       otp: verificationChallenge.code,
       expiresAt: verificationChallenge.expiresAt,
     });
 
+    console.log(
+      `[REGISTER] enqueue email: ${(performance.now() - start).toFixed(2)}ms`,
+    );
+
+    console.log(
+      `[REGISTER] TOTAL: ${(performance.now() - totalStart).toFixed(2)}ms`,
+    );
+
     return RegisterUserResponseDto.fromData({
-      user: savedUser,
+      registrationId: pendingRegistration.registrationId,
+
+      email: pendingRegistration.email,
+
       emailVerificationRequired: true,
+
       emailVerificationExpiresAt: verificationChallenge.expiresAt,
     });
+  }
+
+  async createVerifiedUserFromPending(
+    pending: PendingRegistration,
+  ): Promise<UserProfileResponse> {
+    const existingUser = await this.usersRepo.findOne({
+      where: [{ email: pending.email }, { userName: pending.userName }],
+    });
+
+    if (existingUser) {
+      throw new BadRequestException(
+        errorPayload(
+          "Email or username already exists",
+          "USER_CREDENTIALS_ALREADY_EXIST",
+        ),
+      );
+    }
+
+    const user = this.usersRepo.create({
+      fullName: pending.fullName,
+      email: pending.email,
+      userName: pending.userName,
+      password: pending.hashedPassword,
+
+      mustChangePassword: false,
+      accountType: AccountType.TEACHER,
+      isActive: true,
+      isSuperAdmin: false,
+
+      // OTP đã verify rồi
+      emailVerificationRequired: false,
+      emailVerifiedAt: new Date(),
+    });
+
+    const savedUser = await this.usersRepo.save(user);
+
+    return UserProfileResponse.fromEntity(savedUser);
   }
 
   async listUsers(): Promise<UserResponseDto[]> {
@@ -84,18 +176,18 @@ export class UsersService {
 
   findByIdWithPassword(id: string): Promise<User | null> {
     return this.usersRepo
-      .createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('user.id = :id', { id })
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .where("user.id = :id", { id })
       .getOne();
   }
 
   findByUserName(userName: string): Promise<User | null> {
     const normalizedUserName = userName.trim();
     return this.usersRepo
-      .createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('user.userName = :userName', { userName: normalizedUserName })
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .where("user.userName = :userName", { userName: normalizedUserName })
       .getOne();
   }
 
@@ -108,19 +200,21 @@ export class UsersService {
   findByEmailOrUserName(identifier: string): Promise<User | null> {
     const normalizedIdentifier = this.normalizeLoginIdentifier(identifier);
     return this.usersRepo
-      .createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('user.userName = :identifier', { identifier: normalizedIdentifier })
-      .orWhere('user.email = :identifier', { identifier: normalizedIdentifier })
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .where("user.userName = :identifier", {
+        identifier: normalizedIdentifier,
+      })
+      .orWhere("user.email = :identifier", { identifier: normalizedIdentifier })
       .getOne();
   }
 
   findByEmailWithPassword(email: string): Promise<User | null> {
     const normalizedEmail = this.normalizeEmail(email);
     return this.usersRepo
-      .createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('user.email = :email', { email: normalizedEmail })
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .where("user.email = :email", { email: normalizedEmail })
       .getOne();
   }
 
@@ -135,7 +229,8 @@ export class UsersService {
   ): Promise<UserProfileResponse> {
     const user = await this.getUserOrThrow(id);
     const normalizedInput = this.normalizeUpdateUserInput(dto);
-    let emailVerificationRequired = false;
+
+    let pendingEmail: string | null = null;
 
     if (
       normalizedInput.email !== undefined &&
@@ -144,15 +239,14 @@ export class UsersService {
       const emailExist = await this.usersRepo.findOne({
         where: { email: normalizedInput.email },
       });
+
       if (emailExist) {
         throw new BadRequestException(
-          errorPayload('Email already exists', 'USER_EMAIL_ALREADY_EXISTS'),
+          errorPayload("Email already exists", "USER_EMAIL_ALREADY_EXISTS"),
         );
       }
-      user.email = normalizedInput.email;
-      user.emailVerifiedAt = null;
-      user.emailVerificationRequired = true;
-      emailVerificationRequired = true;
+
+      pendingEmail = normalizedInput.email;
     }
 
     if (
@@ -160,16 +254,20 @@ export class UsersService {
       normalizedInput.userName !== user.userName
     ) {
       const userNameExist = await this.usersRepo.findOne({
-        where: { userName: normalizedInput.userName },
+        where: {
+          userName: normalizedInput.userName,
+        },
       });
+
       if (userNameExist) {
         throw new BadRequestException(
           errorPayload(
-            'Username already exists',
-            'USER_USERNAME_ALREADY_EXISTS',
+            "Username already exists",
+            "USER_USERNAME_ALREADY_EXISTS",
           ),
         );
       }
+
       user.userName = normalizedInput.userName;
     }
 
@@ -178,17 +276,87 @@ export class UsersService {
     }
 
     const savedUser = await this.usersRepo.save(user);
-    if (emailVerificationRequired) {
+
+    if (pendingEmail) {
+      await this.pendingEmailChangeService.create({
+        userId: savedUser.id,
+        email: pendingEmail,
+      });
+
       const challenge = await this.authOtpService.issueEmailVerificationOtp(
         savedUser.id,
       );
-      await this.mailService.sendEmailVerificationOtp({
-        email: savedUser.email,
+
+      await this.mailQueueService.enqueueEmailVerificationOtp({
+        email: pendingEmail,
         fullName: savedUser.fullName,
         otp: challenge.code,
         expiresAt: challenge.expiresAt,
       });
     }
+
+    return UserProfileResponse.fromEntity(savedUser);
+  }
+
+  async verifyEmailChange(
+    userId: string,
+    otp: string,
+  ): Promise<UserProfileResponse> {
+    const pendingEmailChange =
+      await this.pendingEmailChangeService.find(userId);
+
+    if (!pendingEmailChange) {
+      throw new BadRequestException(
+        errorPayload(
+          "Email change request is invalid or expired",
+          "AUTH_EMAIL_CHANGE_INVALID",
+        ),
+      );
+    }
+
+    const verificationStatus =
+      await this.authOtpService.verifyEmailVerificationOtp(userId, otp);
+
+    if (verificationStatus === "expired") {
+      throw new BadRequestException(
+        errorPayload(
+          "Verification OTP has expired",
+          "AUTH_EMAIL_VERIFICATION_OTP_EXPIRED",
+        ),
+      );
+    }
+
+    if (verificationStatus !== "valid") {
+      throw new BadRequestException(
+        errorPayload(
+          "Verification OTP is invalid",
+          "AUTH_EMAIL_VERIFICATION_OTP_INVALID",
+        ),
+      );
+    }
+
+    const emailExist = await this.usersRepo.findOne({
+      where: {
+        email: pendingEmailChange.email,
+      },
+    });
+
+    if (emailExist && emailExist.id !== userId) {
+      throw new BadRequestException(
+        errorPayload("Email already exists", "USER_EMAIL_ALREADY_EXISTS"),
+      );
+    }
+
+    const user = await this.getUserOrThrow(userId);
+
+    user.email = pendingEmailChange.email;
+    user.emailVerifiedAt = new Date();
+    user.emailVerificationRequired = false;
+
+    const savedUser = await this.usersRepo.save(user);
+
+    await this.pendingEmailChangeService.remove(userId);
+
     return UserProfileResponse.fromEntity(savedUser);
   }
 
@@ -205,22 +373,24 @@ export class UsersService {
     return UserProfileResponse.fromEntity(savedUser);
   }
 
-  async issueEmailVerificationChallenge(email: string): Promise<Date | null> {
-    const user = await this.findByEmail(email);
-    if (!user || !user.isActive || !user.emailVerificationRequired) {
-      return null;
-    }
+  // async issueEmailVerificationChallenge(email: string): Promise<Date | null> {
+  //   const user = await this.findByEmail(email);
+  //   if (!user || !user.isActive || !user.emailVerificationRequired) {
+  //     return null;
+  //   }
 
-    const challenge = await this.authOtpService.issueEmailVerificationOtp(user.id);
-    await this.mailService.sendEmailVerificationOtp({
-      email: user.email,
-      fullName: user.fullName,
-      otp: challenge.code,
-      expiresAt: challenge.expiresAt,
-    });
+  //   const challenge = await this.authOtpService.issueEmailVerificationOtp(
+  //     user.id,
+  //   );
+  //   await this.mailService.sendEmailVerificationOtp({
+  //     email: user.email,
+  //     fullName: user.fullName,
+  //     otp: challenge.code,
+  //     expiresAt: challenge.expiresAt,
+  //   });
 
-    return challenge.expiresAt;
-  }
+  //   return challenge.expiresAt;
+  // }
 
   async markEmailVerified(id: string): Promise<UserProfileResponse> {
     const user = await this.getUserOrThrow(id);
@@ -233,12 +403,14 @@ export class UsersService {
 
   async issuePasswordResetChallenge(email: string): Promise<Date | null> {
     const user = await this.findByEmail(email);
+
     if (!user || !user.isActive) {
       return null;
     }
 
     const challenge = await this.authOtpService.issuePasswordResetOtp(user.id);
-    await this.mailService.sendPasswordResetOtp({
+
+    await this.mailQueueService.enqueuePasswordResetOtp({
       email: user.email,
       fullName: user.fullName,
       otp: challenge.code,
@@ -255,7 +427,7 @@ export class UsersService {
     const user = await this.findByIdWithPassword(id);
     if (!user) {
       throw new BadRequestException(
-        errorPayload('User not found', 'USER_NOT_FOUND'),
+        errorPayload("User not found", "USER_NOT_FOUND"),
       );
     }
 
@@ -285,7 +457,7 @@ export class UsersService {
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) {
       throw new BadRequestException(
-        errorPayload('User not found', 'USER_NOT_FOUND'),
+        errorPayload("User not found", "USER_NOT_FOUND"),
       );
     }
 
@@ -307,7 +479,8 @@ export class UsersService {
   private normalizeUpdateUserInput(dto: UpdateUserDto): UpdateUserDto {
     return {
       ...dto,
-      email: dto.email === undefined ? undefined : this.normalizeEmail(dto.email),
+      email:
+        dto.email === undefined ? undefined : this.normalizeEmail(dto.email),
       fullName: dto.fullName === undefined ? undefined : dto.fullName.trim(),
       userName: dto.userName === undefined ? undefined : dto.userName.trim(),
     };
@@ -319,7 +492,7 @@ export class UsersService {
 
   private normalizeLoginIdentifier(identifier: string): string {
     const normalizedIdentifier = identifier.trim();
-    return normalizedIdentifier.includes('@')
+    return normalizedIdentifier.includes("@")
       ? normalizedIdentifier.toLowerCase()
       : normalizedIdentifier;
   }

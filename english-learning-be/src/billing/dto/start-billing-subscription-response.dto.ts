@@ -1,24 +1,16 @@
-import { BillingSubscriptionResponseDto } from './billing-subscription-response.dto';
-import { PaymentTransactionResponseDto } from './payment-transaction-response.dto';
-import { BillingSubscription } from '../entities/billing-subscription.entity';
-import { PaymentTransaction } from '../entities/payment-transaction.entity';
-
 export class StartBillingSubscriptionResponseDto {
-  billingSubscription: BillingSubscriptionResponseDto;
-
-  paymentTransaction: PaymentTransactionResponseDto;
+  sessionId: string;
+  checkoutUrl: string;
 
   static fromData(input: {
-    billingSubscription: BillingSubscription;
-    paymentTransaction: PaymentTransaction;
+    sessionId: string;
+    checkoutUrl: string;
   }): StartBillingSubscriptionResponseDto {
     const dto = new StartBillingSubscriptionResponseDto();
-    dto.billingSubscription = BillingSubscriptionResponseDto.fromEntity(
-      input.billingSubscription,
-    );
-    dto.paymentTransaction = PaymentTransactionResponseDto.fromEntity(
-      input.paymentTransaction,
-    );
+
+    dto.sessionId = input.sessionId;
+    dto.checkoutUrl = input.checkoutUrl;
+
     return dto;
   }
 }

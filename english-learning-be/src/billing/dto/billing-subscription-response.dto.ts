@@ -1,10 +1,11 @@
-import { PlanResponseDto } from 'src/workspaces/dto/plan-response.dto';
+import { PlanResponseDto } from "src/plans/dto/plan-response.dto";
+
 import {
   BillingCycle,
   BillingProvider,
   BillingSubscription,
   BillingSubscriptionStatus,
-} from '../entities/billing-subscription.entity';
+} from "../entities/billing-subscription.entity";
 
 export class BillingSubscriptionResponseDto {
   id: string;
@@ -15,44 +16,108 @@ export class BillingSubscriptionResponseDto {
 
   provider: BillingProvider;
 
-  providerSubscriptionRef: string | null;
+  providerSubscriptionRef:
+    string | null;
 
   billingCycle: BillingCycle;
 
-  activatedAt: string | null;
+  activatedAt:
+    string | null;
 
-  currentPeriodStart: string | null;
+  currentPeriodStart:
+    string | null;
 
-  currentPeriodEnd: string | null;
+  currentPeriodEnd:
+    string | null;
 
-  cancelAtPeriodEnd: boolean;
+  cancelAtPeriodEnd:
+    boolean;
 
-  cancelledAt: string | null;
+  cancelledAt:
+    string | null;
 
-  endedAt: string | null;
+  endedAt:
+    string | null;
 
-  plan: PlanResponseDto;
+  plan:
+    PlanResponseDto;
+
+  nextPlan:
+    PlanResponseDto | null;
 
   static fromEntity(
-    billingSubscription: BillingSubscription,
+    billingSubscription:
+      BillingSubscription,
   ): BillingSubscriptionResponseDto {
-    const dto = new BillingSubscriptionResponseDto();
-    dto.id = billingSubscription.id;
-    dto.workspaceId = billingSubscription.workspace.id;
-    dto.status = billingSubscription.status;
-    dto.provider = billingSubscription.provider;
+    const dto =
+      new BillingSubscriptionResponseDto();
+
+    dto.id =
+      billingSubscription.id;
+
+    dto.workspaceId =
+      billingSubscription.workspace.id;
+
+    dto.status =
+      billingSubscription.status;
+
+    dto.provider =
+      billingSubscription.provider;
+
     dto.providerSubscriptionRef =
-      billingSubscription.providerSubscriptionRef ?? null;
-    dto.billingCycle = billingSubscription.billingCycle;
-    dto.activatedAt = billingSubscription.activatedAt?.toISOString() ?? null;
+      billingSubscription
+        .providerSubscriptionRef ??
+      null;
+
+    dto.billingCycle =
+      billingSubscription.billingCycle;
+
+    dto.activatedAt =
+      billingSubscription
+        .activatedAt
+        ?.toISOString() ??
+      null;
+
     dto.currentPeriodStart =
-      billingSubscription.currentPeriodStart?.toISOString() ?? null;
+      billingSubscription
+        .currentPeriodStart
+        ?.toISOString() ??
+      null;
+
     dto.currentPeriodEnd =
-      billingSubscription.currentPeriodEnd?.toISOString() ?? null;
-    dto.cancelAtPeriodEnd = billingSubscription.cancelAtPeriodEnd;
-    dto.cancelledAt = billingSubscription.cancelledAt?.toISOString() ?? null;
-    dto.endedAt = billingSubscription.endedAt?.toISOString() ?? null;
-    dto.plan = PlanResponseDto.fromEntity(billingSubscription.plan);
+      billingSubscription
+        .currentPeriodEnd
+        ?.toISOString() ??
+      null;
+
+    dto.cancelAtPeriodEnd =
+      billingSubscription
+        .cancelAtPeriodEnd;
+
+    dto.cancelledAt =
+      billingSubscription
+        .cancelledAt
+        ?.toISOString() ??
+      null;
+
+    dto.endedAt =
+      billingSubscription
+        .endedAt
+        ?.toISOString() ??
+      null;
+
+    dto.plan =
+      PlanResponseDto.fromEntity(
+        billingSubscription.plan,
+      );
+
+    dto.nextPlan =
+      billingSubscription.nextPlan
+        ? PlanResponseDto.fromEntity(
+            billingSubscription.nextPlan,
+          )
+        : null;
+
     return dto;
   }
 }

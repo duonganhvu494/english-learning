@@ -6,130 +6,124 @@ import {
   Patch,
   Param,
   Post,
+  Req,
   UseGuards,
-} from '@nestjs/common';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { ApiResponse } from 'src/common/dto/api-response.dto';
-import { RequireRoles } from 'src/rbac/decorators/require-roles.decorator';
-import { RbacPermissionGuard } from 'src/rbac/guards/rbac-permission.guard';
-import { WorkspacePlanGuard } from 'src/rbac/guards/workspace-plan.guard';
-import { CreateStudentDto } from 'src/users/dto/create-student.dto';
-import { AddClassStudentsDto } from './dto/add-class-students.dto';
-import { CreateClassDto } from './dto/create-class.dto';
-import { CreateClassStudentResponseDto } from './dto/create-class-student-response.dto';
-import { UpdateClassStudentRoleDto } from './dto/update-class-student-role.dto';
-import { UpdateClassDto } from './dto/update-class.dto';
-import { ClassesService } from './classes.service';
-import { ClassResponseDto } from './dto/class-response.dto';
-import { ClassRosterResponseDto } from './dto/class-roster-response.dto';
-import { ClassStudentsResponseDto } from './dto/class-students-response.dto';
-import { ClassDeleteResponseDto } from './dto/class-delete-response.dto';
-import { ClassStudentRoleResponseDto } from './dto/class-student-role-response.dto';
+} from "@nestjs/common";
+import { JwtAuthGuard } from "src/auth/guards/jwt-auth.guard";
+import { ApiResponse } from "src/common/dto/api-response.dto";
+import { RequireRoles } from "src/rbac/decorators/require-roles.decorator";
+import { RbacPermissionGuard } from "src/rbac/guards/rbac-permission.guard";
+import { WorkspacePlanGuard } from "src/rbac/guards/workspace-plan.guard";
+import { CreateStudentDto } from "src/users/dto/create-student.dto";
+import { AddClassStudentsDto } from "./dto/add-class-students.dto";
+import { CreateClassDto } from "./dto/create-class.dto";
+import { CreateClassStudentResponseDto } from "./dto/create-class-student-response.dto";
+import { UpdateClassStudentRoleDto } from "./dto/update-class-student-role.dto";
+import { UpdateClassDto } from "./dto/update-class.dto";
+import { ClassesService } from "./classes.service";
+import { ClassResponseDto } from "./dto/class-response.dto";
+import { ClassRosterResponseDto } from "./dto/class-roster-response.dto";
+import { ClassStudentsResponseDto } from "./dto/class-students-response.dto";
+import { ClassDeleteResponseDto } from "./dto/class-delete-response.dto";
+import { ClassStudentRoleResponseDto } from "./dto/class-student-role-response.dto";
+import type { AuthRequest } from "src/auth/interfaces/auth-request.interface";
 
 @Controller()
 @UseGuards(JwtAuthGuard)
 export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 
-  @Post('workspaces/:workspaceId/classes')
+  @Post("workspaces/:workspaceId/classes")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeIdParam: 'workspaceId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeIdParam: "workspaceId",
   })
   async createClass(
-    @Param('workspaceId') workspaceId: string,
+    @Param("workspaceId") workspaceId: string,
     @Body() dto: CreateClassDto,
   ): Promise<ApiResponse<ClassResponseDto>> {
-    const classEntity = await this.classesService.createClass(
-      workspaceId,
-      dto,
-    );
+    const classEntity = await this.classesService.createClass(workspaceId, dto);
 
-    return ApiResponse.success(classEntity, 'Class created', 201);
+    return ApiResponse.success(classEntity, "Class created", 201);
   }
 
-  @Get('workspaces/:workspaceId/classes')
+  @Get("workspaces/:workspaceId/classes")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeIdParam: 'workspaceId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeIdParam: "workspaceId",
   })
   async listWorkspaceClasses(
-    @Param('workspaceId') workspaceId: string,
+    @Param("workspaceId") workspaceId: string,
   ): Promise<ApiResponse<ClassResponseDto[]>> {
-    const result = await this.classesService.listWorkspaceClasses(
-      workspaceId,
-    );
+    const result = await this.classesService.listWorkspaceClasses(workspaceId);
 
-    return ApiResponse.success(result, 'Workspace classes fetched');
+    return ApiResponse.success(result, "Workspace classes fetched");
   }
 
-  @Get('classes/:classId')
+  @Get("classes/:classId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'class',
-    scopeResourceIdParam: 'classId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "class",
+    scopeResourceIdParam: "classId",
   })
   async getClassDetail(
-    @Param('classId') classId: string,
+    @Param("classId") classId: string,
   ): Promise<ApiResponse<ClassResponseDto>> {
     const result = await this.classesService.getClassDetail(classId);
 
-    return ApiResponse.success(result, 'Class detail fetched');
+    return ApiResponse.success(result, "Class detail fetched");
   }
 
-  @Get('classes/:classId/students')
+  @Get("classes/:classId/students")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'class',
-    scopeResourceIdParam: 'classId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "class",
+    scopeResourceIdParam: "classId",
   })
   async getClassStudents(
-    @Param('classId') classId: string,
+    @Param("classId") classId: string,
   ): Promise<ApiResponse<ClassRosterResponseDto>> {
     const result = await this.classesService.getClassStudents(classId);
 
-    return ApiResponse.success(result, 'Class students fetched');
+    return ApiResponse.success(result, "Class students fetched");
   }
 
-  @Post('classes/:classId/students')
+  @Post("classes/:classId/students")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'class',
-    scopeResourceIdParam: 'classId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "class",
+    scopeResourceIdParam: "classId",
   })
   async addStudentsToClass(
-    @Param('classId') classId: string,
+    @Param("classId") classId: string,
     @Body() dto: AddClassStudentsDto,
   ): Promise<ApiResponse<ClassStudentsResponseDto>> {
-    const result = await this.classesService.addStudentsToClass(
-      classId,
-      dto,
-    );
+    const result = await this.classesService.addStudentsToClass(classId, dto);
 
-    return ApiResponse.success(result, 'Students added to class');
+    return ApiResponse.success(result, "Students added to class");
   }
 
-  @Post('classes/:classId/students/create')
+  @Post("classes/:classId/students/create")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'class',
-    scopeResourceIdParam: 'classId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "class",
+    scopeResourceIdParam: "classId",
   })
   async createStudentForClass(
-    @Param('classId') classId: string,
+    @Param("classId") classId: string,
     @Body() dto: CreateStudentDto,
   ): Promise<ApiResponse<CreateClassStudentResponseDto>> {
     const result = await this.classesService.createStudentForClass(
       classId,
       dto,
     );
-    const statusCode = result.mode === 'already_assigned' ? 200 : 201;
+    const statusCode = result.mode === "already_assigned" ? 200 : 201;
 
     return ApiResponse.success(
       result,
@@ -138,69 +132,66 @@ export class ClassesController {
     );
   }
 
-  @Patch('classes/:classId')
+  @Patch("classes/:classId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'class',
-    scopeResourceIdParam: 'classId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "class",
+    scopeResourceIdParam: "classId",
   })
   async updateClass(
-    @Param('classId') classId: string,
+    @Param("classId") classId: string,
     @Body() dto: UpdateClassDto,
   ): Promise<ApiResponse<ClassResponseDto>> {
-    const result = await this.classesService.updateClass(
-      classId,
-      dto,
-    );
+    const result = await this.classesService.updateClass(classId, dto);
 
-    return ApiResponse.success(result, 'Class updated');
+    return ApiResponse.success(result, "Class updated");
   }
 
-  @Delete('classes/:classId/students/:studentId')
+  @Delete("classes/:classId/students/:studentId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'class',
-    scopeResourceIdParam: 'classId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "class",
+    scopeResourceIdParam: "classId",
   })
   async removeStudentFromClass(
-    @Param('classId') classId: string,
-    @Param('studentId') studentId: string,
+    @Param("classId") classId: string,
+    @Param("studentId") studentId: string,
   ): Promise<ApiResponse<ClassStudentsResponseDto>> {
     const result = await this.classesService.removeStudentFromClass(
       classId,
       studentId,
     );
 
-    return ApiResponse.success(result, 'Student removed from class');
+    return ApiResponse.success(result, "Student removed from class");
   }
 
-  @Delete('classes/:classId')
+  @Delete("classes/:classId")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'class',
-    scopeResourceIdParam: 'classId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "class",
+    scopeResourceIdParam: "classId",
   })
   async deleteClass(
-    @Param('classId') classId: string,
+    @Param("classId") classId: string,
   ): Promise<ApiResponse<ClassDeleteResponseDto>> {
     const result = await this.classesService.deleteClass(classId);
 
-    return ApiResponse.success(result, 'Class deleted');
+    return ApiResponse.success(result, "Class deleted");
   }
 
-  @Patch('classes/:classId/students/:studentId/role')
+  @Patch("classes/:classId/students/:studentId/role")
   @UseGuards(RbacPermissionGuard, WorkspacePlanGuard)
-  @RequireRoles(['owner'], {
-    scopeType: 'workspace',
-    scopeResourceType: 'class',
-    scopeResourceIdParam: 'classId',
+  @RequireRoles(["owner"], {
+    scopeType: "workspace",
+    scopeResourceType: "class",
+    scopeResourceIdParam: "classId",
   })
   async updateClassStudentRole(
-    @Param('classId') classId: string,
-    @Param('studentId') studentId: string,
+    @Param("classId") classId: string,
+    @Param("studentId") studentId: string,
     @Body() dto: UpdateClassStudentRoleDto,
   ): Promise<ApiResponse<ClassStudentRoleResponseDto>> {
     const result = await this.classesService.updateClassStudentRole(
@@ -209,19 +200,28 @@ export class ClassesController {
       dto,
     );
 
-    return ApiResponse.success(result, 'Class student role updated');
+    return ApiResponse.success(result, "Class student role updated");
+  }
+
+  @Get("me/classes")
+  async listMyClasses(
+    @Req() req: AuthRequest,
+  ): Promise<ApiResponse<ClassResponseDto[]>> {
+    const result = await this.classesService.listMyClasses(req.user.userId);
+
+    return ApiResponse.success(result, "My classes fetched");
   }
 
   private getClassStudentMessage(
-    mode: CreateClassStudentResponseDto['mode'],
+    mode: CreateClassStudentResponseDto["mode"],
   ): string {
     switch (mode) {
-      case 'created':
-        return 'Student created and added to class';
-      case 'attached':
-        return 'Existing student added to class';
-      case 'already_assigned':
-        return 'Student already exists in class';
+      case "created":
+        return "Student created and added to class";
+      case "attached":
+        return "Existing student added to class";
+      case "already_assigned":
+        return "Student already exists in class";
     }
   }
 }

@@ -2,7 +2,7 @@ import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
-import { RedisService } from 'src/rbac/redis/redis.service';
+import { RedisService } from 'src/common/redis/redis.service';
 import { HealthService } from './health.service';
 
 describe('HealthService', () => {

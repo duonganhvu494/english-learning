@@ -1,22 +1,26 @@
-import { User } from '../entities/user.entity';
-import { UserResponseDto } from './user-response.dto';
-
 export class RegisterUserResponseDto {
-  user: UserResponseDto;
+  registrationId: string;
+
+  email: string;
 
   emailVerificationRequired: boolean;
 
   emailVerificationExpiresAt: string;
 
   static fromData(data: {
-    user: User;
+    registrationId: string;
+    email: string;
     emailVerificationRequired: boolean;
     emailVerificationExpiresAt: Date;
   }): RegisterUserResponseDto {
     const dto = new RegisterUserResponseDto();
-    dto.user = UserResponseDto.fromEntity(data.user);
+
+    dto.registrationId = data.registrationId;
+    dto.email = data.email;
     dto.emailVerificationRequired = data.emailVerificationRequired;
-    dto.emailVerificationExpiresAt = data.emailVerificationExpiresAt.toISOString();
+    dto.emailVerificationExpiresAt =
+      data.emailVerificationExpiresAt.toISOString();
+
     return dto;
   }
 }

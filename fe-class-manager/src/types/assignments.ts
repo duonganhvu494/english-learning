@@ -1,5 +1,5 @@
-export type AssignmentTypeInput = 'MANUAL' | 'QUIZ';
-export type AssignmentTypeValue = 'manual' | 'quiz';
+export type AssignmentTypeInput = "MANUAL" | "QUIZ";
+export type AssignmentTypeValue = "manual" | "quiz";
 
 export interface CreateAssignmentDto {
   title: string;
@@ -33,4 +33,8 @@ export interface AssignmentResponse {
   materials: MaterialSummary[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AssignmentDeleteResponse {
+  assignmentId: string;
 }

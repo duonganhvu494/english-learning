@@ -2,15 +2,19 @@
 import { Link, useNavigate } from "react-router";
 import { BookOpen } from "lucide-react";
 import { toast } from "sonner";
-import Input from "../../components/ui/Input";
-import Button from "../../components/ui/Button";
+
+import Input from "@/app/components/ui/Input";
+import Button from "@/app/components/ui/Button";
+
 import { authApi, getApiErrorMessage } from "@/api";
 import { setCurrentUser } from "@/app/utils/client-storage";
 import { resolveWorkspaceId } from "@/app/utils/workspace";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
     userName: "",
     password: "",
@@ -18,28 +22,46 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (isSubmitting) {
       return;
     }
 
     setIsSubmitting(true);
+
     try {
       const user = await authApi.login({
         identifier: formData.userName,
         userName: formData.userName,
         password: formData.password,
       });
+
       setCurrentUser(user);
 
-      try {
-        await resolveWorkspaceId(true);
-      } catch {
-        // Ignore when no workspace is created yet.
+      if (user.mustChangePassword) {
+        toast.info("Vui lòng đổi mật khẩu trước khi tiếp tục");
+
+        navigate("/change-password", {
+          replace: true,
+        });
+
+        return;
+      }
+
+      if (user.role === "teacher") {
+        try {
+          await resolveWorkspaceId(true);
+        } catch {
+        }
       }
 
       toast.success("Đăng nhập thành công");
+
       navigate(
-        user.role === "student" ? "/student/dashboard" : "/admin/dashboard",
+        user.role === "student" ? "/student/classes" : "/admin/dashboard",
+        {
+          replace: true,
+        },
       );
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Đăng nhập thất bại"));
@@ -54,11 +76,14 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
             <BookOpen className="w-8 h-8 text-blue-600" />
+
             <h1 className="text-3xl font-bold text-blue-600">
               English Class Manager
             </h1>
           </div>
+
           <h2 className="text-2xl font-semibold text-gray-900">Đăng nhập</h2>
+
           <p className="text-gray-600 mt-2">Chào mừng trở lại</p>
         </div>
 
@@ -71,7 +96,10 @@ export default function LoginPage() {
               placeholder="Nhập tên đăng nhập"
               value={formData.userName}
               onChange={(e) =>
-                setFormData({ ...formData, userName: e.target.value })
+                setFormData({
+                  ...formData,
+                  userName: e.target.value,
+                })
               }
               required
             />
@@ -83,7 +111,10 @@ export default function LoginPage() {
               placeholder="Nhập mật khẩu"
               value={formData.password}
               onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
+                setFormData({
+                  ...formData,
+                  password: e.target.value,
+                })
               }
               required
             />
@@ -109,4 +140,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

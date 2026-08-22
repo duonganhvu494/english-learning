@@ -2,7 +2,7 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { errorPayload } from 'src/common/utils/error-payload.util';
-import { RedisService } from 'src/rbac/redis/redis.service';
+import { RedisService } from 'src/common/redis/redis.service';
 import {
   HealthCheckStatus,
   HealthResponseDto,

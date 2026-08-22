@@ -8,32 +8,32 @@ import {
   Req,
   Res,
   UseGuards,
-} from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { LoginDto } from './dto/login.dto';
-import { ResendEmailOtpDto } from './dto/resend-email-otp.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { VerifyEmailOtpDto } from './dto/verify-email-otp.dto';
-import { ConfigService } from '@nestjs/config';
-import { ApiResponse } from 'src/common/dto/api-response.dto';
-import type { CookieOptions, Request, Response } from 'express';
-import type { AuthRequest } from './interfaces/auth-request.interface';
-import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { parseDurationToMs } from 'src/common/utils/duration.util';
-import type { RequestWithCookies } from './interfaces/request-cookie.interface';
-import { AuthSecurityService } from './auth-security.service';
-import { UserProfileResponse } from 'src/users/dto/user-profile-response.dto';
-import { CsrfTokenResponseDto } from './dto/csrf-token-response.dto';
-import { ChangePasswordResponseDto } from './dto/change-password-response.dto';
-import { ForgotPasswordResponseDto } from './dto/forgot-password-response.dto';
-import { OtpChallengeResponseDto } from './dto/otp-challenge-response.dto';
-import { ResetPasswordResponseDto } from './dto/reset-password-response.dto';
-import { VerifyEmailResponseDto } from './dto/verify-email-response.dto';
+} from "@nestjs/common";
+import { AuthService } from "./auth.service";
+import { ChangePasswordDto } from "./dto/change-password.dto";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { LoginDto } from "./dto/login.dto";
+import { ResendEmailOtpDto } from "./dto/resend-email-otp.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
+import { VerifyEmailOtpDto } from "./dto/verify-email-otp.dto";
+import { ConfigService } from "@nestjs/config";
+import { ApiResponse } from "src/common/dto/api-response.dto";
+import type { CookieOptions, Request, Response } from "express";
+import type { AuthRequest } from "./interfaces/auth-request.interface";
+import { JwtRefreshGuard } from "./guards/jwt-refresh.guard";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { parseDurationToMs } from "src/common/utils/duration.util";
+import type { RequestWithCookies } from "./interfaces/request-cookie.interface";
+import { AuthSecurityService } from "./auth-security.service";
+import { UserProfileResponse } from "src/users/dto/user-profile-response.dto";
+import { CsrfTokenResponseDto } from "./dto/csrf-token-response.dto";
+import { ChangePasswordResponseDto } from "./dto/change-password-response.dto";
+import { ForgotPasswordResponseDto } from "./dto/forgot-password-response.dto";
+import { OtpChallengeResponseDto } from "./dto/otp-challenge-response.dto";
+import { ResetPasswordResponseDto } from "./dto/reset-password-response.dto";
+import { VerifyEmailResponseDto } from "./dto/verify-email-response.dto";
 
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -47,19 +47,24 @@ export class AuthController {
 
   private get accessTokenMaxAgeMs(): number {
     return parseDurationToMs(
-      this.config.get<string>('jwt.expiresIn', '15m'),
+      this.config.get<string>("jwt.expiresIn", "15m"),
       15 * 60 * 1000,
     );
   }
 
   private get refreshTokenMaxAgeMs(): number {
     return parseDurationToMs(
-      this.config.get<string>('jwt.refreshExpiresIn', '7d'),
+      this.config.get<string>("jwt.refreshExpiresIn", "7d"),
       7 * 24 * 60 * 60 * 1000,
     );
   }
 
-  private setCookie(res: Response, name: string, value: string, maxAgeMs: number) {
+  private setCookie(
+    res: Response,
+    name: string,
+    value: string,
+    maxAgeMs: number,
+  ) {
     res.cookie(name, value, {
       ...this.baseCookieOptions,
       maxAge: maxAgeMs,
@@ -71,10 +76,10 @@ export class AuthController {
     accessToken: string,
     refreshToken: string,
   ) {
-    this.setCookie(res, 'accessToken', accessToken, this.accessTokenMaxAgeMs);
+    this.setCookie(res, "accessToken", accessToken, this.accessTokenMaxAgeMs);
     this.setCookie(
       res,
-      'refreshToken',
+      "refreshToken",
       refreshToken,
       this.refreshTokenMaxAgeMs,
     );
@@ -82,13 +87,15 @@ export class AuthController {
   }
 
   private clearAuthCookies(res: Response) {
-    res.clearCookie('accessToken', this.baseCookieOptions);
-    res.clearCookie('refreshToken', this.baseCookieOptions);
+    res.clearCookie("accessToken", this.baseCookieOptions);
+    res.clearCookie("refreshToken", this.baseCookieOptions);
     this.authSecurityService.clearCsrfCookie(res);
   }
 
-  @Get('csrf-token')
-  getCsrfToken(@Res({ passthrough: true }) res: Response): ApiResponse<{ csrfToken: string; headerName: string; }> {
+  @Get("csrf-token")
+  getCsrfToken(
+    @Res({ passthrough: true }) res: Response,
+  ): ApiResponse<{ csrfToken: string; headerName: string }> {
     const csrfToken = this.authSecurityService.issueCsrfCookie(
       res,
       this.refreshTokenMaxAgeMs,
@@ -99,28 +106,28 @@ export class AuthController {
         csrfToken,
         headerName: this.authSecurityService.csrfHeaderName,
       },
-      'CSRF token issued',
+      "CSRF token issued",
     );
   }
 
-  @Post('login')
+  @Post("login")
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() body: LoginDto,
     @Req() req: Request,
-    @Res({ passthrough : true}) res: Response,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<ApiResponse<UserProfileResponse>> {
-    const identifier = body.identifier ?? body.userName ?? '';
+    const identifier = body.identifier ?? body.userName ?? "";
     const { accessToken, refreshToken, user } = await this.authService.signIn(
       identifier,
       body.password,
       req.ip,
     );
     this.setAuthCookies(res, accessToken, refreshToken);
-    return ApiResponse.success(user, 'Login successful');
+    return ApiResponse.success(user, "Login successful");
   }
 
-  @Post('refresh')
+  @Post("refresh")
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtRefreshGuard)
   async refreshToken(
@@ -132,10 +139,10 @@ export class AuthController {
     );
 
     this.setAuthCookies(res, accessToken, refreshToken);
-    return ApiResponse.success(null, 'Session refreshed');
+    return ApiResponse.success(null, "Session refreshed");
   }
 
-  @Post('logout')
+  @Post("logout")
   @HttpCode(HttpStatus.OK)
   async logout(
     @Req() req: RequestWithCookies,
@@ -146,44 +153,47 @@ export class AuthController {
       req.cookies?.refreshToken,
     );
     this.clearAuthCookies(res);
-    return ApiResponse.success(null, 'Logged out');
+    return ApiResponse.success(null, "Logged out");
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('me')
+  @Get("me")
   getMe(@Req() req: AuthRequest): ApiResponse<UserProfileResponse> {
     const result = UserProfileResponse.fromData({
       id: req.user.userId,
-      userName: req.user.userName ?? '',
-      fullName: req.user.fullName ?? '',
+      userName: req.user.userName ?? "",
+      fullName: req.user.fullName ?? "",
       email: req.user.email,
       mustChangePassword: req.user.mustChangePassword ?? false,
       emailVerified: req.user.emailVerified ?? false,
-      role: req.user.role ?? '',
+      role: req.user.role ?? "",
       avatarUrl: undefined,
     });
-    return ApiResponse.success(result, 'Is authenticated');
+    return ApiResponse.success(result, "Is authenticated");
   }
 
-  @Post('verify-email-otp')
+  @Post("verify-email-otp")
   @HttpCode(HttpStatus.OK)
   async verifyEmailOtp(
     @Body() dto: VerifyEmailOtpDto,
   ): Promise<ApiResponse<VerifyEmailResponseDto>> {
-    const result = await this.authService.verifyEmailOtp(dto.email, dto.otp);
-    return ApiResponse.success(result, 'Email verified successfully');
+    const result = await this.authService.verifyEmailOtp(
+      dto.registrationId,
+      dto.otp,
+    );
+    return ApiResponse.success(result, "Email verified successfully");
   }
 
-  @Post('resend-email-otp')
+  @Post("resend-email-otp")
   @HttpCode(HttpStatus.OK)
   async resendEmailVerificationOtp(
     @Body() dto: ResendEmailOtpDto,
   ): Promise<ApiResponse<OtpChallengeResponseDto>> {
     const result = await this.authService.resendEmailVerificationOtp(dto.email);
-    return ApiResponse.success(result, 'Verification OTP sent');
+    return ApiResponse.success(result, "Verification OTP sent");
   }
 
-  @Post('forgot-password')
+  @Post("forgot-password")
   @HttpCode(HttpStatus.OK)
   async forgotPassword(
     @Body() dto: ForgotPasswordDto,
@@ -191,11 +201,11 @@ export class AuthController {
     const result = await this.authService.forgotPassword(dto.email);
     return ApiResponse.success(
       result,
-      'Password reset OTP sent if the account exists',
+      "Password reset OTP sent if the account exists",
     );
   }
 
-  @Post('reset-password')
+  @Post("reset-password")
   @HttpCode(HttpStatus.OK)
   async resetPassword(
     @Body() dto: ResetPasswordDto,
@@ -205,22 +215,22 @@ export class AuthController {
       dto.otp,
       dto.newPassword,
     );
-    return ApiResponse.success(result, 'Password reset successfully');
+    return ApiResponse.success(result, "Password reset successfully");
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('change-password')
+  @Post("change-password")
   @HttpCode(HttpStatus.OK)
   async changePassword(
     @Req() req: AuthRequest,
     @Body() dto: ChangePasswordDto,
-  ): Promise<ApiResponse<{ user: UserProfileResponse; }>> {
+  ): Promise<ApiResponse<{ user: UserProfileResponse }>> {
     const result = await this.authService.changePassword(
       req.user.userId,
       dto.currentPassword,
       dto.newPassword,
       (req as RequestWithCookies).cookies?.refreshToken,
     );
-    return ApiResponse.success(result, 'Password changed successfully');
+    return ApiResponse.success(result, "Password changed successfully");
   }
 }

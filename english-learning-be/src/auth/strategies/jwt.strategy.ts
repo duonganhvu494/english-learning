@@ -1,12 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
-import { UsersService } from 'src/users/users.service';
-import { JwtPayload } from '../interfaces/jwt-payload.interface';
-import { RequestWithCookies } from '../interfaces/request-cookie.interface';
-import { AuthSessionsService } from 'src/auth/redis/auth-sessions.service';
-import { errorPayload } from 'src/common/utils/error-payload.util';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { PassportStrategy } from "@nestjs/passport";
+import { Strategy } from "passport-jwt";
+import { ConfigService } from "@nestjs/config";
+import { UsersService } from "src/users/users.service";
+import { JwtPayload } from "../interfaces/jwt-payload.interface";
+import { RequestWithCookies } from "../interfaces/request-cookie.interface";
+import { AuthSessionsService } from "src/auth/redis/auth-sessions.service";
+import { errorPayload } from "src/common/utils/error-payload.util";
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -16,10 +16,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: (req: RequestWithCookies) => {
-        return req.cookies['accessToken'] ? req.cookies['accessToken'] : null;
+        return req.cookies["accessToken"] ? req.cookies["accessToken"] : null;
       },
       ignoreExpiration: false,
-      secretOrKey: config.getOrThrow<string>('jwt.secret'),
+      secretOrKey: config.getOrThrow<string>("jwt.secret"),
     });
   }
 
@@ -27,7 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.usersService.findById(payload.userId);
     if (!user || !user.isActive) {
       throw new UnauthorizedException(
-        errorPayload('Account is disabled', 'AUTH_ACCOUNT_DISABLED'),
+        errorPayload("Account is disabled", "AUTH_ACCOUNT_DISABLED"),
       );
     }
 
@@ -38,8 +38,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       if (isDenied) {
         throw new UnauthorizedException(
           errorPayload(
-            'Access token has been revoked',
-            'AUTH_ACCESS_TOKEN_REVOKED',
+            "Access token has been revoked",
+            "AUTH_ACCESS_TOKEN_REVOKED",
           ),
         );
       }
@@ -48,7 +48,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: user.id,
       email: user.email,
-      emailVerified: !user.emailVerificationRequired || user.emailVerifiedAt !== null,
+      emailVerified:
+        !user.emailVerificationRequired || user.emailVerifiedAt !== null,
       role: user.accountType,
       userName: user.userName,
       fullName: user.fullName,

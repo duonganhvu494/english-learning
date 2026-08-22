@@ -1,15 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { parseDurationToSeconds } from 'src/common/utils/duration.util';
-import { RedisService } from 'src/rbac/redis/redis.service';
-import { generateOtpCode, hashOtp, verifyOtp } from 'src/auth/utils/otp.util';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { parseDurationToSeconds } from "src/common/utils/duration.util";
+import { RedisService } from "src/common/redis/redis.service";
+import { generateOtpCode, hashOtp, verifyOtp } from "src/auth/utils/otp.util";
 
 type OtpChallengeRecord = {
   expiresAt: string;
   hash: string;
 };
 
-type OtpVerificationStatus = 'valid' | 'invalid' | 'expired';
+type OtpVerificationStatus = "valid" | "invalid" | "expired";
 
 @Injectable()
 export class AuthOtpService {
@@ -18,27 +18,40 @@ export class AuthOtpService {
     private readonly config: ConfigService,
   ) {}
 
-  issueEmailVerificationOtp(userId: string): Promise<{ code: string; expiresAt: Date }> {
+  issueEmailVerificationOtp(subjectId: string): Promise<{
+    code: string;
+    expiresAt: Date;
+  }> {
     return this.issueOtpChallenge(
-      this.buildEmailVerificationKey(userId),
-      'AUTH_EMAIL_VERIFICATION_OTP_EXPIRES_IN',
-      10 * 60,
-    );
-  }
-
-  issuePasswordResetOtp(userId: string): Promise<{ code: string; expiresAt: Date }> {
-    return this.issueOtpChallenge(
-      this.buildPasswordResetKey(userId),
-      'AUTH_PASSWORD_RESET_OTP_EXPIRES_IN',
+      this.buildEmailVerificationKey(subjectId),
+      "AUTH_EMAIL_VERIFICATION_OTP_EXPIRES_IN",
       10 * 60,
     );
   }
 
   verifyEmailVerificationOtp(
-    userId: string,
+    subjectId: string,
     otp: string,
   ): Promise<OtpVerificationStatus> {
-    return this.verifyOtpChallenge(this.buildEmailVerificationKey(userId), otp);
+    return this.verifyOtpChallenge(
+      this.buildEmailVerificationKey(subjectId),
+      otp,
+    );
+  }
+
+  clearEmailVerificationOtp(subjectId: string): Promise<void> {
+    return this.clearOtpChallenge(this.buildEmailVerificationKey(subjectId));
+  }
+
+  issuePasswordResetOtp(userId: string): Promise<{
+    code: string;
+    expiresAt: Date;
+  }> {
+    return this.issueOtpChallenge(
+      this.buildPasswordResetKey(userId),
+      "AUTH_PASSWORD_RESET_OTP_EXPIRES_IN",
+      10 * 60,
+    );
   }
 
   verifyPasswordResetOtp(
@@ -46,10 +59,6 @@ export class AuthOtpService {
     otp: string,
   ): Promise<OtpVerificationStatus> {
     return this.verifyOtpChallenge(this.buildPasswordResetKey(userId), otp);
-  }
-
-  clearEmailVerificationOtp(userId: string): Promise<void> {
-    return this.clearOtpChallenge(this.buildEmailVerificationKey(userId));
   }
 
   clearPasswordResetOtp(userId: string): Promise<void> {
@@ -60,21 +69,32 @@ export class AuthOtpService {
     redisKey: string,
     ttlConfigKey: string,
     fallbackTtlSeconds: number,
-  ): Promise<{ code: string; expiresAt: Date }> {
+  ): Promise<{
+    code: string;
+    expiresAt: Date;
+  }> {
     const ttlSeconds = parseDurationToSeconds(
       this.config.get<string>(ttlConfigKey),
       fallbackTtlSeconds,
     );
+
     const code = generateOtpCode();
     const hash = await hashOtp(code);
+
     const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
     const payload: OtpChallengeRecord = {
       expiresAt: expiresAt.toISOString(),
       hash,
     };
 
     await this.redisService.withClient(async (client) => {
-      await client.set(redisKey, JSON.stringify(payload), 'EX', ttlSeconds + 3600);
+      await client.set(
+        redisKey,
+        JSON.stringify(payload),
+        "EX",
+        ttlSeconds + 3600,
+      );
     });
 
     return {
@@ -88,35 +108,42 @@ export class AuthOtpService {
     otp: string,
   ): Promise<OtpVerificationStatus> {
     const normalizedOtp = otp.trim();
+
     const payload = await this.redisService.withClient(async (client) => {
       return client.get(redisKey);
     });
 
     if (!payload) {
-      return 'invalid';
+      return "invalid";
     }
 
-    let challenge: OtpChallengeRecord | null = null;
+    let challenge: OtpChallengeRecord;
+
     try {
       challenge = JSON.parse(payload) as OtpChallengeRecord;
     } catch {
       await this.clearOtpChallenge(redisKey);
-      return 'invalid';
+
+      return "invalid";
     }
 
     const expiresAtMs = new Date(challenge.expiresAt).getTime();
+
     if (!Number.isFinite(expiresAtMs) || expiresAtMs < Date.now()) {
       await this.clearOtpChallenge(redisKey);
-      return 'expired';
+
+      return "expired";
     }
 
     const isValid = await verifyOtp(normalizedOtp, challenge.hash);
+
     if (!isValid) {
-      return 'invalid';
+      return "invalid";
     }
 
     await this.clearOtpChallenge(redisKey);
-    return 'valid';
+
+    return "valid";
   }
 
   private async clearOtpChallenge(redisKey: string): Promise<void> {
@@ -125,8 +152,8 @@ export class AuthOtpService {
     });
   }
 
-  private buildEmailVerificationKey(userId: string): string {
-    return `auth:otp:email-verification:${userId}`;
+  private buildEmailVerificationKey(subjectId: string): string {
+    return `auth:otp:email-verification:${subjectId}`;
   }
 
   private buildPasswordResetKey(userId: string): string {

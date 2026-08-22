@@ -2,8 +2,9 @@ import {
   WorkspaceSubscriptionSource,
   WorkspaceSubscription,
   WorkspaceSubscriptionStatus,
-} from '../entities/workspace-subscription.entity';
-import { PlanResponseDto } from './plan-response.dto';
+} from "../entities/workspace-subscription.entity";
+
+import { PlanResponseDto } from "src/plans/dto/plan-response.dto";
 
 export class WorkspaceSubscriptionResponseDto {
   id: string;
@@ -32,6 +33,7 @@ export class WorkspaceSubscriptionResponseDto {
     subscription: WorkspaceSubscription,
   ): WorkspaceSubscriptionResponseDto {
     const dto = new WorkspaceSubscriptionResponseDto();
+
     dto.id = subscription.id;
     dto.workspaceId = subscription.workspace.id;
     dto.status = subscription.status;
@@ -42,7 +44,9 @@ export class WorkspaceSubscriptionResponseDto {
     dto.source = subscription.source;
     dto.paymentTransactionId = subscription.paymentTransactionId ?? null;
     dto.note = subscription.note;
+
     dto.plan = PlanResponseDto.fromEntity(subscription.plan);
+
     return dto;
   }
 }

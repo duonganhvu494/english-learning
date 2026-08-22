@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Workspace } from 'src/workspaces/entities/workspace.entity';
-import { Plan } from 'src/workspaces/entities/plan.entity';
+import { Plan } from 'src/plans/entities/plan.entity';
 import {
   BillingProvider,
   BillingSubscription,
@@ -81,7 +81,6 @@ export class PaymentTransaction {
   @Column({
     type: 'enum',
     enum: BillingProvider,
-    default: BillingProvider.MOCK,
   })
   provider: BillingProvider;
 

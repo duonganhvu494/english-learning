@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { PaymentTransaction } from 'src/billing/entities/payment-transaction.entity';
 import { Workspace } from './workspace.entity';
-import { Plan } from './plan.entity';
+import { Plan } from 'src/plans/entities/plan.entity';
 
 export enum WorkspaceSubscriptionStatus {
   TRIALING = 'trialing',
@@ -44,11 +44,11 @@ export class WorkspaceSubscription {
   @JoinColumn({ name: 'workspaceId' })
   workspace: Workspace;
 
-  @ManyToOne(() => Plan, (plan: Plan) => plan.workspaceSubscriptions, {
-    onDelete: 'RESTRICT',
-  })
-  @JoinColumn({ name: 'planId' })
-  plan: Plan;
+  @ManyToOne(() => Plan, {
+  onDelete: 'RESTRICT',
+})
+@JoinColumn({ name: 'planId' })
+plan: Plan;
 
   @Column({
     type: 'enum',

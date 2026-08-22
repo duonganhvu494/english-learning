@@ -1,21 +1,127 @@
-﻿import { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router';
-import { ArrowLeft, Upload, FileText, Download, CheckCircle } from 'lucide-react';
-import { toast } from 'sonner';
-import Button from '../../components/ui/Button';
-import Card, { CardBody, CardHeader } from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import { assignmentsApi, getApiErrorMessage, resolveApiUrl, submissionsApi } from '@/api';
-import type { AssignmentResponse, SubmissionResponse } from '@/types';
-import { formatDateTime } from '@/app/utils/format';
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router";
+import {
+  ArrowLeft,
+  BookOpen,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Download,
+  FileQuestion,
+  FileText,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import Button from "@/app/components/ui/Button";
+import Card, { CardBody, CardHeader } from "@/app/components/ui/Card";
+import Badge from "@/app/components/ui/Badge";
+
+import {
+  assignmentsApi,
+  classesApi,
+  getApiErrorMessage,
+  resolveApiUrl,
+  submissionsApi,
+} from "@/api";
+
+import type {
+  AssignmentResponse,
+  ClassResponse,
+  SubmissionResponse,
+} from "@/types";
+
+import { formatDateTime } from "@/app/utils/format";
+
+import StudentQuiz from "@/app/pages/student/components/StudentQuiz";
+import StudentManualSubmission from "@/app/pages/student/components/StudentManualSubmission";
+
+type SubmissionViewStatus = "not_submitted" | "submitted" | "graded";
+
+function assignmentTypeLabel(
+  type: AssignmentResponse["type"] | undefined,
+): string {
+  if (type === "quiz") {
+    return "Trắc nghiệm";
+  }
+
+  if (type === "manual") {
+    return "Bài tập nộp tệp";
+  }
+
+  return "Bài tập";
+}
+
+function assignmentStatusLabel(status: string | undefined): string {
+  const normalized = status?.toLowerCase();
+
+  if (normalized === "upcoming") {
+    return "Chưa mở";
+  }
+
+  if (normalized === "open") {
+    return "Đang mở";
+  }
+
+  if (normalized === "closed") {
+    return "Đã đóng";
+  }
+
+  return "Không xác định";
+}
+
+function assignmentStatusVariant(
+  status: string | undefined,
+): "info" | "success" | "default" {
+  const normalized = status?.toLowerCase();
+
+  if (normalized === "upcoming") {
+    return "info";
+  }
+
+  if (normalized === "open") {
+    return "success";
+  }
+
+  return "default";
+}
+
+function submissionStatusLabel(status: SubmissionViewStatus): string {
+  if (status === "graded") {
+    return "Đã chấm";
+  }
+
+  if (status === "submitted") {
+    return "Đã nộp";
+  }
+
+  return "Chưa nộp";
+}
+
+function submissionStatusVariant(
+  status: SubmissionViewStatus,
+): "success" | "warning" | "danger" {
+  if (status === "graded") {
+    return "success";
+  }
+
+  if (status === "submitted") {
+    return "warning";
+  }
+
+  return "danger";
+}
 
 export default function StudentAssignment() {
   const { assignmentId } = useParams();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [assignmentInfo, setAssignmentInfo] = useState<AssignmentResponse | null>(null);
+
+  const [assignmentInfo, setAssignmentInfo] =
+    useState<AssignmentResponse | null>(null);
+
   const [submission, setSubmission] = useState<SubmissionResponse | null>(null);
+
+  const [classes, setClasses] = useState<ClassResponse[]>([]);
+
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadData = async () => {
     if (!assignmentId) {
@@ -23,15 +129,33 @@ export default function StudentAssignment() {
     }
 
     setIsLoading(true);
+
     try {
-      const [assignment, mySubmission] = await Promise.all([
-        assignmentsApi.getAssignment(assignmentId),
-        submissionsApi.getMySubmission(assignmentId),
-      ]);
+      const assignment = await assignmentsApi.getAssignment(assignmentId);
+
       setAssignmentInfo(assignment);
-      setSubmission(mySubmission);
+
+      const classPromise = classesApi
+        .listMyClasses()
+        .catch(() => [] as ClassResponse[]);
+
+      if (assignment.type === "manual") {
+        const [classItems, mySubmission] = await Promise.all([
+          classPromise,
+
+          submissionsApi.getMySubmission(assignmentId),
+        ]);
+
+        setClasses(classItems);
+        setSubmission(mySubmission);
+      } else {
+        const classItems = await classPromise;
+
+        setClasses(classItems);
+        setSubmission(null);
+      }
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể tải thông tin bài tập'));
+      toast.error(getApiErrorMessage(error, "Không thể tải thông tin bài tập"));
     } finally {
       setIsLoading(false);
     }
@@ -41,148 +165,272 @@ export default function StudentAssignment() {
     void loadData();
   }, [assignmentId]);
 
-  const submissionStatus = useMemo(() => {
+  const submissionStatus = useMemo<SubmissionViewStatus>(() => {
     if (!submission?.submitted) {
-      return 'not_submitted';
+      return "not_submitted";
     }
-    if (submission.score !== null) {
-      return 'graded';
+
+    if (submission.score !== null && submission.score !== undefined) {
+      return "graded";
     }
-    return 'submitted';
+
+    return "submitted";
   }, [submission]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!assignmentId || !selectedFile || isSubmitting) {
-      return;
+  const className = useMemo(() => {
+    if (!assignmentInfo) {
+      return null;
     }
 
-    setIsSubmitting(true);
-    try {
-      const uploadSession = await submissionsApi.initMyUpload(assignmentId, {
-        fileName: selectedFile.name,
-        mimeType: selectedFile.type || 'application/octet-stream',
-        size: selectedFile.size,
-      });
-      toast.success(`Khoi tao upload thanh cong. UploadId: ${uploadSession.uploadId}`);
-      setSelectedFile(null);
-      await loadData();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể khởi tạo upload bài nộp'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    return (
+      classes.find((item) => item.id === assignmentInfo.classId)?.className ??
+      null
+    );
+  }, [assignmentInfo, classes]);
+
+  if (isLoading && !assignmentInfo) {
+    return (
+      <div className="p-6">
+        <div className="py-16 text-center text-sm text-gray-500">
+          Đang tải bài tập...
+        </div>
+      </div>
+    );
+  }
+
+  if (!assignmentInfo || !assignmentId) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardBody className="py-14 text-center">
+            <FileText className="w-10 h-10 text-gray-300 mx-auto" />
+
+            <h3 className="font-medium text-gray-800 mt-3">
+              Không tìm thấy bài tập
+            </h3>
+
+            <p className="text-sm text-gray-500 mt-1">
+              Bài tập không tồn tại hoặc bạn không có quyền truy cập.
+            </p>
+
+            <Link to="/student/assignments" className="inline-block mt-5">
+              <Button variant="outline">Quay lại danh sách</Button>
+            </Link>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
+
+  const isQuiz = assignmentInfo.type === "quiz";
+
+  const materials = assignmentInfo.materials ?? [];
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <Link to="/student/dashboard">
-          <Button variant="ghost" size="sm">
+      <div className="flex items-start gap-3">
+        <Link to="/student/assignments">
+          <Button variant="ghost" size="sm" title="Quay lại">
             <ArrowLeft className="w-4 h-4" />
           </Button>
         </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">{assignmentInfo?.title || 'Assignment'}</h1>
-          <p className="text-gray-600 mt-1">Class {assignmentInfo?.classId || '-'}</p>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {assignmentInfo.title}
+            </h1>
+
+            <Badge variant={assignmentStatusVariant(assignmentInfo.status)}>
+              {assignmentStatusLabel(assignmentInfo.status)}
+            </Badge>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-gray-500">
+            {className && (
+              <span className="flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4" />
+
+                {className}
+              </span>
+            )}
+
+            <span className="flex items-center gap-1.5">
+              {isQuiz ? (
+                <FileQuestion className="w-4 h-4" />
+              ) : (
+                <FileText className="w-4 h-4" />
+              )}
+
+              {assignmentTypeLabel(assignmentInfo.type)}
+            </span>
+          </div>
         </div>
-        {submissionStatus === 'not_submitted' && <Badge variant="danger">Chưa nộp</Badge>}
-        {submissionStatus === 'submitted' && <Badge variant="warning">Cho cham</Badge>}
-        {submissionStatus === 'graded' && <Badge variant="success">Da cham</Badge>}
+
+        {!isQuiz && (
+          <Badge variant={submissionStatusVariant(submissionStatus)}>
+            {submissionStatusLabel(submissionStatus)}
+          </Badge>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <h3 className="font-semibold text-gray-900">Thong tin bai tap</h3>
+              <h3 className="font-semibold text-gray-900">Thông tin bài tập</h3>
             </CardHeader>
-            <CardBody className="space-y-4">
+
+            <CardBody className="space-y-5">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Mô tả</p>
-                <p className="text-gray-900">{assignmentInfo?.description || 'Không có mô tả'}</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">Mô tả</p>
+
+                <p className="text-gray-700 whitespace-pre-wrap leading-6">
+                  {assignmentInfo.description ||
+                    "Giáo viên chưa thêm mô tả cho bài tập này."}
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Loai</p>
-                  <p className="font-medium text-gray-900">{assignmentInfo?.type || '-'}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-2 text-gray-500">
+                    {isQuiz ? (
+                      <FileQuestion className="w-4 h-4" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+
+                    <span className="text-sm">Hình thức</span>
+                  </div>
+
+                  <p className="font-medium text-gray-900 mt-2">
+                    {assignmentTypeLabel(assignmentInfo.type)}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Trang thai</p>
-                  <p className="font-medium text-gray-900">{assignmentInfo?.status || '-'}</p>
+
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <CalendarDays className="w-4 h-4" />
+
+                    <span className="text-sm">Mở từ</span>
+                  </div>
+
+                  <p className="font-medium text-gray-900 mt-2">
+                    {formatDateTime(assignmentInfo.timeStart)}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Mo luc</p>
-                  <p className="font-medium text-gray-900">{formatDateTime(assignmentInfo?.timeStart)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Hạn nộp</p>
-                  <p className="font-medium text-red-600">{formatDateTime(assignmentInfo?.timeEnd)}</p>
+
+                <div className="p-4 bg-red-50 rounded-xl">
+                  <div className="flex items-center gap-2 text-red-500">
+                    <Clock3 className="w-4 h-4" />
+
+                    <span className="text-sm">Hạn nộp</span>
+                  </div>
+
+                  <p className="font-medium text-red-700 mt-2">
+                    {formatDateTime(assignmentInfo.timeEnd)}
+                  </p>
                 </div>
               </div>
             </CardBody>
           </Card>
 
           <Card>
-            <CardHeader className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Tài liệu đính kèm</h3>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-3">
-                {(assignmentInfo?.materials || []).length === 0 && (
-                  <div className="text-sm text-gray-500">Không có tài liệu đính kèm</div>
-                )}
-                {(assignmentInfo?.materials || []).map((material) => (
-                  <div
-                    key={material.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{material.fileName}</p>
-                        <p className="text-sm text-gray-600">{material.mimeType}</p>
-                      </div>
-                    </div>
-                    <a href={resolveApiUrl(material.downloadUrl)} target="_blank" rel="noreferrer">
-                      <Button variant="ghost" size="sm">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </a>
-                  </div>
-                ))}
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+
+                <div>
+                  <h3 className="font-semibold text-gray-900">
+                    Tài liệu đính kèm
+                  </h3>
+
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    Tài liệu giáo viên cung cấp cho bài tập này.
+                  </p>
+                </div>
               </div>
+            </CardHeader>
+
+            <CardBody>
+              {materials.length === 0 ? (
+                <div className="py-9 text-center">
+                  <FileText className="w-9 h-9 text-gray-300 mx-auto" />
+
+                  <p className="text-sm text-gray-500 mt-3">
+                    Không có tài liệu đính kèm
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {materials.map((material) => (
+                    <div
+                      key={material.id}
+                      className="flex items-center justify-between gap-4 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                          <FileText className="w-5 h-5 text-blue-600" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 truncate">
+                            {material.fileName}
+                          </p>
+
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            Tài liệu bài tập
+                          </p>
+                        </div>
+                      </div>
+
+                      <a
+                        href={resolveApiUrl(material.downloadUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <Button variant="outline" size="sm">
+                          <Download className="w-4 h-4" />
+                          Tải xuống
+                        </Button>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardBody>
           </Card>
 
-          {submissionStatus === 'graded' && (
+          {!isQuiz && submissionStatus === "graded" && (
             <Card>
-              <CardHeader className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <h3 className="font-semibold text-gray-900">Ket qua</h3>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+
+                  <h3 className="font-semibold text-gray-900">
+                    Kết quả bài làm
+                  </h3>
+                </div>
               </CardHeader>
-              <CardBody>
-                <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg mb-4">
-                  <p className="text-5xl font-bold text-green-600 mb-2">
+
+              <CardBody className="space-y-4">
+                <div className="text-center p-6 bg-green-50 rounded-xl">
+                  <p className="text-sm text-gray-600">Điểm của bạn</p>
+
+                  <p className="text-5xl font-bold text-green-600 mt-2">
                     {submission?.score}
                   </p>
-                  <p className="text-sm text-gray-600">Diem cua ban</p>
                 </div>
 
                 {submission?.feedback && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm font-medium text-gray-900 mb-2">Nhận xét của giáo viên</p>
-                    <p className="text-sm text-gray-700 italic">"{submission.feedback}"</p>
+                  <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                    <p className="text-sm font-medium text-gray-900">
+                      Nhận xét của giáo viên
+                    </p>
+
+                    <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">
+                      {submission.feedback}
+                    </p>
                   </div>
                 )}
               </CardBody>
@@ -190,72 +438,22 @@ export default function StudentAssignment() {
           )}
         </div>
 
-        <div>
-          <Card>
-            <CardHeader>
-              <h3 className="font-semibold text-gray-900">Nop bai</h3>
-            </CardHeader>
-            <CardBody>
-              {submissionStatus === 'not_submitted' && (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tai len bai lam</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer">
-                      <input
-                        type="file"
-                        onChange={handleFileChange}
-                        className="hidden"
-                        id="file-upload"
-                        accept=".pdf,.doc,.docx"
-                      />
-                      <label htmlFor="file-upload" className="cursor-pointer">
-                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600">
-                          {selectedFile ? selectedFile.name : 'Keo tha file hoac click de chon'}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">PDF, DOC, DOCX</p>
-                      </label>
-                    </div>
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={!selectedFile || isSubmitting || isLoading}>
-                    <Upload className="w-4 h-4" />
-                    {isSubmitting ? 'Đang khởi tạo upload...' : 'Khởi tạo nộp bài'}
-                  </Button>
-
-                  <p className="text-xs text-gray-500 text-center">
-                    Trang hien tai dang dung endpoint upload-init. Luong upload day du co the duoc bo sung sau.
-                  </p>
-                </form>
-              )}
-
-              {submissionStatus !== 'not_submitted' && (
-                <div className="space-y-4">
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="w-4 h-4 text-blue-600" />
-                      <p className="font-medium text-blue-900">Đã có bài nộp</p>
-                    </div>
-                    <p className="text-sm text-blue-700">Nop luc: {formatDateTime(submission?.submittedAt)}</p>
-                    <p className="text-sm text-blue-700">File: {submission?.material?.fileName || '-'}</p>
-                  </div>
-
-                  {submission?.material?.downloadUrl && (
-                    <a href={resolveApiUrl(submission.material.downloadUrl)} target="_blank" rel="noreferrer">
-                      <Button variant="outline" className="w-full">
-                        <Download className="w-4 h-4" />
-                        Tai bai nop
-                      </Button>
-                    </a>
-                  )}
-                </div>
-              )}
-            </CardBody>
-          </Card>
+        <div className="space-y-6">
+          {isQuiz ? (
+            <StudentQuiz
+              assignmentId={assignmentId}
+              assignmentStatus={assignmentInfo.status}
+            />
+          ) : (
+            <StudentManualSubmission
+              assignmentId={assignmentId}
+              assignmentStatus={assignmentInfo.status}
+              submission={submission}
+              onUploaded={loadData}
+            />
+          )}
         </div>
       </div>
     </div>
   );
 }
-
-

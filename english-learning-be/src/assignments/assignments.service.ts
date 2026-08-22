@@ -1,28 +1,29 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, Repository } from "typeorm";
 import {
   Material,
   MaterialStatus,
-} from 'src/materials/entities/material.entity';
-import { SessionEntity } from 'src/sessions/entities/session.entity';
-import { StorageDownloadTarget } from 'src/storage/interfaces/storage-download-target.interface';
-import { S3StorageService } from 'src/storage/s3-storage.service';
-import { SubmissionEntity } from 'src/submissions/entities/submission.entity';
-import { User } from 'src/users/entities/user.entity';
-import { AssignmentDeleteResponseDto } from './dto/assignment-delete-response.dto';
-import { AssignmentResponseDto } from './dto/assignment-response.dto';
-import { CreateAssignmentDto } from './dto/create-assignment.dto';
-import { AssignmentCreatedEvent } from './events/assignment-created.event';
-import { AssignmentMaterialsPublishedEvent } from './events/assignment-materials-published.event';
-import { AssignmentEntity, AssignmentType } from './entities/assignment.entity';
-import { AssignmentMaterial } from './entities/assignment-material.entity';
-import { AssignmentQuizAttemptEntity } from './entities/assignment-quiz-attempt.entity';
-import { errorPayload } from 'src/common/utils/error-payload.util';
-import { resolveNextSequentialCode } from 'src/common/utils/sequential-code.util';
-import { WORKSPACE_PLAN_FEATURE_KEYS } from 'src/workspaces/constants/workspace-plan-feature-key.constants';
-import { WorkspaceEntitlementService } from 'src/workspaces/workspace-entitlement.service';
+} from "src/materials/entities/material.entity";
+import { SessionEntity } from "src/sessions/entities/session.entity";
+import { StorageDownloadTarget } from "src/storage/interfaces/storage-download-target.interface";
+import { S3StorageService } from "src/storage/s3-storage.service";
+import { SubmissionEntity } from "src/submissions/entities/submission.entity";
+import { User } from "src/users/entities/user.entity";
+import { ClassStudent } from "src/classes/entities/class-student.entity";
+import { AssignmentDeleteResponseDto } from "./dto/assignment-delete-response.dto";
+import { AssignmentResponseDto } from "./dto/assignment-response.dto";
+import { CreateAssignmentDto } from "./dto/create-assignment.dto";
+import { AssignmentCreatedEvent } from "./events/assignment-created.event";
+import { AssignmentMaterialsPublishedEvent } from "./events/assignment-materials-published.event";
+import { AssignmentEntity, AssignmentType } from "./entities/assignment.entity";
+import { AssignmentMaterial } from "./entities/assignment-material.entity";
+import { AssignmentQuizAttemptEntity } from "./entities/assignment-quiz-attempt.entity";
+import { errorPayload } from "src/common/utils/error-payload.util";
+import { resolveNextSequentialCode } from "src/common/utils/sequential-code.util";
+import { PLAN_FEATURE_KEYS } from "src/plans/constants/plan-feature-key.constants";
+import { WorkspaceEntitlementService } from "src/workspaces/workspace-entitlement.service";
 
 @Injectable()
 export class AssignmentsService {
@@ -45,6 +46,9 @@ export class AssignmentsService {
     @InjectRepository(SessionEntity)
     private readonly sessionRepo: Repository<SessionEntity>,
 
+    @InjectRepository(ClassStudent)
+    private readonly classStudentRepo: Repository<ClassStudent>,
+
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
 
@@ -65,7 +69,7 @@ export class AssignmentsService {
     if (dto.type === AssignmentType.QUIZ) {
       await this.workspaceEntitlementService.assertFeatureEnabled(
         session.classEntity.workspace.id,
-        WORKSPACE_PLAN_FEATURE_KEYS.QUIZ_ASSIGNMENTS,
+        PLAN_FEATURE_KEYS.QUIZ_ASSIGNMENTS,
       );
     }
 
@@ -92,14 +96,15 @@ export class AssignmentsService {
 
     this.ensureNoDuplicateAssignmentTitle(scopedAssignments, normalizedTitle);
     const code = resolveNextSequentialCode(
-      'ASM',
+      "ASM",
       scopedAssignments.map((existingAssignment) => existingAssignment.code),
     );
 
     const assignment = await this.assignmentRepo.manager.transaction(
       async (manager) => {
         const assignmentRepo = manager.getRepository(AssignmentEntity);
-        const assignmentMaterialRepo = manager.getRepository(AssignmentMaterial);
+        const assignmentMaterialRepo =
+          manager.getRepository(AssignmentMaterial);
 
         const createdAssignment = assignmentRepo.create({
           session,
@@ -169,11 +174,61 @@ export class AssignmentsService {
         },
       },
       order: {
-        timeStart: 'ASC',
-        timeEnd: 'ASC',
-        createdAt: 'ASC',
+        timeStart: "ASC",
+        timeEnd: "ASC",
+        createdAt: "ASC",
         assignmentMaterials: {
-          sortOrder: 'ASC',
+          sortOrder: "ASC",
+        },
+      },
+    });
+
+    return assignments.map((assignment) =>
+      AssignmentResponseDto.fromEntity(assignment),
+    );
+  }
+
+  async listMyAssignments(studentId: string): Promise<AssignmentResponseDto[]> {
+    const memberships = await this.classStudentRepo.find({
+      where: {
+        student: {
+          id: studentId,
+        },
+      },
+      relations: {
+        classEntity: true,
+      },
+    });
+
+    const classIds = [
+      ...new Set(memberships.map((membership) => membership.classEntity.id)),
+    ];
+
+    if (classIds.length === 0) {
+      return [];
+    }
+
+    const assignments = await this.assignmentRepo.find({
+      where: {
+        session: {
+          classEntity: {
+            id: In(classIds),
+          },
+        },
+      },
+      relations: {
+        session: {
+          classEntity: true,
+        },
+        assignmentMaterials: {
+          material: true,
+        },
+      },
+      order: {
+        timeEnd: "ASC",
+        createdAt: "ASC",
+        assignmentMaterials: {
+          sortOrder: "ASC",
         },
       },
     });
@@ -199,7 +254,7 @@ export class AssignmentsService {
     });
     if (!assignment) {
       throw new BadRequestException(
-        errorPayload('Assignment not found', 'ASSIGNMENT_NOT_FOUND'),
+        errorPayload("Assignment not found", "ASSIGNMENT_NOT_FOUND"),
       );
     }
 
@@ -217,7 +272,7 @@ export class AssignmentsService {
     });
     if (!assignment) {
       throw new BadRequestException(
-        errorPayload('Assignment not found', 'ASSIGNMENT_NOT_FOUND'),
+        errorPayload("Assignment not found", "ASSIGNMENT_NOT_FOUND"),
       );
     }
 
@@ -237,8 +292,8 @@ export class AssignmentsService {
     if (submissionCount > 0) {
       throw new BadRequestException(
         errorPayload(
-          'Cannot delete assignment after students have submitted work',
-          'ASSIGNMENT_DELETE_BLOCKED_HAS_SUBMISSIONS',
+          "Cannot delete assignment after students have submitted work",
+          "ASSIGNMENT_DELETE_BLOCKED_HAS_SUBMISSIONS",
         ),
       );
     }
@@ -246,8 +301,8 @@ export class AssignmentsService {
     if (attemptCount > 0) {
       throw new BadRequestException(
         errorPayload(
-          'Cannot delete assignment after students have started quiz attempts',
-          'ASSIGNMENT_DELETE_BLOCKED_HAS_ATTEMPTS',
+          "Cannot delete assignment after students have started quiz attempts",
+          "ASSIGNMENT_DELETE_BLOCKED_HAS_ATTEMPTS",
         ),
       );
     }
@@ -272,8 +327,8 @@ export class AssignmentsService {
     if (!assignmentMaterial) {
       throw new BadRequestException(
         errorPayload(
-          'Material is not attached to this assignment',
-          'ASSIGNMENT_MATERIAL_NOT_ATTACHED',
+          "Material is not attached to this assignment",
+          "ASSIGNMENT_MATERIAL_NOT_ATTACHED",
         ),
       );
     }
@@ -285,14 +340,14 @@ export class AssignmentsService {
     ) {
       throw new BadRequestException(
         errorPayload(
-          'Assignment material is not ready for download',
-          'ASSIGNMENT_MATERIAL_NOT_READY',
+          "Assignment material is not ready for download",
+          "ASSIGNMENT_MATERIAL_NOT_READY",
         ),
       );
     }
 
     return {
-      type: 'remote',
+      type: "remote",
       url: await this.s3StorageService.createSignedDownloadUrl({
         bucket: assignmentMaterial.material.bucket,
         objectKey: assignmentMaterial.material.objectKey,
@@ -312,7 +367,7 @@ export class AssignmentsService {
     });
     if (!session) {
       throw new BadRequestException(
-        errorPayload('Session not found', 'ASSIGNMENT_SESSION_NOT_FOUND'),
+        errorPayload("Session not found", "ASSIGNMENT_SESSION_NOT_FOUND"),
       );
     }
 
@@ -325,7 +380,7 @@ export class AssignmentsService {
     });
     if (!actor) {
       throw new BadRequestException(
-        errorPayload('User not found', 'ASSIGNMENT_ACTOR_NOT_FOUND'),
+        errorPayload("User not found", "ASSIGNMENT_ACTOR_NOT_FOUND"),
       );
     }
 
@@ -351,8 +406,8 @@ export class AssignmentsService {
     if (materials.length !== uniqueMaterialIds.length) {
       throw new BadRequestException(
         errorPayload(
-          'One or more materials were not found in this workspace',
-          'ASSIGNMENT_MATERIALS_NOT_FOUND',
+          "One or more materials were not found in this workspace",
+          "ASSIGNMENT_MATERIALS_NOT_FOUND",
         ),
       );
     }
@@ -367,8 +422,8 @@ export class AssignmentsService {
     ) {
       throw new BadRequestException(
         errorPayload(
-          'One or more materials are not ready to use',
-          'ASSIGNMENT_MATERIALS_NOT_READY',
+          "One or more materials are not ready to use",
+          "ASSIGNMENT_MATERIALS_NOT_READY",
         ),
       );
     }
@@ -381,8 +436,8 @@ export class AssignmentsService {
       if (!material) {
         throw new BadRequestException(
           errorPayload(
-            'One or more materials were not found in this workspace',
-            'ASSIGNMENT_MATERIALS_NOT_FOUND',
+            "One or more materials were not found in this workspace",
+            "ASSIGNMENT_MATERIALS_NOT_FOUND",
           ),
         );
       }
@@ -395,7 +450,7 @@ export class AssignmentsService {
     const normalizedTitle = title.trim();
     if (!normalizedTitle) {
       throw new BadRequestException(
-        errorPayload('title can not be empty', 'ASSIGNMENT_TITLE_REQUIRED'),
+        errorPayload("title can not be empty", "ASSIGNMENT_TITLE_REQUIRED"),
       );
     }
 
@@ -418,21 +473,21 @@ export class AssignmentsService {
     const timeEnd = new Date(timeEndInput);
     if (Number.isNaN(timeStart.getTime())) {
       throw new BadRequestException(
-        errorPayload('timeStart is invalid', 'ASSIGNMENT_TIME_START_INVALID'),
+        errorPayload("timeStart is invalid", "ASSIGNMENT_TIME_START_INVALID"),
       );
     }
 
     if (Number.isNaN(timeEnd.getTime())) {
       throw new BadRequestException(
-        errorPayload('timeEnd is invalid', 'ASSIGNMENT_TIME_END_INVALID'),
+        errorPayload("timeEnd is invalid", "ASSIGNMENT_TIME_END_INVALID"),
       );
     }
 
     if (timeEnd <= timeStart) {
       throw new BadRequestException(
         errorPayload(
-          'timeEnd must be greater than timeStart',
-          'ASSIGNMENT_TIME_WINDOW_INVALID',
+          "timeEnd must be greater than timeStart",
+          "ASSIGNMENT_TIME_WINDOW_INVALID",
         ),
       );
     }
@@ -441,7 +496,7 @@ export class AssignmentsService {
   }
 
   private ensureNoDuplicateAssignmentTitle(
-    scopedAssignments: Array<Pick<AssignmentEntity, 'id' | 'title'>>,
+    scopedAssignments: Array<Pick<AssignmentEntity, "id" | "title">>,
     title: string,
   ): void {
     const duplicateAssignment = scopedAssignments.find(
@@ -452,8 +507,8 @@ export class AssignmentsService {
     if (duplicateAssignment) {
       throw new BadRequestException(
         errorPayload(
-          'An assignment with the same title already exists in this session',
-          'ASSIGNMENT_TITLE_ALREADY_EXISTS_IN_SESSION',
+          "An assignment with the same title already exists in this session",
+          "ASSIGNMENT_TITLE_ALREADY_EXISTS_IN_SESSION",
         ),
       );
     }

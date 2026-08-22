@@ -9,7 +9,7 @@ import {
 } from "@/app/utils/client-storage";
 
 export const API_BASE_URL =
-  import.meta.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "http://localhost:5001";
+  import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:5000";
 
 export const http = axios.create({
   baseURL: API_BASE_URL,

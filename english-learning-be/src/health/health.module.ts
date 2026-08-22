@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { RedisModule } from 'src/rbac/redis/redis.module';
+import { RedisModule } from 'src/common/redis/redis.module';
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
 

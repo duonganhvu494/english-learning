@@ -1,12 +1,12 @@
 import type { UserProfile } from './users';
 
 export interface VerifyEmailOtpDto {
-  email: string;
+  registrationId: string;
   otp: string;
 }
 
 export interface ResendEmailOtpDto {
-  email: string;
+  registrationId: string;
 }
 
 export interface ForgotPasswordDto {

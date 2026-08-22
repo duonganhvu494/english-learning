@@ -1,4 +1,5 @@
-import type { UserProfile } from './users';
+import type { UserProfile } from "./users";
+import type { PlanResponse } from "./plans";
 
 export interface CreateWorkspaceDto {
   name: string;
@@ -36,41 +37,45 @@ export interface WorkspaceStudentListItem {
 
 export interface WorkspaceStudentResponse {
   workspaceId: string;
-  mode: 'created' | 'attached' | 'already_assigned';
+
+  mode:
+    | "created"
+    | "attached"
+    | "already_assigned";
+
   role: string;
   user: UserProfile;
 }
 
-export interface PlanFeatureValue {
-  featureKey: string;
-  valueType: string;
-  valueString?: string | null;
-  valueNumber?: number | null;
-  valueBoolean?: boolean | null;
-}
+export type WorkspaceSubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "suspended"
+  | "cancelled"
+  | "expired";
 
-export interface PlanResponse {
-  id: string;
-  code: string;
-  name: string;
-  description: string | null;
-  monthlyPriceCents: number | null;
-  isPublic: boolean;
-  isActive: boolean;
-  sortOrder: number;
-  features: PlanFeatureValue[];
-}
+export type WorkspaceSubscriptionSource =
+  | "workspace_creation"
+  | "billing_payment"
+  | "billing_fallback"
+  | "admin_override";
 
 export interface WorkspaceSubscriptionResponse {
   id: string;
   workspaceId: string;
-  status: string;
+
+  status: WorkspaceSubscriptionStatus;
+
   startedAt: string;
   endedAt: string | null;
+
   trialEndsAt: string | null;
   cancelledAt: string | null;
-  source: string;
+
+  source: WorkspaceSubscriptionSource;
+
   paymentTransactionId: string | null;
   note: string | null;
+
   plan: PlanResponse;
 }
