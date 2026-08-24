@@ -7,7 +7,14 @@ import Button from "@/app/components/ui/Button";
 import Input from "@/app/components/ui/Input";
 
 import { authApi, getApiErrorMessage } from "@/api";
+
 import { getCurrentUser, setCurrentUser } from "@/app/utils/client-storage";
+
+type ChangePasswordErrors = {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+};
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
@@ -20,8 +27,9 @@ export default function ChangePasswordPage() {
     confirmPassword: "",
   });
 
+  const [errors, setErrors] = useState<ChangePasswordErrors>({});
+
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const passwordRequirements = useMemo(
     () => [
@@ -45,6 +53,54 @@ export default function ChangePasswordPage() {
     [formData.newPassword],
   );
 
+  const clearError = (field: keyof ChangePasswordErrors) => {
+    setErrors((previous) => {
+      if (!previous[field]) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [field]: undefined,
+      };
+    });
+  };
+
+  const validateForm = () => {
+    const nextErrors: ChangePasswordErrors = {};
+
+    if (!formData.currentPassword) {
+      nextErrors.currentPassword = "Vui lòng nhập mật khẩu hiện tại";
+    }
+
+    if (!formData.newPassword) {
+      nextErrors.newPassword = "Vui lòng nhập mật khẩu mới";
+    } else if (formData.newPassword.length < 6) {
+      nextErrors.newPassword = "Mật khẩu phải có tối thiểu 6 ký tự";
+    } else if (!/[A-Z]/.test(formData.newPassword)) {
+      nextErrors.newPassword = "Mật khẩu phải có ít nhất 1 chữ hoa";
+    } else if (!/[a-z]/.test(formData.newPassword)) {
+      nextErrors.newPassword = "Mật khẩu phải có ít nhất 1 chữ thường";
+    } else if (!/\d/.test(formData.newPassword)) {
+      nextErrors.newPassword = "Mật khẩu phải có ít nhất 1 chữ số";
+    } else if (
+      formData.currentPassword &&
+      formData.currentPassword === formData.newPassword
+    ) {
+      nextErrors.newPassword = "Mật khẩu mới phải khác mật khẩu hiện tại";
+    }
+
+    if (!formData.confirmPassword) {
+      nextErrors.confirmPassword = "Vui lòng xác nhận mật khẩu mới";
+    } else if (formData.newPassword !== formData.confirmPassword) {
+      nextErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
+    }
+
+    setErrors(nextErrors);
+
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -52,20 +108,7 @@ export default function ChangePasswordPage() {
       return;
     }
 
-    setError("");
-
-    if (formData.newPassword !== formData.confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp");
-      return;
-    }
-
-    if (formData.newPassword.length < 6) {
-      setError("Mật khẩu phải có tối thiểu 6 ký tự");
-      return;
-    }
-
-    if (formData.currentPassword === formData.newPassword) {
-      setError("Mật khẩu mới phải khác mật khẩu hiện tại");
+    if (!validateForm()) {
       return;
     }
 
@@ -74,6 +117,7 @@ export default function ChangePasswordPage() {
     try {
       const updatedUser = await authApi.changePassword({
         currentPassword: formData.currentPassword,
+
         newPassword: formData.newPassword,
       });
 
@@ -90,7 +134,7 @@ export default function ChangePasswordPage() {
         },
       );
     } catch (error) {
-      setError(getApiErrorMessage(error, "Không thể đổi mật khẩu"));
+      toast.error(getApiErrorMessage(error, "Không thể đổi mật khẩu"));
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +149,7 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
@@ -127,17 +171,25 @@ export default function ChangePasswordPage() {
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-8">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <Input
               label="Mật khẩu hiện tại"
               type="password"
+              name="currentPassword"
               value={formData.currentPassword}
-              onChange={(e) =>
+              error={errors.currentPassword}
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   currentPassword: e.target.value,
-                })
-              }
+                });
+
+                clearError("currentPassword");
+
+                if (errors.newPassword) {
+                  clearError("newPassword");
+                }
+              }}
               placeholder="Nhập mật khẩu tạm"
               required
             />
@@ -145,13 +197,21 @@ export default function ChangePasswordPage() {
             <Input
               label="Mật khẩu mới"
               type="password"
+              name="newPassword"
               value={formData.newPassword}
-              onChange={(e) =>
+              error={errors.newPassword}
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   newPassword: e.target.value,
-                })
-              }
+                });
+
+                clearError("newPassword");
+
+                if (errors.confirmPassword) {
+                  clearError("confirmPassword");
+                }
+              }}
               placeholder="Nhập mật khẩu mới"
               required
             />
@@ -192,15 +252,18 @@ export default function ChangePasswordPage() {
             <Input
               label="Xác nhận mật khẩu mới"
               type="password"
+              name="confirmPassword"
               value={formData.confirmPassword}
-              onChange={(e) =>
+              error={errors.confirmPassword}
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   confirmPassword: e.target.value,
-                })
-              }
+                });
+
+                clearError("confirmPassword");
+              }}
               placeholder="Nhập lại mật khẩu mới"
-              error={error}
               required
             />
 

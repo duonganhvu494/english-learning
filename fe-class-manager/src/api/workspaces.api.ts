@@ -1,6 +1,7 @@
 import type {
   CreateStudentDto,
   CreateWorkspaceDto,
+  StudentDetailResponse,
   WorkspaceDetail,
   WorkspaceResponse,
   WorkspaceStudentListItem,
@@ -17,15 +18,11 @@ export const workspacesApi = {
   ): Promise<WorkspaceResponse> {
     await authApi.ensureCsrfToken();
 
-    return unwrap<WorkspaceResponse>(
-      http.post("/workspaces", payload),
-    );
+    return unwrap<WorkspaceResponse>(http.post("/workspaces", payload));
   },
 
   async getMyWorkspace(): Promise<WorkspaceDetail> {
-    return unwrap<WorkspaceDetail>(
-      http.get("/workspaces/me"),
-    );
+    return unwrap<WorkspaceDetail>(http.get("/workspaces/me"));
   },
 
   async getMySubscription(): Promise<WorkspaceSubscriptionResponse> {
@@ -38,9 +35,7 @@ export const workspacesApi = {
     workspaceId: string,
   ): Promise<WorkspaceStudentListItem[]> {
     return unwrap<WorkspaceStudentListItem[]>(
-      http.get(
-        `/workspaces/${workspaceId}/students`,
-      ),
+      http.get(`/workspaces/${workspaceId}/students`),
     );
   },
 
@@ -51,10 +46,16 @@ export const workspacesApi = {
     await authApi.ensureCsrfToken();
 
     return unwrap<WorkspaceStudentResponse>(
-      http.post(
-        `/workspaces/${workspaceId}/students`,
-        payload,
-      ),
+      http.post(`/workspaces/${workspaceId}/students`, payload),
+    );
+  },
+
+  async getWorkspaceStudentDetail(
+    workspaceId: string,
+    studentId: string,
+  ): Promise<StudentDetailResponse> {
+    return unwrap<StudentDetailResponse>(
+      http.get(`/workspaces/${workspaceId}/students/${studentId}/detail`),
     );
   },
 };

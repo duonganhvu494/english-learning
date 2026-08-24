@@ -1,8 +1,8 @@
 export type MaterialCategory =
-  | 'general'
-  | 'lecture'
-  | 'assignment'
-  | 'submission';
+  | "general"
+  | "lecture"
+  | "assignment"
+  | "submission";
 
 export interface InitMaterialUploadDto {
   title?: string;
@@ -70,10 +70,20 @@ export interface MaterialResponse {
   fileName: string;
   mimeType: string | null;
   size: number | null;
-  category: MaterialCategory | string;
+  category: MaterialCategory;
   uploadedBy: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MaterialSummary {
+  id: string;
+  title: string;
+  fileName: string;
+  mimeType: string | null;
+  size: number | null;
+  category: MaterialCategory;
+  downloadUrl: string;
 }
 
 export interface MaterialDeleteResponse {

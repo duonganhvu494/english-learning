@@ -1,28 +1,36 @@
-// src/rbac/rbac.service.ts
-import { BadRequestException, Injectable, OnModuleInit } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Not, Repository } from "typeorm";
-import { ClassEntity } from "src/classes/entities/class.entity";
+
 import { ClassStudent } from "src/classes/entities/class-student.entity";
+import { User } from "src/users/entities/user.entity";
+import {
+  WorkspaceMember,
+  WorkspaceMemberStatus,
+} from "src/workspaces/entities/workspace-member.entity";
+
 import { CreateClassRoleDto } from "./dto/create-class-role.dto";
 import { CreateCustomRoleDto } from "./dto/create-custom-role.dto";
 import { CustomRoleResponseDto } from "./dto/custom-role-response.dto";
 import { DeleteRoleResponseDto } from "./dto/delete-role-response.dto";
 import { PermissionResponseDto } from "./dto/permission-response.dto";
 import { UpdateCustomRoleDto } from "./dto/update-custom-role.dto";
-import { User } from "src/users/entities/user.entity";
-import {
-  WorkspaceMember,
-  WorkspaceMemberStatus,
-} from "src/workspaces/entities/workspace-member.entity";
+
 import { Permission } from "./entities/permission.entity";
 import { RolePermission } from "./entities/role-permission.entity";
 import { Role } from "./entities/role.entity";
+
 import { RbacScopeType } from "./interfaces/scope-options.interface";
 import { WorkspaceAccessService } from "./workspace-access.service";
+
 import { errorPayload } from "src/common/utils/error-payload.util";
 import { PLAN_FEATURE_KEYS } from "src/plans/constants/plan-feature-key.constants";
 import { WorkspaceEntitlementService } from "src/workspaces/workspace-entitlement.service";
+
+import {
+  DEFAULT_CLASS_STUDENT_PERMISSION_KEYS,
+  DEFAULT_CLASS_STUDENT_ROLE_NAME,
+} from "./seeds/rbac-system.seed";
 
 interface PermissionCheckInput {
   userId: string;
@@ -40,135 +48,7 @@ interface RoleCheckInput {
 }
 
 @Injectable()
-export class RbacService implements OnModuleInit {
-  private readonly defaultClassStudentRoleName = "student";
-  private readonly defaultClassStudentPermissionKeys = [
-    "read:session",
-    "read:lecture",
-    "read:assignment",
-  ];
-  private readonly workspaceManagementPermissions = [
-    "read:workspace",
-    "create:session",
-    "read:session",
-    "update:session",
-    "delete:session",
-    "read:attendance",
-    "update:attendance",
-    "create:lecture",
-    "read:lecture",
-    "update:lecture",
-    "delete:lecture",
-    "create:assignment",
-    "read:assignment",
-    "update:assignment",
-    "delete:assignment",
-  ];
-
-  private readonly systemRoles = [
-    {
-      name: "owner",
-      description: "Workspace owner with full access",
-    },
-    {
-      name: "admin",
-      description: "Workspace administrator",
-    },
-    {
-      name: "teacher",
-      description: "Teacher in workspace",
-    },
-    {
-      name: "student",
-      description: "Student in workspace",
-    },
-  ];
-
-  private readonly systemPermissions = [
-    {
-      action: "read",
-      resource: "workspace",
-      description: "View workspace information",
-    },
-    {
-      action: "create",
-      resource: "session",
-      description: "Create class sessions",
-    },
-    {
-      action: "read",
-      resource: "session",
-      description: "View class sessions",
-    },
-    {
-      action: "update",
-      resource: "session",
-      description: "Update class sessions",
-    },
-    {
-      action: "delete",
-      resource: "session",
-      description: "Delete class sessions",
-    },
-    {
-      action: "read",
-      resource: "attendance",
-      description: "View session attendance",
-    },
-    {
-      action: "update",
-      resource: "attendance",
-      description: "Update session attendance",
-    },
-    {
-      action: "create",
-      resource: "lecture",
-      description: "Create lectures",
-    },
-    {
-      action: "read",
-      resource: "lecture",
-      description: "View lectures",
-    },
-    {
-      action: "update",
-      resource: "lecture",
-      description: "Update lectures",
-    },
-    {
-      action: "delete",
-      resource: "lecture",
-      description: "Delete lectures",
-    },
-    {
-      action: "create",
-      resource: "assignment",
-      description: "Create assignments",
-    },
-    {
-      action: "read",
-      resource: "assignment",
-      description: "View assignments",
-    },
-    {
-      action: "update",
-      resource: "assignment",
-      description: "Update assignments",
-    },
-    {
-      action: "delete",
-      resource: "assignment",
-      description: "Delete assignments",
-    },
-  ];
-
-  private readonly rolePermissionMap: Record<string, string[]> = {
-    owner: [...this.workspaceManagementPermissions],
-    admin: [...this.workspaceManagementPermissions],
-    teacher: [...this.workspaceManagementPermissions],
-    student: ["read:workspace"],
-  };
-
+export class RbacService {
   constructor(
     @InjectRepository(Role)
     private readonly roleRepo: Repository<Role>,
@@ -185,113 +65,13 @@ export class RbacService implements OnModuleInit {
     @InjectRepository(ClassStudent)
     private readonly classStudentRepo: Repository<ClassStudent>,
 
-    @InjectRepository(ClassEntity)
-    private readonly classRepo: Repository<ClassEntity>,
-
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
 
     private readonly workspaceAccessService: WorkspaceAccessService,
+
     private readonly workspaceEntitlementService: WorkspaceEntitlementService,
   ) {}
-
-  async onModuleInit(): Promise<void> {
-    await this.seedSystemRoles();
-    await this.seedSystemPermissions();
-    await this.seedSystemRolePermissions();
-    await this.seedDefaultClassStudentRoles();
-  }
-
-  private async seedSystemRoles() {
-    for (const roleSeed of this.systemRoles) {
-      const exist = await this.roleRepo.findOne({
-        where: {
-          name: roleSeed.name,
-          isSystem: true,
-          workspaceId: IsNull(),
-          classId: IsNull(),
-        },
-      });
-
-      if (!exist) {
-        const role = this.roleRepo.create({
-          name: roleSeed.name,
-          description: roleSeed.description,
-          isSystem: true,
-          workspaceId: null,
-          classId: null,
-        });
-        await this.roleRepo.save(role);
-      } else if (exist.description !== roleSeed.description) {
-        exist.description = roleSeed.description;
-        await this.roleRepo.save(exist);
-      }
-    }
-  }
-
-  private async seedSystemPermissions() {
-    for (const seed of this.systemPermissions) {
-      const exist = await this.permissionRepo.findOne({
-        where: {
-          action: seed.action,
-          resource: seed.resource,
-        },
-      });
-
-      if (!exist) {
-        const permission = this.permissionRepo.create(seed);
-        await this.permissionRepo.save(permission);
-      } else if (exist.description !== seed.description) {
-        exist.description = seed.description;
-        await this.permissionRepo.save(exist);
-      }
-    }
-  }
-
-  private async seedSystemRolePermissions() {
-    for (const [roleName, permissionKeys] of Object.entries(
-      this.rolePermissionMap,
-    )) {
-      const role = await this.roleRepo.findOne({
-        where: {
-          name: roleName,
-          isSystem: true,
-          workspaceId: IsNull(),
-          classId: IsNull(),
-        },
-      });
-
-      if (!role) {
-        continue;
-      }
-
-      for (const key of permissionKeys) {
-        const [action, resource] = key.split(":");
-        const permission = await this.permissionRepo.findOne({
-          where: { action, resource },
-        });
-
-        if (!permission) {
-          continue;
-        }
-
-        const exist = await this.rolePermissionRepo.findOne({
-          where: {
-            role: { id: role.id },
-            permission: { id: permission.id },
-          },
-        });
-
-        if (!exist) {
-          const rolePermission = this.rolePermissionRepo.create({
-            role,
-            permission,
-          });
-          await this.rolePermissionRepo.save(rolePermission);
-        }
-      }
-    }
-  }
 
   async hasPermission(input: PermissionCheckInput): Promise<boolean> {
     const role = await this.findAssignedRole({
@@ -300,14 +80,15 @@ export class RbacService implements OnModuleInit {
       scopeId: input.scopeId,
       withPermissions: true,
     });
+
     if (!role?.rolePermissions?.length) {
       return false;
     }
 
     return role.rolePermissions.some(
-      (rp) =>
-        rp.permission.action === input.action &&
-        rp.permission.resource === input.resource,
+      (rolePermission) =>
+        rolePermission.permission.action === input.action &&
+        rolePermission.permission.resource === input.resource,
     );
   }
 
@@ -318,6 +99,7 @@ export class RbacService implements OnModuleInit {
       scopeId: input.scopeId,
       withPermissions: false,
     });
+
     if (!role?.name) {
       return false;
     }
@@ -331,7 +113,12 @@ export class RbacService implements OnModuleInit {
     scopeId: string;
     withPermissions: boolean;
   }): Promise<Role | null> {
-    const user = await this.userRepo.findOne({ where: { id: input.userId } });
+    const user = await this.userRepo.findOne({
+      where: {
+        id: input.userId,
+      },
+    });
+
     if (!user) {
       return null;
     }
@@ -357,8 +144,12 @@ export class RbacService implements OnModuleInit {
     if (input.scopeType === "workspace") {
       const member = await this.memberRepo.findOne({
         where: {
-          workspace: { id: input.scopeId },
-          user: { id: input.userId },
+          workspace: {
+            id: input.scopeId,
+          },
+          user: {
+            id: input.userId,
+          },
           status: WorkspaceMemberStatus.ACTIVE,
         },
         relations: input.withPermissions
@@ -380,8 +171,12 @@ export class RbacService implements OnModuleInit {
     if (input.scopeType === "class") {
       const classStudent = await this.classStudentRepo.findOne({
         where: {
-          classEntity: { id: input.scopeId },
-          student: { id: input.userId },
+          classEntity: {
+            id: input.scopeId,
+          },
+          student: {
+            id: input.userId,
+          },
         },
         relations: input.withPermissions
           ? {
@@ -407,6 +202,7 @@ export class RbacService implements OnModuleInit {
     dto: CreateCustomRoleDto,
   ): Promise<CustomRoleResponseDto> {
     await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
+
     await this.workspaceEntitlementService.assertFeatureEnabled(
       workspaceId,
       PLAN_FEATURE_KEYS.CUSTOM_ROLES,
@@ -414,39 +210,20 @@ export class RbacService implements OnModuleInit {
 
     const normalizedName = dto.name.trim();
     const normalizedDescription = dto.description?.trim() || undefined;
-    const permissionKeys = [
-      ...new Set(dto.permissionKeys.map((key) => key.trim())),
-    ];
 
-    const workspaceRole = await this.roleRepo.findOne({
-      where: {
-        name: normalizedName,
-        workspaceId,
-        classId: IsNull(),
-        isSystem: false,
-      },
-    });
-    if (workspaceRole) {
+    if (!normalizedName) {
       this.throwBadRequest(
-        "Role name already exists in this workspace",
-        "RBAC_WORKSPACE_ROLE_NAME_EXISTS",
+        "Role name can not be empty",
+        "RBAC_ROLE_NAME_REQUIRED",
       );
     }
 
-    const systemRole = await this.roleRepo.findOne({
-      where: {
-        name: normalizedName,
-        isSystem: true,
-        workspaceId: IsNull(),
-        classId: IsNull(),
-      },
-    });
-    if (systemRole) {
-      this.throwBadRequest(
-        "Role name conflicts with reserved system role",
-        "RBAC_ROLE_NAME_CONFLICTS_SYSTEM",
-      );
-    }
+    const permissionKeys =
+      this.normalizePermissionKeys(dto.permissionKeys) ?? [];
+
+    await this.ensureRoleNameDoesNotConflictWithSystemRole(normalizedName);
+
+    await this.ensureWorkspaceRoleNameAvailable(workspaceId, normalizedName);
 
     const permissions = await Promise.all(
       permissionKeys.map((key) => this.findPermissionByKey(key)),
@@ -464,6 +241,7 @@ export class RbacService implements OnModuleInit {
           workspaceId,
           classId: null,
         });
+
         const savedRole = await roleRepo.save(role);
 
         for (const permission of permissions) {
@@ -471,6 +249,7 @@ export class RbacService implements OnModuleInit {
             role: savedRole,
             permission,
           });
+
           await rolePermissionRepo.save(rolePermission);
         }
 
@@ -532,13 +311,20 @@ export class RbacService implements OnModuleInit {
   ): Promise<CustomRoleResponseDto> {
     await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
+    await this.workspaceEntitlementService.assertFeatureEnabled(
+      workspaceId,
+      PLAN_FEATURE_KEYS.CUSTOM_ROLES,
+    );
+
     const role = await this.findWorkspaceCustomRoleOrThrow(workspaceId, roleId);
+
     await this.applyRoleUpdates(role, dto, {
       roleNameConflictMessage: "Role name already exists in this workspace",
       scope: "workspace",
     });
 
     const updatedRole = await this.loadRoleWithPermissions(role.id);
+
     return CustomRoleResponseDto.fromEntity(
       updatedRole,
       this.buildPermissionKeys(updatedRole),
@@ -551,12 +337,21 @@ export class RbacService implements OnModuleInit {
   ): Promise<DeleteRoleResponseDto> {
     await this.workspaceAccessService.getWorkspaceOrThrow(workspaceId);
 
+    await this.workspaceEntitlementService.assertFeatureEnabled(
+      workspaceId,
+      PLAN_FEATURE_KEYS.CUSTOM_ROLES,
+    );
+
     const role = await this.findWorkspaceCustomRoleOrThrow(workspaceId, roleId);
+
     const assignmentCount = await this.memberRepo.count({
       where: {
-        role: { id: role.id },
+        role: {
+          id: role.id,
+        },
       },
     });
+
     if (assignmentCount > 0) {
       this.throwBadRequest(
         "Cannot delete workspace role while it is still assigned to members",
@@ -568,8 +363,10 @@ export class RbacService implements OnModuleInit {
       await manager
         .createQueryBuilder()
         .delete()
-        .from("role_permissions")
-        .where('"roleId" = :roleId', { roleId: role.id })
+        .from(RolePermission)
+        .where('"roleId" = :roleId', {
+          roleId: role.id,
+        })
         .execute();
 
       await manager.getRepository(Role).delete(role.id);
@@ -582,34 +379,13 @@ export class RbacService implements OnModuleInit {
     });
   }
 
-  private async findPermissionByKey(key: string): Promise<Permission> {
-    const [action, resource, extra] = key.split(":");
-    if (!action || !resource || extra) {
-      this.throwBadRequest(
-        `Invalid permission key: ${key}`,
-        "RBAC_PERMISSION_KEY_INVALID",
-      );
-    }
-
-    const permission = await this.permissionRepo.findOne({
-      where: { action, resource },
-    });
-    if (!permission) {
-      this.throwBadRequest(
-        `Permission not found: ${key}`,
-        "RBAC_PERMISSION_NOT_FOUND",
-      );
-    }
-
-    return permission;
-  }
-
   async createClassCustomRole(
     classId: string,
     dto: CreateClassRoleDto,
   ): Promise<CustomRoleResponseDto> {
     const classEntity =
       await this.workspaceAccessService.getClassOrThrow(classId);
+
     await this.workspaceEntitlementService.assertFeatureEnabled(
       classEntity.workspace.id,
       PLAN_FEATURE_KEYS.CUSTOM_ROLES,
@@ -617,39 +393,20 @@ export class RbacService implements OnModuleInit {
 
     const normalizedName = dto.name.trim();
     const normalizedDescription = dto.description?.trim() || undefined;
-    const permissionKeys = [
-      ...new Set((dto.permissionKeys ?? []).map((key) => key.trim())),
-    ];
 
-    const classRole = await this.roleRepo.findOne({
-      where: {
-        name: normalizedName,
-        classId,
-        workspaceId: IsNull(),
-        isSystem: false,
-      },
-    });
-    if (classRole) {
+    if (!normalizedName) {
       this.throwBadRequest(
-        "Role name already exists in this class",
-        "RBAC_CLASS_ROLE_NAME_EXISTS",
+        "Role name can not be empty",
+        "RBAC_ROLE_NAME_REQUIRED",
       );
     }
 
-    const systemRole = await this.roleRepo.findOne({
-      where: {
-        name: normalizedName,
-        isSystem: true,
-        workspaceId: IsNull(),
-        classId: IsNull(),
-      },
-    });
-    if (systemRole) {
-      this.throwBadRequest(
-        "Role name conflicts with reserved system role",
-        "RBAC_ROLE_NAME_CONFLICTS_SYSTEM",
-      );
-    }
+    const permissionKeys =
+      this.normalizePermissionKeys(dto.permissionKeys) ?? [];
+
+    await this.ensureRoleNameDoesNotConflictWithSystemRole(normalizedName);
+
+    await this.ensureClassRoleNameAvailable(classId, normalizedName);
 
     const permissions = await Promise.all(
       permissionKeys.map((key) => this.findPermissionByKey(key)),
@@ -667,6 +424,7 @@ export class RbacService implements OnModuleInit {
           workspaceId: null,
           classId,
         });
+
         const savedRole = await roleRepo.save(role);
 
         for (const permission of permissions) {
@@ -674,6 +432,7 @@ export class RbacService implements OnModuleInit {
             role: savedRole,
             permission,
           });
+
           await rolePermissionRepo.save(rolePermission);
         }
 
@@ -715,9 +474,90 @@ export class RbacService implements OnModuleInit {
     );
   }
 
+  async updateClassCustomRole(
+    classId: string,
+    roleId: string,
+    dto: UpdateCustomRoleDto,
+  ): Promise<CustomRoleResponseDto> {
+    const classEntity =
+      await this.workspaceAccessService.getClassOrThrow(classId);
+
+    await this.workspaceEntitlementService.assertFeatureEnabled(
+      classEntity.workspace.id,
+      PLAN_FEATURE_KEYS.CUSTOM_ROLES,
+    );
+
+    const role = await this.findClassCustomRoleOrThrow(classId, roleId);
+
+    this.assertMutableClassRole(role);
+
+    await this.applyRoleUpdates(role, dto, {
+      roleNameConflictMessage: "Role name already exists in this class",
+      scope: "class",
+    });
+
+    const updatedRole = await this.loadRoleWithPermissions(role.id);
+
+    return CustomRoleResponseDto.fromEntity(
+      updatedRole,
+      this.buildPermissionKeys(updatedRole),
+    );
+  }
+
+  async deleteClassCustomRole(
+    classId: string,
+    roleId: string,
+  ): Promise<DeleteRoleResponseDto> {
+    const classEntity =
+      await this.workspaceAccessService.getClassOrThrow(classId);
+
+    await this.workspaceEntitlementService.assertFeatureEnabled(
+      classEntity.workspace.id,
+      PLAN_FEATURE_KEYS.CUSTOM_ROLES,
+    );
+
+    const role = await this.findClassCustomRoleOrThrow(classId, roleId);
+
+    this.assertMutableClassRole(role);
+
+    const assignmentCount = await this.classStudentRepo.count({
+      where: {
+        role: {
+          id: role.id,
+        },
+      },
+    });
+
+    if (assignmentCount > 0) {
+      this.throwBadRequest(
+        "Cannot delete class role while it is still assigned to class students",
+        "RBAC_CLASS_CUSTOM_ROLE_ASSIGNED",
+      );
+    }
+
+    await this.roleRepo.manager.transaction(async (manager) => {
+      await manager
+        .createQueryBuilder()
+        .delete()
+        .from(RolePermission)
+        .where('"roleId" = :roleId', {
+          roleId: role.id,
+        })
+        .execute();
+
+      await manager.getRepository(Role).delete(role.id);
+    });
+
+    return DeleteRoleResponseDto.fromData({
+      roleId: role.id,
+      workspaceId: null,
+      classId,
+    });
+  }
+
   async ensureDefaultClassStudentRole(classId: string): Promise<Role> {
     const permissions = await Promise.all(
-      this.defaultClassStudentPermissionKeys.map((key) =>
+      DEFAULT_CLASS_STUDENT_PERMISSION_KEYS.map((key) =>
         this.findPermissionByKey(key),
       ),
     );
@@ -728,7 +568,7 @@ export class RbacService implements OnModuleInit {
 
       let defaultRole = await roleRepo.findOne({
         where: {
-          name: this.defaultClassStudentRoleName,
+          name: DEFAULT_CLASS_STUDENT_ROLE_NAME,
           classId,
           workspaceId: IsNull(),
           isSystem: false,
@@ -742,12 +582,13 @@ export class RbacService implements OnModuleInit {
 
       if (!defaultRole) {
         defaultRole = roleRepo.create({
-          name: this.defaultClassStudentRoleName,
+          name: DEFAULT_CLASS_STUDENT_ROLE_NAME,
           description: "Default class student role",
           isSystem: false,
           workspaceId: null,
           classId,
         });
+
         defaultRole = await roleRepo.save(defaultRole);
       }
 
@@ -760,6 +601,7 @@ export class RbacService implements OnModuleInit {
 
       for (const permission of permissions) {
         const permissionKey = `${permission.action}:${permission.resource}`;
+
         if (existingPermissionKeys.has(permissionKey)) {
           continue;
         }
@@ -768,6 +610,7 @@ export class RbacService implements OnModuleInit {
           role: defaultRole,
           permission,
         });
+
         await rolePermissionRepo.save(rolePermission);
       }
 
@@ -775,66 +618,35 @@ export class RbacService implements OnModuleInit {
     });
 
     await this.assignDefaultRoleToStudentsWithoutClassRole(classId, role.id);
+
     return this.loadRoleWithPermissions(role.id);
   }
 
-  async updateClassCustomRole(
-    classId: string,
-    roleId: string,
-    dto: UpdateCustomRoleDto,
-  ): Promise<CustomRoleResponseDto> {
-    await this.workspaceAccessService.getClassOrThrow(classId);
+  private async findPermissionByKey(key: string): Promise<Permission> {
+    const [action, resource, extra] = key.split(":");
 
-    const role = await this.findClassCustomRoleOrThrow(classId, roleId);
-    this.assertMutableClassRole(role);
-    await this.applyRoleUpdates(role, dto, {
-      roleNameConflictMessage: "Role name already exists in this class",
-      scope: "class",
-    });
-
-    const updatedRole = await this.loadRoleWithPermissions(role.id);
-    return CustomRoleResponseDto.fromEntity(
-      updatedRole,
-      this.buildPermissionKeys(updatedRole),
-    );
-  }
-
-  async deleteClassCustomRole(
-    classId: string,
-    roleId: string,
-  ): Promise<DeleteRoleResponseDto> {
-    await this.workspaceAccessService.getClassOrThrow(classId);
-
-    const role = await this.findClassCustomRoleOrThrow(classId, roleId);
-    this.assertMutableClassRole(role);
-    const assignmentCount = await this.classStudentRepo.count({
-      where: {
-        role: { id: role.id },
-      },
-    });
-    if (assignmentCount > 0) {
+    if (!action || !resource || extra) {
       this.throwBadRequest(
-        "Cannot delete class role while it is still assigned to class students",
-        "RBAC_CLASS_CUSTOM_ROLE_ASSIGNED",
+        `Invalid permission key: ${key}`,
+        "RBAC_PERMISSION_KEY_INVALID",
       );
     }
 
-    await this.roleRepo.manager.transaction(async (manager) => {
-      await manager
-        .createQueryBuilder()
-        .delete()
-        .from("role_permissions")
-        .where('"roleId" = :roleId', { roleId: role.id })
-        .execute();
-
-      await manager.getRepository(Role).delete(role.id);
+    const permission = await this.permissionRepo.findOne({
+      where: {
+        action,
+        resource,
+      },
     });
 
-    return DeleteRoleResponseDto.fromData({
-      roleId: role.id,
-      workspaceId: null,
-      classId,
-    });
+    if (!permission) {
+      this.throwBadRequest(
+        `Permission not found: ${key}`,
+        "RBAC_PERMISSION_NOT_FOUND",
+      );
+    }
+
+    return permission;
   }
 
   private buildPermissionKeys(role: Role): string[] {
@@ -843,18 +655,6 @@ export class RbacService implements OnModuleInit {
       .filter((permission): permission is Permission => Boolean(permission))
       .map((permission) => `${permission.action}:${permission.resource}`)
       .sort();
-  }
-
-  private async seedDefaultClassStudentRoles(): Promise<void> {
-    const classes = await this.classRepo.find({
-      select: {
-        id: true,
-      },
-    });
-
-    for (const classEntity of classes) {
-      await this.ensureDefaultClassStudentRole(classEntity.id);
-    }
   }
 
   private async applyRoleUpdates(
@@ -902,22 +702,28 @@ export class RbacService implements OnModuleInit {
 
     const permissionKeys = this.normalizePermissionKeys(dto.permissionKeys);
 
+    let permissions: Permission[] | undefined;
+
+    if (permissionKeys !== undefined) {
+      permissions = await Promise.all(
+        permissionKeys.map((key) => this.findPermissionByKey(key)),
+      );
+    }
+
     await this.roleRepo.manager.transaction(async (manager) => {
       const roleRepo = manager.getRepository(Role);
       const rolePermissionRepo = manager.getRepository(RolePermission);
 
       await roleRepo.save(role);
 
-      if (permissionKeys !== undefined) {
-        const permissions = await Promise.all(
-          permissionKeys.map((key) => this.findPermissionByKey(key)),
-        );
-
+      if (permissions !== undefined) {
         await manager
           .createQueryBuilder()
           .delete()
-          .from("role_permissions")
-          .where('"roleId" = :roleId', { roleId: role.id })
+          .from(RolePermission)
+          .where('"roleId" = :roleId', {
+            roleId: role.id,
+          })
           .execute();
 
         for (const permission of permissions) {
@@ -925,6 +731,7 @@ export class RbacService implements OnModuleInit {
             role,
             permission,
           });
+
           await rolePermissionRepo.save(rolePermission);
         }
       }
@@ -943,6 +750,7 @@ export class RbacService implements OnModuleInit {
         isSystem: false,
       },
     });
+
     if (!role) {
       this.throwBadRequest(
         "Workspace custom role not found",
@@ -965,6 +773,7 @@ export class RbacService implements OnModuleInit {
         isSystem: false,
       },
     });
+
     if (!role) {
       this.throwBadRequest(
         "Class custom role not found",
@@ -981,16 +790,22 @@ export class RbacService implements OnModuleInit {
   ): Promise<void> {
     const assignments = await this.classStudentRepo
       .createQueryBuilder("classStudent")
-      .where('"classId" = :classId', { classId })
+      .where('"classId" = :classId', {
+        classId,
+      })
       .andWhere('"roleId" IS NULL')
       .getMany();
+
     if (assignments.length === 0) {
       return;
     }
 
     const role = await this.roleRepo.findOne({
-      where: { id: roleId },
+      where: {
+        id: roleId,
+      },
     });
+
     if (!role) {
       this.throwBadRequest(
         "Default class role not found",
@@ -1006,7 +821,7 @@ export class RbacService implements OnModuleInit {
   }
 
   private assertMutableClassRole(role: Role): void {
-    if (role.classId && role.name === this.defaultClassStudentRoleName) {
+    if (role.classId && role.name === DEFAULT_CLASS_STUDENT_ROLE_NAME) {
       this.throwBadRequest(
         "Default class student role can not be updated or deleted",
         "RBAC_DEFAULT_CLASS_ROLE_IMMUTABLE",
@@ -1017,14 +832,18 @@ export class RbacService implements OnModuleInit {
   private async ensureRoleNameDoesNotConflictWithSystemRole(
     roleName: string,
   ): Promise<void> {
-    const systemRole = await this.roleRepo.findOne({
-      where: {
-        name: roleName,
+    const systemRole = await this.roleRepo
+      .createQueryBuilder("role")
+      .where("role.isSystem = :isSystem", {
         isSystem: true,
-        workspaceId: IsNull(),
-        classId: IsNull(),
-      },
-    });
+      })
+      .andWhere("role.workspaceId IS NULL")
+      .andWhere("role.classId IS NULL")
+      .andWhere("LOWER(role.name) = LOWER(:roleName)", {
+        roleName,
+      })
+      .getOne();
+
     if (systemRole) {
       this.throwBadRequest(
         "Role name conflicts with reserved system role",
@@ -1040,15 +859,27 @@ export class RbacService implements OnModuleInit {
     conflictMessage = "Role name already exists in this workspace",
     conflictCode = "RBAC_WORKSPACE_ROLE_NAME_EXISTS",
   ): Promise<void> {
-    const existingRole = await this.roleRepo.findOne({
-      where: {
-        name: roleName,
+    const query = this.roleRepo
+      .createQueryBuilder("role")
+      .where("role.workspaceId = :workspaceId", {
         workspaceId,
-        classId: IsNull(),
+      })
+      .andWhere("role.classId IS NULL")
+      .andWhere("role.isSystem = :isSystem", {
         isSystem: false,
-        ...(excludeRoleId ? { id: Not(excludeRoleId) } : {}),
-      },
-    });
+      })
+      .andWhere("LOWER(role.name) = LOWER(:roleName)", {
+        roleName,
+      });
+
+    if (excludeRoleId) {
+      query.andWhere("role.id != :excludeRoleId", {
+        excludeRoleId,
+      });
+    }
+
+    const existingRole = await query.getOne();
+
     if (existingRole) {
       this.throwBadRequest(conflictMessage, conflictCode);
     }
@@ -1061,15 +892,27 @@ export class RbacService implements OnModuleInit {
     conflictMessage = "Role name already exists in this class",
     conflictCode = "RBAC_CLASS_ROLE_NAME_EXISTS",
   ): Promise<void> {
-    const existingRole = await this.roleRepo.findOne({
-      where: {
-        name: roleName,
+    const query = this.roleRepo
+      .createQueryBuilder("role")
+      .where("role.classId = :classId", {
         classId,
-        workspaceId: IsNull(),
+      })
+      .andWhere("role.workspaceId IS NULL")
+      .andWhere("role.isSystem = :isSystem", {
         isSystem: false,
-        ...(excludeRoleId ? { id: Not(excludeRoleId) } : {}),
-      },
-    });
+      })
+      .andWhere("LOWER(role.name) = LOWER(:roleName)", {
+        roleName,
+      });
+
+    if (excludeRoleId) {
+      query.andWhere("role.id != :excludeRoleId", {
+        excludeRoleId,
+      });
+    }
+
+    const existingRole = await query.getOne();
+
     if (existingRole) {
       this.throwBadRequest(conflictMessage, conflictCode);
     }
@@ -1082,7 +925,9 @@ export class RbacService implements OnModuleInit {
       return undefined;
     }
 
-    return [...new Set(permissionKeys.map((key) => key.trim()))];
+    return [
+      ...new Set(permissionKeys.map((key) => key.trim()).filter(Boolean)),
+    ];
   }
 
   private async loadRoleWithPermissions(roleId: string): Promise<Role> {
@@ -1096,6 +941,7 @@ export class RbacService implements OnModuleInit {
         },
       },
     });
+
     if (!role) {
       this.throwBadRequest("Role not found", "RBAC_ROLE_NOT_FOUND");
     }

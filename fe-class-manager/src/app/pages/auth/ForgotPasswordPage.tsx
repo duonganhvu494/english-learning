@@ -1,31 +1,108 @@
-import { useState } from 'react';
-import { Link } from 'react-router';
-import { ArrowLeft, BookOpen, Mail } from 'lucide-react';
-import { toast } from 'sonner';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
-import { authApi, getApiErrorMessage } from '@/api';
+import { useState } from "react";
+import { Link } from "react-router";
+import { ArrowLeft, BookOpen, Mail } from "lucide-react";
+import { toast } from "sonner";
+
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+
+import { authApi, getApiErrorMessage } from "@/api";
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
+
+  const [emailError, setEmailError] = useState("");
+
   const [isSubmitted, setIsSubmitted] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
+
+  const validateEmail = () => {
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail) {
+      setEmailError("Vui lòng nhập email");
+
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(normalizedEmail)) {
+      setEmailError("Email không đúng định dạng");
+
+      return false;
+    }
+
+    setEmailError("");
+
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || isLoading) {
+
+    if (isLoading) {
+      return;
+    }
+
+    if (!validateEmail()) {
+      return;
+    }
+
+    const normalizedEmail = email.trim();
+
+    setIsLoading(true);
+
+    try {
+      await authApi.forgotPassword({
+        email: normalizedEmail,
+      });
+
+      setEmail(normalizedEmail);
+      setIsSubmitted(true);
+
+      toast.success("Đã gửi OTP đặt lại mật khẩu (nếu email tồn tại)");
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(error, "Không thể gửi OTP đặt lại mật khẩu"),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (isLoading) {
+      return;
+    }
+
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail) {
       return;
     }
 
     setIsLoading(true);
+
     try {
-      await authApi.forgotPassword({ email: email.trim() });
-      setIsSubmitted(true);
-      toast.success('Đã gửi OTP đặt lại mật khẩu (nếu email tồn tại)');
+      await authApi.forgotPassword({
+        email: normalizedEmail,
+      });
+
+      toast.success("Đã gửi lại OTP đặt lại mật khẩu");
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể gửi OTP đặt lại mật khẩu'));
+      toast.error(getApiErrorMessage(error, "Không thể gửi lại OTP"));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+
+    if (emailError) {
+      setEmailError("");
     }
   };
 
@@ -36,15 +113,22 @@ export default function ForgotPasswordPage() {
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 mb-4">
               <BookOpen className="w-8 h-8 text-blue-600" />
+
               <h1 className="text-3xl font-bold text-blue-600">EnglishClass</h1>
             </div>
+
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Mail className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-2xl font-semibold text-gray-900">Kiểm tra email</h2>
+
+            <h2 className="text-2xl font-semibold text-gray-900">
+              Kiểm tra email
+            </h2>
+
             <p className="text-gray-600 mt-2">
               Hệ thống đã xử lý yêu cầu đặt lại mật khẩu cho email
             </p>
+
             <p className="text-sm font-medium text-blue-600 mt-1">{email}</p>
           </div>
 
@@ -55,17 +139,22 @@ export default function ForgotPasswordPage() {
               </p>
             </div>
 
-            <Link to={`/reset-password?email=${encodeURIComponent(email)}`} className="block">
+            <Link
+              to={`/reset-password?email=${encodeURIComponent(email)}`}
+              className="block"
+            >
               <Button className="w-full">Đi đến trang đặt lại mật khẩu</Button>
             </Link>
 
             <p className="text-sm text-gray-600 text-center">
-              Chưa nhận OTP?{' '}
+              Chưa nhận OTP?{" "}
               <button
-                onClick={() => setIsSubmitted(false)}
-                className="text-blue-600 hover:underline font-medium"
+                type="button"
+                onClick={() => void handleResendOtp()}
+                disabled={isLoading}
+                className="text-blue-600 hover:underline font-medium disabled:opacity-60"
               >
-                Gửi lại
+                {isLoading ? "Đang gửi..." : "Gửi lại"}
               </button>
             </p>
 
@@ -87,26 +176,34 @@ export default function ForgotPasswordPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
             <BookOpen className="w-8 h-8 text-blue-600" />
+
             <h1 className="text-3xl font-bold text-blue-600">EnglishClass</h1>
           </div>
-          <h2 className="text-2xl font-semibold text-gray-900">Quên mật khẩu?</h2>
-          <p className="text-gray-600 mt-2">Nhập email để nhận OTP đặt lại mật khẩu</p>
+
+          <h2 className="text-2xl font-semibold text-gray-900">
+            Quên mật khẩu?
+          </h2>
+
+          <p className="text-gray-600 mt-2">
+            Nhập email để nhận OTP đặt lại mật khẩu
+          </p>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-8">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <Input
               label="Email"
               type="email"
               name="email"
               placeholder="email@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={handleEmailChange}
+              error={emailError}
               required
             />
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Đang gửi...' : 'Gửi OTP'}
+              {isLoading ? "Đang gửi..." : "Gửi OTP"}
             </Button>
           </form>
 

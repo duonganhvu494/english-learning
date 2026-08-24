@@ -77,6 +77,19 @@ export class AssignmentsService {
       dto.timeStart,
       dto.timeEnd,
     );
+
+    const now = new Date();
+    now.setSeconds(0, 0);
+
+    if (timeStart < now) {
+      throw new BadRequestException(
+        errorPayload(
+          "Assignment can not start in the past",
+          "ASSIGNMENT_TIME_START_IN_PAST",
+        ),
+      );
+    }
+
     const materials = await this.resolveMaterials(
       dto.materialIds,
       session.classEntity.workspace.id,

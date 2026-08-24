@@ -8,9 +8,10 @@ import type {
   MaterialUploadInitResponse,
   MaterialUploadPartSignedResponse,
   SignMaterialUploadPartDto,
-} from '@/types';
-import { authApi } from './auth.api';
-import { http, unwrap } from './http';
+} from "@/types";
+
+import { authApi } from "./auth.api";
+import { http, unwrap } from "./http";
 
 export const materialsApi = {
   async initUpload(
@@ -18,6 +19,7 @@ export const materialsApi = {
     payload: InitMaterialUploadDto,
   ): Promise<MaterialUploadInitResponse> {
     await authApi.ensureCsrfToken();
+
     return unwrap<MaterialUploadInitResponse>(
       http.post(`/workspaces/${workspaceId}/materials/upload-init`, payload),
     );
@@ -28,8 +30,12 @@ export const materialsApi = {
     payload: SignMaterialUploadPartDto,
   ): Promise<MaterialUploadPartSignedResponse> {
     await authApi.ensureCsrfToken();
+
     return unwrap<MaterialUploadPartSignedResponse>(
-      http.post(`/workspaces/${workspaceId}/materials/upload-sign-part`, payload),
+      http.post(
+        `/workspaces/${workspaceId}/materials/upload-sign-part`,
+        payload,
+      ),
     );
   },
 
@@ -38,8 +44,12 @@ export const materialsApi = {
     payload: CompleteMaterialUploadDto,
   ): Promise<MaterialResponse> {
     await authApi.ensureCsrfToken();
+
     return unwrap<MaterialResponse>(
-      http.post(`/workspaces/${workspaceId}/materials/upload-complete`, payload),
+      http.post(
+        `/workspaces/${workspaceId}/materials/upload-complete`,
+        payload,
+      ),
     );
   },
 
@@ -48,23 +58,33 @@ export const materialsApi = {
     payload: AbortMaterialUploadDto,
   ): Promise<MaterialUploadAbortResponse> {
     await authApi.ensureCsrfToken();
+
     return unwrap<MaterialUploadAbortResponse>(
       http.post(`/workspaces/${workspaceId}/materials/upload-abort`, payload),
     );
   },
 
-  async listWorkspaceMaterials(workspaceId: string): Promise<MaterialResponse[]> {
+  async listWorkspaceMaterials(
+    workspaceId: string,
+  ): Promise<MaterialResponse[]> {
     return unwrap<MaterialResponse[]>(
       http.get(`/workspaces/${workspaceId}/materials`),
     );
   },
 
-  async getMaterial(materialId: string): Promise<MaterialResponse> {
+  async getMaterialDetail(materialId: string): Promise<MaterialResponse> {
     return unwrap<MaterialResponse>(http.get(`/materials/${materialId}`));
+  },
+
+  getDownloadUrl(materialId: string): string {
+    return `/materials/${materialId}/download`;
   },
 
   async deleteMaterial(materialId: string): Promise<MaterialDeleteResponse> {
     await authApi.ensureCsrfToken();
-    return unwrap<MaterialDeleteResponse>(http.delete(`/materials/${materialId}`));
+
+    return unwrap<MaterialDeleteResponse>(
+      http.delete(`/materials/${materialId}`),
+    );
   },
 };

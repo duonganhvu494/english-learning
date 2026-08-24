@@ -5,7 +5,6 @@ import LandingPage from "@/app/pages/LandingPage";
 
 import LoginPage from "@/app/pages/auth/LoginPage";
 import RegisterPage from "@/app/pages/auth/RegisterPage";
-import VerifyEmailPage from "@/app/pages/auth/VerifyEmailPage";
 import ForgotPasswordPage from "@/app/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/app/pages/auth/ResetPasswordPage";
 import ChangePasswordPage from "@/app/pages/auth/ChangePasswordPage";
@@ -24,8 +23,6 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
 
         <Route path="/register" element={<RegisterPage />} />
-
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
