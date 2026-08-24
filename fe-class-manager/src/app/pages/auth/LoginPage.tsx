@@ -7,8 +7,15 @@ import Input from "@/app/components/ui/Input";
 import Button from "@/app/components/ui/Button";
 
 import { authApi, getApiErrorMessage } from "@/api";
+
 import { setCurrentUser } from "@/app/utils/client-storage";
+
 import { resolveWorkspaceId } from "@/app/utils/workspace";
+
+type LoginErrors = {
+  userName?: string;
+  password?: string;
+};
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -20,6 +27,24 @@ export default function LoginPage() {
     password: "",
   });
 
+  const [errors, setErrors] = useState<LoginErrors>({});
+
+  const validateForm = () => {
+    const nextErrors: LoginErrors = {};
+
+    if (!formData.userName.trim()) {
+      nextErrors.userName = "Vui lòng nhập tên đăng nhập";
+    }
+
+    if (!formData.password) {
+      nextErrors.password = "Vui lòng nhập mật khẩu";
+    }
+
+    setErrors(nextErrors);
+
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -27,12 +52,16 @@ export default function LoginPage() {
       return;
     }
 
+    if (!validateForm()) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const user = await authApi.login({
-        identifier: formData.userName,
-        userName: formData.userName,
+        identifier: formData.userName.trim(),
+        userName: formData.userName.trim(),
         password: formData.password,
       });
 
@@ -52,6 +81,7 @@ export default function LoginPage() {
         try {
           await resolveWorkspaceId(true);
         } catch {
+          // Không chặn login nếu chưa có workspace
         }
       }
 
@@ -88,36 +118,61 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-8">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <Input
               label="Tên đăng nhập"
+              required
               type="text"
               name="userName"
               placeholder="Nhập tên đăng nhập"
               value={formData.userName}
-              onChange={(e) =>
+              error={errors.userName}
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   userName: e.target.value,
-                })
-              }
-              required
+                });
+
+                if (errors.userName) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    userName: undefined,
+                  }));
+                }
+              }}
             />
 
             <Input
               label="Mật khẩu"
+              required
               type="password"
               name="password"
               placeholder="Nhập mật khẩu"
               value={formData.password}
-              onChange={(e) =>
+              error={errors.password}
+              onChange={(e) => {
                 setFormData({
                   ...formData,
                   password: e.target.value,
-                })
-              }
-              required
+                });
+
+                if (errors.password) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    password: undefined,
+                  }));
+                }
+              }}
             />
+
+            <div className="flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-blue-600 hover:underline font-medium"
+              >
+                Quên mật khẩu?
+              </Link>
+            </div>
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}

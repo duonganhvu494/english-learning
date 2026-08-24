@@ -1,7 +1,13 @@
-import type { MaterialSummary } from './assignments';
+import type { MaterialSummary } from "./materials";
 
 export interface CreateLectureDto {
   title: string;
+  description?: string;
+  materialIds?: string[];
+}
+
+export interface UpdateLectureDto {
+  title?: string;
   description?: string;
   materialIds?: string[];
 }
@@ -16,4 +22,8 @@ export interface LectureResponse {
   materials: MaterialSummary[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LectureDeleteResponse {
+  lectureId: string;
 }

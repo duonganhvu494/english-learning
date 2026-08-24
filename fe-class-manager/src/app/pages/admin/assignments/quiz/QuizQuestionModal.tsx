@@ -1,16 +1,12 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
 import Button from "@/app/components/ui/Button";
-import Modal, {
-  ModalBody,
-  ModalFooter,
-} from "@/app/components/ui/Modal";
 import Input from "@/app/components/ui/Input";
-import type {
-  AssignmentQuizQuestionResponse,
-  MaterialResponse,
-} from "@/types";
+import Modal, { ModalBody, ModalFooter } from "@/app/components/ui/Modal";
+
+import type { AssignmentQuizQuestionResponse, MaterialResponse } from "@/types";
 
 export interface QuizQuestionOptionFormValue {
   id?: string;
@@ -33,6 +29,12 @@ interface QuizQuestionModalProps {
   onClose: () => void;
   onSubmit: (value: QuizQuestionFormValue) => void | Promise<void>;
 }
+
+type QuizQuestionFormErrors = {
+  content?: string;
+  points?: string;
+  options?: string;
+};
 
 function createEmptyOption(): QuizQuestionOptionFormValue {
   return {
@@ -61,10 +63,12 @@ export default function QuizQuestionModal({
   const [content, setContent] = useState("");
   const [points, setPoints] = useState("1");
   const [materialId, setMaterialId] = useState("");
-  const [options, setOptions] =
-    useState<QuizQuestionOptionFormValue[]>(
-      createDefaultOptions(),
-    );
+
+  const [options, setOptions] = useState<QuizQuestionOptionFormValue[]>(
+    createDefaultOptions(),
+  );
+
+  const [errors, setErrors] = useState<QuizQuestionFormErrors>({});
 
   useEffect(() => {
     if (!isOpen) {
@@ -72,8 +76,11 @@ export default function QuizQuestionModal({
       setPoints("1");
       setMaterialId("");
       setOptions(createDefaultOptions());
+      setErrors({});
       return;
     }
+
+    setErrors({});
 
     setContent(question?.content ?? "");
     setPoints(String(question?.points ?? 1));
@@ -89,32 +96,50 @@ export default function QuizQuestionModal({
         }));
 
       setOptions(
-        sorted.length >= 2
-          ? sorted
-          : [...sorted, createEmptyOption()],
+        sorted.length >= 2 ? sorted : [...sorted, createEmptyOption()],
       );
-    } else {
-      setOptions(createDefaultOptions());
+
+      return;
     }
+
+    setOptions(createDefaultOptions());
   }, [isOpen, question]);
 
-  const handleClose = () => {
-    if (!isSaving) {
-      onClose();
-    }
+  const clearError = (field: keyof QuizQuestionFormErrors) => {
+    setErrors((prev) => {
+      if (!prev[field]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [field]: undefined,
+      };
+    });
   };
 
-  const updateOptionContent = (
-    index: number,
-    value: string,
-  ) => {
+  const handleClose = () => {
+    if (isSaving) {
+      return;
+    }
+
+    setErrors({});
+    onClose();
+  };
+
+  const updateOptionContent = (index: number, value: string) => {
     setOptions((prev) =>
       prev.map((option, optionIndex) =>
         optionIndex === index
-          ? { ...option, content: value }
+          ? {
+              ...option,
+              content: value,
+            }
           : option,
       ),
     );
+
+    clearError("options");
   };
 
   const chooseCorrectOption = (index: number) => {
@@ -124,6 +149,8 @@ export default function QuizQuestionModal({
         isCorrect: optionIndex === index,
       })),
     );
+
+    clearError("options");
   };
 
   const removeOption = (index: number) => {
@@ -135,14 +162,29 @@ export default function QuizQuestionModal({
     setOptions((prev) =>
       prev.filter((_, optionIndex) => optionIndex !== index),
     );
+
+    clearError("options");
   };
 
-  const handleSubmit = async (
-    event: React.FormEvent,
-  ) => {
-    event.preventDefault();
+  const validateForm = () => {
+    const nextErrors: QuizQuestionFormErrors = {};
 
     const normalizedContent = content.trim();
+
+    if (!normalizedContent) {
+      nextErrors.content = "Nội dung câu hỏi không được để trống";
+    }
+
+    if (!points.trim()) {
+      nextErrors.points = "Vui lòng nhập điểm";
+    } else {
+      const parsedPoints = Number(points);
+
+      if (!Number.isFinite(parsedPoints) || parsedPoints < 0) {
+        nextErrors.points = "Điểm câu hỏi không hợp lệ";
+      }
+    }
+
     const normalizedOptions = options
       .map((option) => ({
         ...option,
@@ -150,38 +192,44 @@ export default function QuizQuestionModal({
       }))
       .filter((option) => option.content.length > 0);
 
-    if (!normalizedContent) {
-      toast.error("Vui lòng nhập nội dung câu hỏi");
-      return;
-    }
-
     if (normalizedOptions.length < 2) {
-      toast.error("Mỗi câu hỏi cần ít nhất 2 đáp án");
+      nextErrors.options = "Mỗi câu hỏi cần ít nhất 2 đáp án";
+    } else {
+      const correctOptions = normalizedOptions.filter(
+        (option) => option.isCorrect,
+      );
+
+      if (correctOptions.length !== 1) {
+        nextErrors.options = "Vui lòng chọn đúng 1 đáp án đúng";
+      }
+    }
+
+    setErrors(nextErrors);
+
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (isSaving) {
       return;
     }
 
-    const correctOptions = normalizedOptions.filter(
-      (option) => option.isCorrect,
-    );
-
-    if (correctOptions.length !== 1) {
-      toast.error("Vui lòng chọn đúng 1 đáp án đúng");
+    if (!validateForm()) {
       return;
     }
 
-    const parsedPoints = Number(points);
-
-    if (
-      !Number.isFinite(parsedPoints) ||
-      parsedPoints < 0
-    ) {
-      toast.error("Điểm câu hỏi không hợp lệ");
-      return;
-    }
+    const normalizedOptions = options
+      .map((option) => ({
+        ...option,
+        content: option.content.trim(),
+      }))
+      .filter((option) => option.content.length > 0);
 
     await onSubmit({
-      content: normalizedContent,
-      points: parsedPoints,
+      content: content.trim(),
+      points: Number(points),
       materialId: materialId || null,
       options: normalizedOptions,
     });
@@ -194,34 +242,51 @@ export default function QuizQuestionModal({
       title={question ? "Sửa câu hỏi" : "Thêm câu hỏi"}
       size="lg"
     >
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <ModalBody className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nội dung câu hỏi
+              <span className="text-red-500 ml-1">*</span>
             </label>
+
             <textarea
+              name="content"
               value={content}
-              onChange={(event) =>
-                setContent(event.target.value)
-              }
+              onChange={(event) => {
+                setContent(event.target.value);
+
+                clearError("content");
+              }}
               placeholder="Nhập nội dung câu hỏi..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${
+                errors.content
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500 focus:border-transparent"
+              }`}
               rows={4}
               required
             />
+
+            {errors.content && (
+              <p className="mt-1 text-sm text-red-600">{errors.content}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Điểm"
+              name="points"
               type="number"
               min="0"
               step="0.5"
               value={points}
-              onChange={(event) =>
-                setPoints(event.target.value)
-              }
+              error={errors.points}
+              onChange={(event) => {
+                setPoints(event.target.value);
+
+                clearError("points");
+              }}
               required
             />
 
@@ -229,19 +294,16 @@ export default function QuizQuestionModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tài liệu đính kèm
               </label>
+
               <select
                 value={materialId}
-                onChange={(event) =>
-                  setMaterialId(event.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(event) => setMaterialId(event.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Không đính kèm</option>
+
                 {materials.map((material) => (
-                  <option
-                    key={material.id}
-                    value={material.id}
-                  >
+                  <option key={material.id} value={material.id}>
                     {material.title} - {material.fileName}
                   </option>
                 ))}
@@ -254,7 +316,9 @@ export default function QuizQuestionModal({
               <div>
                 <p className="text-sm font-medium text-gray-700">
                   Đáp án
+                  <span className="text-red-500 ml-1">*</span>
                 </p>
+
                 <p className="text-xs text-gray-500 mt-0.5">
                   Chọn vòng tròn bên trái để đánh dấu đáp án đúng.
                 </p>
@@ -264,12 +328,11 @@ export default function QuizQuestionModal({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  setOptions((prev) => [
-                    ...prev,
-                    createEmptyOption(),
-                  ])
-                }
+                onClick={() => {
+                  setOptions((prev) => [...prev, createEmptyOption()]);
+
+                  clearError("options");
+                }}
               >
                 <Plus className="w-4 h-4" />
                 Thêm đáp án
@@ -283,16 +346,16 @@ export default function QuizQuestionModal({
                   className={`flex items-center gap-3 p-3 border rounded-lg ${
                     option.isCorrect
                       ? "border-green-300 bg-green-50"
-                      : "border-gray-200"
+                      : errors.options
+                        ? "border-red-200"
+                        : "border-gray-200"
                   }`}
                 >
                   <input
                     type="radio"
                     name="correct-answer"
                     checked={option.isCorrect}
-                    onChange={() =>
-                      chooseCorrectOption(index)
-                    }
+                    onChange={() => chooseCorrectOption(index)}
                     className="shrink-0"
                     aria-label={`Chọn đáp án ${index + 1} là đáp án đúng`}
                   />
@@ -305,15 +368,12 @@ export default function QuizQuestionModal({
                     type="text"
                     value={option.content}
                     onChange={(event) =>
-                      updateOptionContent(
-                        index,
-                        event.target.value,
-                      )
+                      updateOptionContent(index, event.target.value)
                     }
                     placeholder={`Nhập đáp án ${String.fromCharCode(
                       65 + index,
                     )}`}
-                    className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   />
 
                   <button
@@ -327,6 +387,10 @@ export default function QuizQuestionModal({
                 </div>
               ))}
             </div>
+
+            {errors.options && (
+              <p className="mt-2 text-sm text-red-600">{errors.options}</p>
+            )}
           </div>
         </ModalBody>
 

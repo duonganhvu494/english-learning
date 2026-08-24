@@ -8,6 +8,7 @@ import {
   Send,
   XCircle,
 } from "lucide-react";
+import Modal, { ModalBody, ModalFooter } from "@/app/components/ui/Modal";
 import { toast } from "sonner";
 
 import Badge from "@/app/components/ui/Badge";
@@ -58,6 +59,8 @@ export default function StudentQuiz({
   const [attempt, setAttempt] = useState<AssignmentQuizAttemptResponse | null>(
     null,
   );
+
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   const [answers, setAnswers] = useState<AnswerMap>({});
 
@@ -149,7 +152,7 @@ export default function StudentQuiz({
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (questions.length === 0 || isSubmitting) {
       return;
     }
@@ -161,11 +164,11 @@ export default function StudentQuiz({
       return;
     }
 
-    const accepted = confirm(
-      "Bạn có chắc chắn muốn nộp bài? Sau khi nộp sẽ không thể sửa.",
-    );
+    setShowSubmitConfirm(true);
+  };
 
-    if (!accepted) {
+  const handleConfirmSubmit = async () => {
+    if (isSubmitting) {
       return;
     }
 
@@ -181,6 +184,7 @@ export default function StudentQuiz({
 
       setAttempt(result);
       setQuiz(null);
+      setShowSubmitConfirm(false);
 
       toast.success("Nộp bài trắc nghiệm thành công");
     } catch (error) {
@@ -363,110 +367,167 @@ export default function StudentQuiz({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="font-semibold text-gray-900">Làm bài trắc nghiệm</h3>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-gray-900">
+                Làm bài trắc nghiệm
+              </h3>
 
-            <p className="text-sm text-gray-500 mt-1">
-              Đã trả lời {answeredCount}/{questions.length} câu
-            </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Đã trả lời {answeredCount}/{questions.length} câu
+              </p>
+            </div>
+
+            <Badge variant="info">Đang làm</Badge>
           </div>
+        </CardHeader>
 
-          <Badge variant="info">Đang làm</Badge>
-        </div>
-      </CardHeader>
+        <CardBody className="space-y-5">
+          {questions.map((question, questionIndex) => (
+            <div
+              key={question.id}
+              className="p-5 border border-gray-200 rounded-xl"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-blue-600">
+                    Câu {questionIndex + 1}
+                  </p>
 
-      <CardBody className="space-y-5">
-        {questions.map((question, questionIndex) => (
-          <div
-            key={question.id}
-            className="p-5 border border-gray-200 rounded-xl"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-blue-600">
-                  Câu {questionIndex + 1}
-                </p>
+                  <p className="font-medium text-gray-900 mt-1 whitespace-pre-wrap">
+                    {question.content}
+                  </p>
+                </div>
 
-                <p className="font-medium text-gray-900 mt-1 whitespace-pre-wrap">
-                  {question.content}
-                </p>
+                <span className="text-sm text-gray-500 shrink-0">
+                  {question.points} điểm
+                </span>
               </div>
 
-              <span className="text-sm text-gray-500 shrink-0">
-                {question.points} điểm
-              </span>
-            </div>
+              {question.material && (
+                <a
+                  href={resolveApiUrl(
+                    `/assignments/${assignmentId}/quiz/questions/${question.id}/materials/${question.material.id}/download`,
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block mt-4"
+                >
+                  <Button variant="outline" size="sm">
+                    <Download className="w-4 h-4" />
+                    Tài liệu câu hỏi
+                  </Button>
+                </a>
+              )}
 
-            {question.material && (
-              <a
-                href={resolveApiUrl(
-                  `/assignments/${assignmentId}/quiz/questions/${question.id}/materials/${question.material.id}/download`,
-                )}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block mt-4"
-              >
-                <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4" />
-                  Tài liệu câu hỏi
-                </Button>
-              </a>
+              <div className="space-y-2 mt-4">
+                {[...question.options]
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((option) => {
+                    const checked = answers[question.id] === option.id;
+
+                    return (
+                      <label
+                        key={option.id}
+                        className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer ${
+                          checked
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`question-${question.id}`}
+                          checked={checked}
+                          onChange={() =>
+                            handleSelectAnswer(question.id, option.id)
+                          }
+                          className="mt-1"
+                        />
+
+                        <span className="text-sm text-gray-800">
+                          {option.content}
+                        </span>
+                      </label>
+                    );
+                  })}
+              </div>
+            </div>
+          ))}
+
+          <Button
+            className="w-full"
+            disabled={answeredCount !== questions.length || isSubmitting}
+            onClick={handleSubmit}
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
             )}
 
-            <div className="space-y-2 mt-4">
-              {[...question.options]
-                .sort((a, b) => a.sortOrder - b.sortOrder)
-                .map((option) => {
-                  const checked = answers[question.id] === option.id;
+            {isSubmitting
+              ? "Đang nộp..."
+              : `Nộp bài (${answeredCount}/${questions.length})`}
+          </Button>
+        </CardBody>
+      </Card>
 
-                  return (
-                    <label
-                      key={option.id}
-                      className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer ${
-                        checked
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-gray-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name={`question-${question.id}`}
-                        checked={checked}
-                        onChange={() =>
-                          handleSelectAnswer(question.id, option.id)
-                        }
-                        className="mt-1"
-                      />
+      <Modal
+        isOpen={showSubmitConfirm}
+        onClose={() => {
+          if (!isSubmitting) {
+            setShowSubmitConfirm(false);
+          }
+        }}
+        title="Xác nhận nộp bài"
+      >
+        <ModalBody>
+          <p className="text-sm text-gray-600">
+            Bạn có chắc chắn muốn nộp bài trắc nghiệm?
+          </p>
 
-                      <span className="text-sm text-gray-800">
-                        {option.content}
-                      </span>
-                    </label>
-                  );
-                })}
-            </div>
-          </div>
-        ))}
+          <p className="text-sm text-gray-600 mt-2">
+            Sau khi nộp, bạn sẽ{" "}
+            <span className="font-medium text-gray-900">
+              không thể chỉnh sửa câu trả lời
+            </span>
+            .
+          </p>
+        </ModalBody>
 
-        <Button
-          className="w-full"
-          disabled={answeredCount !== questions.length || isSubmitting}
-          onClick={handleSubmit}
-        >
-          {isSubmitting ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
+        <ModalFooter>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSubmitting}
+            onClick={() => setShowSubmitConfirm(false)}
+          >
+            Tiếp tục làm bài
+          </Button>
 
-          {isSubmitting
-            ? "Đang nộp..."
-            : `Nộp bài (${answeredCount}/${questions.length})`}
-        </Button>
-      </CardBody>
-    </Card>
+          <Button
+            type="button"
+            disabled={isSubmitting}
+            onClick={handleConfirmSubmit}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Đang nộp...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Xác nhận nộp bài
+              </>
+            )}
+          </Button>
+        </ModalFooter>
+      </Modal>
+    </>
   );
 }

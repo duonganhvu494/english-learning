@@ -1,5 +1,12 @@
+import { UserProfile } from "./users";
+
 export interface CreateClassDto {
   className: string;
+  description?: string;
+}
+
+export interface UpdateClassDto {
+  className?: string;
   description?: string;
 }
 
@@ -32,6 +39,25 @@ export interface AddClassStudentsDto {
 export interface ClassStudentsResponse {
   classId: string;
   studentIds: string[];
+}
+
+export interface CreateStudentDto {
+  fullName: string;
+  email: string;
+}
+
+export interface CreateClassStudentResponse {
+  classId: string;
+  workspaceId: string;
+  mode: "created" | "attached" | "already_assigned";
+  workspaceRole: string;
+  classRoleId: string;
+  classRoleName: string;
+  user: UserProfile;
+}
+
+export interface ClassDeleteResponse {
+  classId: string;
 }
 
 export interface UpdateClassStudentRoleDto {

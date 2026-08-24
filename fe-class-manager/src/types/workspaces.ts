@@ -38,13 +38,66 @@ export interface WorkspaceStudentListItem {
 export interface WorkspaceStudentResponse {
   workspaceId: string;
 
-  mode:
-    | "created"
-    | "attached"
-    | "already_assigned";
+  mode: "created" | "attached" | "already_assigned";
 
   role: string;
   user: UserProfile;
+}
+
+export type StudentLearningResultStatus =
+  | "not_submitted"
+  | "in_progress"
+  | "submitted"
+  | "graded"
+  | "completed";
+
+export interface StudentLearningResult {
+  assignmentId: string;
+
+  classId: string;
+  className: string;
+
+  title: string;
+
+  type: "manual" | "quiz";
+
+  score: number | null;
+  maxScore: number | null;
+
+  status: StudentLearningResultStatus;
+
+  completedAt: string | null;
+}
+
+export interface StudentDetailResponse {
+  student: {
+    studentId: string;
+
+    fullName: string;
+    userName: string;
+    email: string;
+
+    role: string;
+    status: string;
+  };
+
+  classes: {
+    id: string;
+    className: string;
+    description: string | null;
+  }[];
+
+  summary: {
+    classCount: number;
+
+    completedAssignmentCount: number;
+
+    manualAverageScore: number | null;
+
+    quizAveragePercentage: number | null;
+  };
+
+  results: StudentLearningResult[];
 }
 
 export type WorkspaceSubscriptionStatus =
@@ -62,6 +115,7 @@ export type WorkspaceSubscriptionSource =
 
 export interface WorkspaceSubscriptionResponse {
   id: string;
+
   workspaceId: string;
 
   status: WorkspaceSubscriptionStatus;
@@ -75,6 +129,7 @@ export interface WorkspaceSubscriptionResponse {
   source: WorkspaceSubscriptionSource;
 
   paymentTransactionId: string | null;
+
   note: string | null;
 
   plan: PlanResponse;

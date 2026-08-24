@@ -4,7 +4,8 @@ import RequireRole from "@/app/routes/RequireRole";
 import AdminLayout from "@/app/layouts/AdminLayout";
 
 import Dashboard from "@/app/pages/admin/Dashboard";
-import StudentsPage from "@/app/pages/admin/StudentsPage";
+import StudentsPage from "@/app/pages/admin/students/StudentsPage";
+import StudentDetailPage from "@/app/pages/admin/students/StudentDetailPage";
 import ClassesPage from "@/app/pages/admin/classes/ClassesPage";
 import ClassDetailPage from "@/app/pages/admin/classes/ClassDetailPage";
 import SessionDetailPage from "@/app/pages/admin/sessions/SessionDetailPage";
@@ -27,6 +28,7 @@ export default function AdminRoutes() {
         <Route path="dashboard" element={<Dashboard />} />
 
         <Route path="students" element={<StudentsPage />} />
+        <Route path="students/:studentId" element={<StudentDetailPage />} />
 
         <Route path="classes" element={<ClassesPage />} />
 

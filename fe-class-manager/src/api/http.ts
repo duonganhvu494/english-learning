@@ -7,6 +7,7 @@ import {
   setCsrfHeaderName,
   setCsrfToken,
 } from "@/app/utils/client-storage";
+import { getApiErrorTranslation } from "@/app/utils/api-error-messages";
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:5000";
@@ -115,21 +116,23 @@ export async function unwrap<T>(
 
 export function getApiErrorMessage(
   error: unknown,
-  fallbackMessage = "Request failed",
+  fallbackMessage = "Đã xảy ra lỗi. Vui lòng thử lại",
 ): string {
   if (!axios.isAxiosError(error)) {
     return fallbackMessage;
   }
 
   const axiosError = error as AxiosError<ApiErrorResult>;
-  const backendMessage = axiosError.response?.data?.message;
+
   const backendCode = axiosError.response?.data?.code;
 
-  if (backendCode && backendMessage) {
-    return `${backendMessage}`;
+  const translatedMessage = getApiErrorTranslation(backendCode);
+
+  if (translatedMessage) {
+    return translatedMessage;
   }
 
-  return backendMessage ?? fallbackMessage;
+  return fallbackMessage;
 }
 
 export function requestConfig(

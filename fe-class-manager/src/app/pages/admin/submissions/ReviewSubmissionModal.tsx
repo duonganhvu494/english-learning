@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
+
 import Button from "@/app/components/ui/Button";
-import Modal, { ModalBody, ModalFooter } from "@/app/components/ui/Modal";
 import Input from "@/app/components/ui/Input";
+import Modal, { ModalBody, ModalFooter } from "@/app/components/ui/Modal";
+
 import { resolveApiUrl } from "@/api";
-import type { SubmissionResponse } from "@/types";
 import { formatDateTime } from "@/app/utils/format";
+
+import type { SubmissionResponse } from "@/types";
 
 export interface ReviewSubmissionFormValue {
   score: string;
@@ -20,6 +23,15 @@ interface ReviewSubmissionModalProps {
   onSubmit: (value: ReviewSubmissionFormValue) => void | Promise<void>;
 }
 
+type ReviewSubmissionFormErrors = {
+  score?: string;
+};
+
+const INITIAL_FORM: ReviewSubmissionFormValue = {
+  score: "",
+  feedback: "",
+};
+
 export default function ReviewSubmissionModal({
   isOpen,
   isSubmitting,
@@ -27,10 +39,10 @@ export default function ReviewSubmissionModal({
   onClose,
   onSubmit,
 }: ReviewSubmissionModalProps) {
-  const [reviewData, setReviewData] = useState<ReviewSubmissionFormValue>({
-    score: "",
-    feedback: "",
-  });
+  const [reviewData, setReviewData] =
+    useState<ReviewSubmissionFormValue>(INITIAL_FORM);
+
+  const [errors, setErrors] = useState<ReviewSubmissionFormErrors>({});
 
   useEffect(() => {
     if (isOpen && submission) {
@@ -38,26 +50,76 @@ export default function ReviewSubmissionModal({
         score: submission.score?.toString() ?? "",
         feedback: submission.feedback ?? "",
       });
+
+      setErrors({});
       return;
     }
 
     if (!isOpen) {
-      setReviewData({
-        score: "",
-        feedback: "",
-      });
+      setReviewData(INITIAL_FORM);
+      setErrors({});
     }
   }, [isOpen, submission]);
 
-  const handleClose = () => {
-    if (!isSubmitting) {
-      onClose();
+  const clearError = (field: keyof ReviewSubmissionFormErrors) => {
+    setErrors((prev) => {
+      if (!prev[field]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [field]: undefined,
+      };
+    });
+  };
+
+  const validateForm = () => {
+    const nextErrors: ReviewSubmissionFormErrors = {};
+
+    const score = reviewData.score.trim();
+
+    if (!score) {
+      nextErrors.score = "Vui lòng nhập điểm";
+    } else {
+      const parsedScore = Number(score);
+
+      if (!Number.isFinite(parsedScore)) {
+        nextErrors.score = "Điểm không hợp lệ";
+      } else if (parsedScore < 0 || parsedScore > 10) {
+        nextErrors.score = "Điểm phải từ 0 đến 10";
+      }
     }
+
+    setErrors(nextErrors);
+
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleClose = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setErrors({});
+    onClose();
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    await onSubmit(reviewData);
+
+    if (isSubmitting || !submission) {
+      return;
+    }
+
+    if (!validateForm()) {
+      return;
+    }
+
+    await onSubmit({
+      score: reviewData.score.trim(),
+      feedback: reviewData.feedback.trim(),
+    });
   };
 
   return (
@@ -67,7 +129,7 @@ export default function ReviewSubmissionModal({
       title="Chấm điểm bài nộp"
       size="lg"
     >
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <ModalBody className="space-y-4">
           <p className="text-sm text-gray-600">
             Học viên:{" "}
@@ -99,6 +161,7 @@ export default function ReviewSubmissionModal({
             <p className="text-sm text-gray-600">
               Tệp: {submission?.material?.fileName || "Không có tệp"}
             </p>
+
             <p className="text-xs text-gray-500 mt-1">
               Nộp lúc:{" "}
               {submission?.submittedAt
@@ -116,18 +179,23 @@ export default function ReviewSubmissionModal({
             max="10"
             step="0.1"
             value={reviewData.score}
-            onChange={(event) =>
+            error={errors.score}
+            onChange={(event) => {
               setReviewData((prev) => ({
                 ...prev,
                 score: event.target.value,
-              }))
-            }
+              }));
+
+              clearError("score");
+            }}
+            required
           />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nhận xét
             </label>
+
             <textarea
               name="feedback"
               placeholder="Nhận xét về bài làm của học viên..."
@@ -138,7 +206,7 @@ export default function ReviewSubmissionModal({
                   feedback: event.target.value,
                 }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={6}
             />
           </div>
@@ -153,7 +221,8 @@ export default function ReviewSubmissionModal({
           >
             Hủy
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+
+          <Button type="submit" disabled={isSubmitting || !submission}>
             {isSubmitting ? "Đang lưu..." : "Lưu điểm"}
           </Button>
         </ModalFooter>

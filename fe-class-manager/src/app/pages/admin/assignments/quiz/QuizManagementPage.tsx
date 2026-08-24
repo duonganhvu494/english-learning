@@ -7,13 +7,19 @@ import {
   Download,
   Edit3,
   FileText,
+  ListChecks,
   Plus,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+
 import Button from "@/app/components/ui/Button";
-import Card, { CardBody, CardHeader } from "@/app/components/ui/Card";
+import Card, {
+  CardBody,
+  CardHeader,
+} from "@/app/components/ui/Card";
 import Badge from "@/app/components/ui/Badge";
+
 import {
   assignmentQuizApi,
   assignmentsApi,
@@ -21,20 +27,25 @@ import {
   materialsApi,
   resolveApiUrl,
 } from "@/api";
+
 import type {
   AssignmentQuizManagementResponse,
   AssignmentQuizQuestionResponse,
   AssignmentResponse,
   MaterialResponse,
 } from "@/types";
+
 import { getQuizQuestions } from "@/types/assignment-quiz.types";
 import { resolveWorkspaceId } from "@/app/utils/workspace";
+
 import QuizQuestionModal, {
   type QuizQuestionFormValue,
   type QuizQuestionOptionFormValue,
-} from "@/app/pages/admin/assignments/quiz/QuizQuestionModal";
+} from "./QuizQuestionModal";
 
-function isQuizReady(questions: AssignmentQuizQuestionResponse[]): boolean {
+function isQuizReady(
+  questions: AssignmentQuizQuestionResponse[],
+): boolean {
   if (questions.length === 0) {
     return false;
   }
@@ -44,7 +55,9 @@ function isQuizReady(questions: AssignmentQuizQuestionResponse[]): boolean {
 
     return (
       options.length >= 2 &&
-      options.filter((option) => option.isCorrect).length === 1
+      options.filter(
+        (option) => option.isCorrect,
+      ).length === 1
     );
   });
 }
@@ -52,24 +65,53 @@ function isQuizReady(questions: AssignmentQuizQuestionResponse[]): boolean {
 export default function QuizManagementPage() {
   const { assignmentId } = useParams();
 
-  const [assignment, setAssignment] = useState<AssignmentResponse | null>(null);
-  const [quiz, setQuiz] = useState<AssignmentQuizManagementResponse | null>(
-    null,
-  );
-  const [materials, setMaterials] = useState<MaterialResponse[]>([]);
+  const [assignment, setAssignment] =
+    useState<AssignmentResponse | null>(null);
+
+  const [quiz, setQuiz] =
+    useState<AssignmentQuizManagementResponse | null>(
+      null,
+    );
+
+  const [materials, setMaterials] = useState<
+    MaterialResponse[]
+  >([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [
+    showQuestionModal,
+    setShowQuestionModal,
+  ] = useState(false);
+
   const [editingQuestion, setEditingQuestion] =
-    useState<AssignmentQuizQuestionResponse | null>(null);
+    useState<AssignmentQuizQuestionResponse | null>(
+      null,
+    );
 
   const questions = useMemo(
-    () => [...getQuizQuestions(quiz)].sort((a, b) => a.sortOrder - b.sortOrder),
+    () =>
+      [...getQuizQuestions(quiz)].sort(
+        (a, b) => a.sortOrder - b.sortOrder,
+      ),
     [quiz],
   );
 
-  const ready = useMemo(() => isQuizReady(questions), [questions]);
+  const ready = useMemo(
+    () => isQuizReady(questions),
+    [questions],
+  );
+
+  const totalPoints = useMemo(
+    () =>
+      questions.reduce(
+        (sum, question) =>
+          sum + question.points,
+        0,
+      ),
+    [questions],
+  );
 
   const loadData = async () => {
     if (!assignmentId) {
@@ -79,24 +121,41 @@ export default function QuizManagementPage() {
     setIsLoading(true);
 
     try {
-      const workspaceId = await resolveWorkspaceId();
+      const workspaceId =
+        await resolveWorkspaceId();
 
-      const [assignmentResult, quizResult, materialList] = await Promise.all([
-        assignmentsApi.getAssignment(assignmentId),
-        assignmentQuizApi.getManagement(assignmentId),
-        materialsApi.listWorkspaceMaterials(workspaceId),
+      const [
+        assignmentResult,
+        quizResult,
+        materialList,
+      ] = await Promise.all([
+        assignmentsApi.getAssignment(
+          assignmentId,
+        ),
+        assignmentQuizApi.getManagement(
+          assignmentId,
+        ),
+        materialsApi.listWorkspaceMaterials(
+          workspaceId,
+        ),
       ]);
 
       setAssignment(assignmentResult);
       setQuiz(quizResult);
+
       setMaterials(
         materialList.filter(
-          (material) => String(material.status).toLowerCase() === "ready",
+          (material) =>
+            String(material.status).toLowerCase() ===
+            "ready",
         ),
       );
     } catch (error) {
       toast.error(
-        getApiErrorMessage(error, "Không thể tải nội dung trắc nghiệm"),
+        getApiErrorMessage(
+          error,
+          "Không thể tải nội dung trắc nghiệm",
+        ),
       );
     } finally {
       setIsLoading(false);
@@ -112,7 +171,9 @@ export default function QuizManagementPage() {
     setShowQuestionModal(true);
   };
 
-  const openEditQuestion = (question: AssignmentQuizQuestionResponse) => {
+  const openEditQuestion = (
+    question: AssignmentQuizQuestionResponse,
+  ) => {
     setEditingQuestion(question);
     setShowQuestionModal(true);
   };
@@ -121,12 +182,19 @@ export default function QuizManagementPage() {
     questionId: string,
     options: QuizQuestionOptionFormValue[],
   ) => {
-    for (const [index, option] of options.entries()) {
-      await assignmentQuizApi.createOption(assignmentId!, questionId, {
-        content: option.content,
-        isCorrect: option.isCorrect,
-        sortOrder: index,
-      });
+    for (const [
+      index,
+      option,
+    ] of options.entries()) {
+      await assignmentQuizApi.createOption(
+        assignmentId!,
+        questionId,
+        {
+          content: option.content,
+          isCorrect: option.isCorrect,
+          sortOrder: index,
+        },
+      );
     }
   };
 
@@ -137,64 +205,105 @@ export default function QuizManagementPage() {
     const nextExistingIds = new Set(
       nextOptions
         .map((option) => option.id)
-        .filter((id): id is string => Boolean(id)),
+        .filter(
+          (id): id is string => Boolean(id),
+        ),
     );
 
-    for (const existingOption of question.options ?? []) {
-      if (!nextExistingIds.has(existingOption.id)) {
-        await assignmentQuizApi.deleteOption(assignmentId!, existingOption.id);
+    for (const existingOption of question.options ??
+      []) {
+      if (
+        !nextExistingIds.has(
+          existingOption.id,
+        )
+      ) {
+        await assignmentQuizApi.deleteOption(
+          assignmentId!,
+          existingOption.id,
+        );
       }
     }
 
-    const indexedOptions = nextOptions.map((option, index) => ({
+    const indexedOptions = nextOptions.map(
+      (option, index) => ({
+        option,
+        sortOrder: index,
+      }),
+    );
+
+    const incorrectOptions =
+      indexedOptions.filter(
+        ({ option }) => !option.isCorrect,
+      );
+
+    for (const {
       option,
-      sortOrder: index,
-    }));
-
-    const incorrectOptions = indexedOptions.filter(
-      ({ option }) => !option.isCorrect,
-    );
-
-    for (const { option, sortOrder } of incorrectOptions) {
+      sortOrder,
+    } of incorrectOptions) {
       if (option.id) {
-        await assignmentQuizApi.updateOption(assignmentId!, option.id, {
-          content: option.content,
-          isCorrect: false,
-          sortOrder,
-        });
+        await assignmentQuizApi.updateOption(
+          assignmentId!,
+          option.id,
+          {
+            content: option.content,
+            isCorrect: false,
+            sortOrder,
+          },
+        );
       } else {
-        await assignmentQuizApi.createOption(assignmentId!, question.id, {
-          content: option.content,
-          isCorrect: false,
-          sortOrder,
-        });
+        await assignmentQuizApi.createOption(
+          assignmentId!,
+          question.id,
+          {
+            content: option.content,
+            isCorrect: false,
+            sortOrder,
+          },
+        );
       }
     }
 
-    const correctEntry = indexedOptions.find(({ option }) => option.isCorrect);
+    const correctEntry = indexedOptions.find(
+      ({ option }) => option.isCorrect,
+    );
 
     if (!correctEntry) {
-      throw new Error("Quiz question must have exactly one correct option");
+      throw new Error(
+        "Quiz question must have exactly one correct option",
+      );
     }
 
-    const { option: correctOption, sortOrder: correctSortOrder } = correctEntry;
+    const {
+      option: correctOption,
+      sortOrder: correctSortOrder,
+    } = correctEntry;
 
     if (correctOption.id) {
-      await assignmentQuizApi.updateOption(assignmentId!, correctOption.id, {
-        content: correctOption.content,
-        isCorrect: true,
-        sortOrder: correctSortOrder,
-      });
+      await assignmentQuizApi.updateOption(
+        assignmentId!,
+        correctOption.id,
+        {
+          content: correctOption.content,
+          isCorrect: true,
+          sortOrder: correctSortOrder,
+        },
+      );
     } else {
-      await assignmentQuizApi.createOption(assignmentId!, question.id, {
-        content: correctOption.content,
-        isCorrect: true,
-        sortOrder: correctSortOrder,
-      });
+      await assignmentQuizApi.createOption(
+        assignmentId!,
+        question.id,
+        {
+          content: correctOption.content,
+          isCorrect: true,
+          sortOrder: correctSortOrder,
+        },
+      );
     }
   };
 
-  const handleSaveQuestion = async (value: QuizQuestionFormValue) => {
+  const handleSaveQuestion = async (
+    value: QuizQuestionFormValue,
+  ) => {
     if (!assignmentId || isSaving) {
       return;
     }
@@ -213,21 +322,30 @@ export default function QuizManagementPage() {
           },
         );
 
-        await syncExistingOptions(editingQuestion, value.options);
-
-        toast.success("Đã cập nhật câu hỏi và đáp án");
-      } else {
-        const createdQuestion = await assignmentQuizApi.createQuestion(
-          assignmentId,
-          {
-            content: value.content,
-            points: value.points,
-            materialId: value.materialId,
-          },
+        await syncExistingOptions(
+          editingQuestion,
+          value.options,
         );
 
+        toast.success(
+          "Đã cập nhật câu hỏi và đáp án",
+        );
+      } else {
+        const createdQuestion =
+          await assignmentQuizApi.createQuestion(
+            assignmentId,
+            {
+              content: value.content,
+              points: value.points,
+              materialId: value.materialId,
+            },
+          );
+
         try {
-          await createOptions(createdQuestion.id, value.options);
+          await createOptions(
+            createdQuestion.id,
+            value.options,
+          );
         } catch (optionError) {
           try {
             await assignmentQuizApi.deleteQuestion(
@@ -239,11 +357,14 @@ export default function QuizManagementPage() {
           throw optionError;
         }
 
-        toast.success("Đã thêm câu hỏi và đáp án");
+        toast.success(
+          "Đã thêm câu hỏi và đáp án",
+        );
       }
 
       setShowQuestionModal(false);
       setEditingQuestion(null);
+
       await loadData();
     } catch (error) {
       toast.error(
@@ -266,23 +387,38 @@ export default function QuizManagementPage() {
       return;
     }
 
-    if (!confirm(`Bạn có chắc chắn muốn xóa câu hỏi "${question.content}"?`)) {
+    if (
+      !confirm(
+        `Bạn có chắc chắn muốn xóa câu hỏi "${question.content}"?`,
+      )
+    ) {
       return;
     }
 
     try {
-      await assignmentQuizApi.deleteQuestion(assignmentId, question.id);
+      await assignmentQuizApi.deleteQuestion(
+        assignmentId,
+        question.id,
+      );
 
       toast.success("Đã xóa câu hỏi");
+
       await loadData();
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Không thể xóa câu hỏi"));
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Không thể xóa câu hỏi",
+        ),
+      );
     }
   };
 
   if (isLoading) {
     return (
-      <div className="p-6 text-sm text-gray-500">Đang tải trắc nghiệm...</div>
+      <div className="p-6 text-sm text-gray-500">
+        Đang tải trắc nghiệm...
+      </div>
     );
   }
 
@@ -296,175 +432,301 @@ export default function QuizManagementPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-start gap-4">
-        <Link to={`/admin/assignments/${assignment.id}`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        </Link>
+      {/* HEADER */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-4">
+          <Link
+            to={`/admin/assignments/${assignment.id}`}
+          >
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          </Link>
 
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Quản lý trắc nghiệm
-            </h1>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900">
+                Quản lý trắc nghiệm
+              </h1>
 
-            <Badge variant={ready ? "success" : "warning"}>
-              {ready ? "Sẵn sàng" : "Chưa sẵn sàng"}
-            </Badge>
+              <Badge
+                variant={
+                  ready ? "success" : "warning"
+                }
+              >
+                {ready
+                  ? "Sẵn sàng"
+                  : "Chưa sẵn sàng"}
+              </Badge>
+            </div>
+
+            <p className="text-gray-600 mt-1">
+              {assignment.title}
+            </p>
           </div>
-
-          <p className="text-gray-600 mt-1">{assignment.title}</p>
         </div>
 
-        <Link to={`/admin/assignments/${assignment.id}/quiz/attempts`}>
-          <Button variant="outline">
-            <ClipboardCheck className="w-4 h-4" />
-            Kết quả
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            to={`/admin/assignments/${assignment.id}/quiz/attempts`}
+          >
+            <Button variant="outline">
+              <ClipboardCheck className="w-4 h-4" />
+              Kết quả
+            </Button>
+          </Link>
 
-        <Button onClick={openCreateQuestion}>
-          <Plus className="w-4 h-4" />
-          Thêm câu hỏi
-        </Button>
+          <Button onClick={openCreateQuestion}>
+            <Plus className="w-4 h-4" />
+            Thêm câu hỏi
+          </Button>
+        </div>
+      </div>
+
+      {/* SUMMARY */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardBody>
+            <p className="text-sm text-gray-500">
+              Tổng câu hỏi
+            </p>
+
+            <div className="flex items-center gap-2 mt-1">
+              <ListChecks className="w-5 h-5 text-blue-600" />
+
+              <p className="text-2xl font-bold text-gray-900">
+                {questions.length}
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <p className="text-sm text-gray-500">
+              Tổng điểm
+            </p>
+
+            <p className="text-2xl font-bold text-gray-900 mt-1">
+              {totalPoints}
+            </p>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody>
+            <p className="text-sm text-gray-500">
+              Trạng thái
+            </p>
+
+            <div className="mt-2">
+              <Badge
+                variant={
+                  ready ? "success" : "warning"
+                }
+              >
+                {ready
+                  ? "Sẵn sàng"
+                  : "Chưa sẵn sàng"}
+              </Badge>
+            </div>
+          </CardBody>
+        </Card>
       </div>
 
       {!ready && (
         <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg text-sm text-yellow-800">
-          Quiz cần ít nhất một câu hỏi. Mỗi câu phải có ít nhất 2 đáp án và đúng
-          1 đáp án đúng.
+          Quiz cần ít nhất một câu hỏi.
+          Mỗi câu phải có ít nhất 2 đáp án
+          và đúng 1 đáp án đúng.
         </div>
       )}
 
-      {questions.length === 0 ? (
-        <Card>
-          <CardBody className="py-12 text-center">
-            <p className="text-sm text-gray-500">Chưa có câu hỏi nào.</p>
+      {/* QUESTIONS */}
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-900">
+              Nội dung trắc nghiệm
+            </h3>
 
-            <Button className="mt-4" onClick={openCreateQuestion}>
-              <Plus className="w-4 h-4" />
-              Thêm câu hỏi đầu tiên
-            </Button>
-          </CardBody>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {questions.map((question, index) => {
-            const sortedOptions = [...(question.options ?? [])].sort(
-              (a, b) => a.sortOrder - b.sortOrder,
-            );
+            <p className="text-sm text-gray-500 mt-1">
+              {questions.length} câu hỏi
+            </p>
+          </div>
 
-            return (
-              <Card key={question.id}>
-                <CardHeader className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="default">Câu {index + 1}</Badge>
-                      <Badge variant="info">{question.points} điểm</Badge>
-                    </div>
+          <Button
+            size="sm"
+            onClick={openCreateQuestion}
+          >
+            <Plus className="w-4 h-4" />
+            Thêm câu hỏi
+          </Button>
+        </CardHeader>
 
-                    <h3 className="font-semibold text-gray-900 mt-2 whitespace-pre-wrap">
-                      {question.content}
-                    </h3>
-                  </div>
+        <CardBody>
+          {questions.length === 0 ? (
+            <div className="py-12 text-center">
+              <ListChecks className="w-10 h-10 text-gray-300 mx-auto" />
 
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditQuestion(question)}
+              <p className="text-sm text-gray-500 mt-3">
+                Chưa có câu hỏi nào
+              </p>
+
+              <Button
+                className="mt-4"
+                onClick={openCreateQuestion}
+              >
+                <Plus className="w-4 h-4" />
+                Thêm câu hỏi đầu tiên
+              </Button>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {questions.map(
+                (question, index) => {
+                  const sortedOptions = [
+                    ...(question.options ?? []),
+                  ].sort(
+                    (a, b) =>
+                      a.sortOrder - b.sortOrder,
+                  );
+
+                  return (
+                    <div
+                      key={question.id}
+                      className="py-6 first:pt-0 last:pb-0"
                     >
-                      <Edit3 className="w-4 h-4" />
-                      Sửa
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void handleDeleteQuestion(question)}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-600" />
-                    </Button>
-                  </div>
-                </CardHeader>
-
-                <CardBody className="space-y-4">
-                  {question.material && (
-                    <div className="flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-
+                      <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {question.material.title}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">
-                            {question.material.fileName}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="default">
+                              Câu {index + 1}
+                            </Badge>
+
+                            <Badge variant="info">
+                              {question.points} điểm
+                            </Badge>
+                          </div>
+
+                          <h4 className="font-semibold text-gray-900 mt-3 whitespace-pre-wrap">
+                            {question.content}
+                          </h4>
+                        </div>
+
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              openEditQuestion(
+                                question,
+                              )
+                            }
+                          >
+                            <Edit3 className="w-4 h-4" />
+                            Sửa
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              void handleDeleteQuestion(
+                                question,
+                              )
+                            }
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </Button>
                         </div>
                       </div>
 
-                      <a
-                        href={resolveApiUrl(question.material.downloadUrl)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <Button variant="outline" size="sm">
-                          <Download className="w-4 h-4" />
-                          Tải
-                        </Button>
-                      </a>
-                    </div>
-                  )}
+                      {question.material && (
+                        <div className="flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg mt-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <FileText className="w-4 h-4 text-blue-600 shrink-0" />
 
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700">Đáp án</p>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {
+                                  question
+                                    .material
+                                    .title
+                                }
+                              </p>
 
-                    {sortedOptions.map((option, optionIndex) => (
-                      <div
-                        key={option.id}
-                        className={`flex items-center gap-3 p-3 border rounded-lg ${
-                          option.isCorrect
-                            ? "border-green-300 bg-green-50"
-                            : "border-gray-200"
-                        }`}
-                      >
-                        <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-semibold shrink-0">
-                          {String.fromCharCode(65 + optionIndex)}
+                              <p className="text-xs text-gray-500 truncate">
+                                {
+                                  question
+                                    .material
+                                    .fileName
+                                }
+                              </p>
+                            </div>
+                          </div>
+
+                          <a
+                            href={resolveApiUrl(
+                              question.material
+                                .downloadUrl,
+                            )}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Download className="w-4 h-4" />
+                              Tải
+                            </Button>
+                          </a>
                         </div>
+                      )}
 
-                        <div
-                          className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 ${
-                            option.isCorrect
-                              ? "bg-green-600 border-green-600 text-white"
-                              : "border-gray-300"
-                          }`}
-                        >
-                          {option.isCorrect && <Check className="w-4 h-4" />}
-                        </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-4">
+                        {sortedOptions.map(
+                          (
+                            option,
+                            optionIndex,
+                          ) => (
+                            <div
+                              key={option.id}
+                              className={`flex items-center gap-3 p-3 border rounded-lg ${
+                                option.isCorrect
+                                  ? "border-green-300 bg-green-50"
+                                  : "border-gray-200"
+                              }`}
+                            >
+                              <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-semibold shrink-0">
+                                {String.fromCharCode(
+                                  65 +
+                                    optionIndex,
+                                )}
+                              </div>
 
-                        <span className="text-sm text-gray-900">
-                          {option.content}
-                        </span>
+                              <span className="text-sm text-gray-900 flex-1">
+                                {option.content}
+                              </span>
 
-                        {option.isCorrect && (
-                          <Badge variant="success">Đáp án đúng</Badge>
+                              {option.isCorrect && (
+                                <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0">
+                                  <Check className="w-4 h-4" />
+                                </div>
+                              )}
+                            </div>
+                          ),
                         )}
                       </div>
-                    ))}
-                  </div>
-
-                  <p className="text-xs text-gray-500">
-                    Muốn thay đổi câu hỏi hoặc đáp án, bấm “Sửa” và chỉnh tất cả
-                    trong cùng một cửa sổ.
-                  </p>
-                </CardBody>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          )}
+        </CardBody>
+      </Card>
 
       <QuizQuestionModal
         isOpen={showQuestionModal}
