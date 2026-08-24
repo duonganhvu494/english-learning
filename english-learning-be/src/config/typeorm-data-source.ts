@@ -1,34 +1,20 @@
-import 'reflect-metadata';
-import { config as loadEnv } from 'dotenv';
-import { DataSource } from 'typeorm';
+import "reflect-metadata";
+import { DataSource } from "typeorm";
+import * as dotenv from "dotenv";
 
-loadEnv();
-
-const requiredEnv = (name: string): string => {
-  const value = process.env[name];
-
-  if (!value) {
-    throw new Error(`${name} is required to run TypeORM migrations`);
-  }
-
-  return value;
-};
-
-const parsePort = (value: string | undefined): number => {
-  const port = Number.parseInt(value || '5432', 10);
-  return Number.isFinite(port) ? port : 5432;
-};
+dotenv.config();
 
 export default new DataSource({
-  type: 'postgres',
-  host: requiredEnv('DB_HOST'),
-  port: parsePort(process.env.DB_PORT),
-  username: requiredEnv('DB_USERNAME'),
-  password: requiredEnv('DB_PASSWORD'),
-  database: requiredEnv('DB_NAME'),
+  type: "postgres",
+
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT || "5432", 10),
+  username: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+
+  entities: ["src/**/*.entity.ts"],
+  migrations: ["src/migrations/*.ts"],
+
   synchronize: false,
-  migrationsRun: false,
-  entities: ['src/**/*.entity.ts'],
-  migrations: ['src/migrations/*.ts'],
-  migrationsTableName: 'typeorm_migrations',
 });

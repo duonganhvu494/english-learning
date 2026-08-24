@@ -3,7 +3,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { IsNull, Repository } from "typeorm";
 import { errorPayload } from "src/common/utils/error-payload.util";
-import { MailService } from "src/mail/mail.service";
 import { Role } from "src/rbac/entities/role.entity";
 import { CreateStudentDto } from "src/users/dto/create-student.dto";
 import { AccountType, User } from "src/users/entities/user.entity";
