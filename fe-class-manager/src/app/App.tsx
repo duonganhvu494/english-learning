@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router";
+import { createBrowserRouter, RouterProvider } from "react-router";
 import { Toaster } from "sonner";
 
 import LandingPage from "@/app/pages/LandingPage";
@@ -9,28 +9,30 @@ import ForgotPasswordPage from "@/app/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/app/pages/auth/ResetPasswordPage";
 import ChangePasswordPage from "@/app/pages/auth/ChangePasswordPage";
 
-import AdminRoutes from "@/app/routes/AdminRoutes";
-import StudentRoutes from "@/app/routes/StudentRoutes";
+import adminRoutes from "@/app/routes/AdminRoutes";
+import studentRoutes from "@/app/routes/StudentRoutes";
+
+import AuthenticatedLayout from "@/app/layouts/AuthenticatedLayout";
+
+const router = createBrowserRouter([
+  { path: "/", element: <LandingPage /> },
+  { path: "/login", element: <LoginPage /> },
+  { path: "/register", element: <RegisterPage /> },
+  { path: "/forgot-password", element: <ForgotPasswordPage /> },
+  { path: "/reset-password", element: <ResetPasswordPage /> },
+  { path: "/change-password", element: <ChangePasswordPage /> },
+
+  {
+    element: <AuthenticatedLayout />,
+    children: [...adminRoutes, ...studentRoutes],
+  },
+]);
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <>
       <Toaster position="top-right" />
-
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-
-        <Route path="/login" element={<LoginPage />} />
-
-        <Route path="/register" element={<RegisterPage />} />
-
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/change-password" element={<ChangePasswordPage />} />
-        {AdminRoutes()}
-        {StudentRoutes()}
-      </Routes>
-    </BrowserRouter>
+      <RouterProvider router={router} />
+    </>
   );
 }

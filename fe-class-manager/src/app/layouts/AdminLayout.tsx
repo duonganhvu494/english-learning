@@ -1,81 +1,86 @@
-﻿import { Outlet, Link, useLocation, useNavigate } from 'react-router';
+﻿import { Outlet, Link, useLocation, useNavigate } from "react-router";
+
 import {
   LayoutDashboard,
-  Users,
-  BookOpen,
-  FileText,
-  CreditCard,
-  Settings,
-  Search,
-  Plus,
   Bell,
   ChevronDown,
-  Building2,
   LogOut,
-  User,
   Check,
-} from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
-import { authApi, getApiErrorMessage, notificationsApi, usersApi, workspacesApi } from '@/api';
-import type { NotificationItem, UserProfile } from '@/types';
-import { clearAuthStorage, setCurrentUser, setWorkspaceId } from '@/app/utils/client-storage';
+  Users,
+  BookOpen,
+  CreditCard,
+  Settings,
+} from "lucide-react";
+
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+
+import { authApi, getApiErrorMessage, usersApi } from "@/api";
+
+import type { UserProfile } from "@/types";
+
+import { clearAuthStorage, setCurrentUser } from "@/app/utils/client-storage";
+
+import { useNotifications } from "@/app/providers/NotificationProvider";
 
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+
   const [currentUser, setCurrentUserState] = useState<UserProfile | null>(null);
-  const [workspaceName, setWorkspaceName] = useState('Trung tâm');
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  const { latestNotifications, unreadCount, markAllRead } = useNotifications();
 
   const menuItems = useMemo(
     () => [
-      { icon: LayoutDashboard, label: 'Tổng quan', path: '/admin/dashboard' },
-      { icon: BookOpen, label: 'Lớp học', path: '/admin/classes' },
-      { icon: Users, label: 'Học viên', path: '/admin/students' },
-      { icon: FileText, label: 'Tài liệu', path: '/admin/materials' },
-      { icon: CreditCard, label: 'Thanh toán', path: '/admin/billing' },
-      { icon: Settings, label: 'Cài đặt', path: '/admin/settings' },
+      {
+        icon: LayoutDashboard,
+        label: "Dashboard",
+        path: "/admin/dashboard",
+      },
+      {
+        icon: Users,
+        label: "Học viên",
+        path: "/admin/students",
+      },
+      {
+        icon: BookOpen,
+        label: "Lớp học",
+        path: "/admin/classes",
+      },
+      {
+        icon: CreditCard,
+        label: "Billing",
+        path: "/admin/billing",
+      },
+      {
+        icon: Settings,
+        label: "Settings",
+        path: "/admin/settings",
+      },
     ],
     [],
   );
 
-  const refreshNotifications = async () => {
-    try {
-      const [countResult, notificationItems] = await Promise.all([
-        notificationsApi.getUnreadCount(),
-        notificationsApi.listMyNotifications({ limit: 5 }),
-      ]);
-      setUnreadCount(countResult.unreadCount);
-      setNotifications(notificationItems);
-    } catch {
-      // Keep UI stable when notifications endpoint is temporarily unavailable.
-    }
-  };
-
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const [me, workspace] = await Promise.all([
-          usersApi.getMe(),
-          workspacesApi.getMyWorkspace(),
-        ]);
-        setCurrentUserState(me);
-        setCurrentUser(me);
-        setWorkspaceName(workspace.name);
-        setWorkspaceId(workspace.id);
-      } catch (error) {
-        toast.error(getApiErrorMessage(error, 'Phiên đăng nhập hết hạn'));
-        clearAuthStorage();
-        navigate('/login');
-        return;
-      }
+        const me = await usersApi.getMe();
 
-      await refreshNotifications();
+        setCurrentUser(me);
+        setCurrentUserState(me);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "Phiên đăng nhập hết hạn"));
+
+        clearAuthStorage();
+
+        navigate("/login", {
+          replace: true,
+        });
+      }
     };
 
     void bootstrap();
@@ -87,47 +92,56 @@ export default function AdminLayout() {
     } catch {
       clearAuthStorage();
     } finally {
-      navigate('/login');
+      navigate("/login", {
+        replace: true,
+      });
     }
   };
 
   const handleMarkAllRead = async () => {
     try {
-      await notificationsApi.markAllRead();
-      await refreshNotifications();
-      toast.success('Đã đánh dấu đã đọc tất cả thông báo');
+      await markAllRead();
+
+      toast.success("Đã đánh dấu tất cả thông báo");
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Không thể cập nhật thông báo'));
+      toast.error(getApiErrorMessage(error, "Không thể cập nhật thông báo"));
     }
   };
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-blue-600">EnglishClass</h1>
-          <div className="mt-4 p-2 rounded-lg border border-gray-200 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-medium truncate max-w-[160px]">{workspaceName}</span>
-            </div>
-            <ChevronDown className="w-4 h-4 text-gray-400" />
-          </div>
+      <aside className="w-64 bg-white border-r flex flex-col">
+        <div className="p-4 border-b">
+          <h1 className="text-xl font-bold text-blue-600">
+            EnglishClass Admin
+          </h1>
         </div>
 
         <nav className="flex-1 p-4">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+
+            const active =
+              location.pathname === item.path ||
+              location.pathname.startsWith(`${item.path}/`);
+
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-1 transition-colors ${
-                  isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`
+                  flex items-center gap-3
+                  px-3 py-2.5
+                  rounded-lg mb-1
+                  ${
+                    active
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }
+                `}
               >
                 <Icon className="w-5 h-5" />
+
                 <span className="text-sm font-medium">{item.label}</span>
               </Link>
             );
@@ -136,32 +150,167 @@ export default function AdminLayout() {
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+        <header
+          className="
+            bg-white border-b
+            px-6 py-3
+            flex items-center
+            justify-between
+          "
+        >
+          <h2 className="text-lg font-semibold">Teacher Portal</h2>
 
           <div className="flex items-center gap-4">
             <div className="relative">
               <button
-                onClick={() => setShowCreateMenu((value) => !value)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                onClick={() => {
+                  setShowNotifications((v) => !v);
+
+                  setShowUserMenu(false);
+                }}
+                className="
+                  relative
+                  p-2
+                  rounded-lg
+                  hover:bg-gray-100
+                "
               >
-                <Plus className="w-4 h-4" />
-                Tạo mới
-                <ChevronDown className="w-4 h-4" />
+                <Bell className="w-5 h-5" />
+
+                {unreadCount > 0 && (
+                  <span
+                    className="
+                      absolute
+                      -top-1
+                      -right-1
+                      bg-red-500
+                      text-white
+                      rounded-full
+                      text-xs
+                      px-1
+                    "
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
               </button>
-              {showCreateMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-                  <Link to="/admin/classes" className="block px-4 py-2 text-sm hover:bg-gray-50">Tạo lớp học</Link>
-                  <Link to="/admin/students" className="block px-4 py-2 text-sm hover:bg-gray-50">Thêm học viên</Link>
+
+              {showNotifications && (
+                <div
+                  className="
+                    absolute right-0 mt-2
+                    w-96
+                    bg-white
+                    border
+                    rounded-lg
+                    shadow-lg
+                    z-20
+                  "
+                >
+                  <div
+                    className="
+                      px-4 py-3
+                      border-b
+                      flex justify-between
+                    "
+                  >
+                    <span className="font-medium">Thông báo</span>
+
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="
+                            text-xs
+                            text-blue-600
+                          "
+                      >
+                        Đọc tất cả
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-96 overflow-y-auto">
+                    {latestNotifications.length === 0 ? (
+                      <div
+                        className="
+                            p-5
+                            text-center
+                            text-gray-500
+                          "
+                      >
+                        Không có thông báo
+                      </div>
+                    ) : (
+                      latestNotifications.map((item) => (
+                        <div
+                          key={item.id}
+                          className="
+                              px-4 py-3
+                              border-b
+                            "
+                        >
+                          <div
+                            className="
+                                flex
+                                justify-between
+                              "
+                          >
+                            <div>
+                              <p
+                                className="
+                                    text-sm
+                                    font-medium
+                                  "
+                              >
+                                {item.title}
+                              </p>
+
+                              <p
+                                className="
+                                    text-xs
+                                    text-gray-600
+                                  "
+                              >
+                                {item.body}
+                              </p>
+                            </div>
+
+                            {item.isRead ? (
+                              <Check
+                                className="
+                                      w-4 h-4
+                                      text-green-600
+                                    "
+                              />
+                            ) : (
+                              <span
+                                className="
+                                      mt-1
+                                      w-2 h-2
+                                      rounded-full
+                                      bg-blue-600
+                                    "
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <Link
+                    to="/admin/notifications"
+                    className="
+                      block
+                      text-center
+                      py-3
+                      border-t
+                      text-sm
+                      text-blue-600
+                    "
+                  >
+                    Xem tất cả thông báo
+                  </Link>
                 </div>
               )}
             </div>
@@ -169,77 +318,64 @@ export default function AdminLayout() {
             <div className="relative">
               <button
                 onClick={() => {
-                  setShowNotifications((value) => !value);
-                  void refreshNotifications();
+                  setShowUserMenu((v) => !v);
+
+                  setShowNotifications(false);
                 }}
-                className="relative p-2 hover:bg-gray-100 rounded-lg"
+                className="
+                  flex
+                  items-center
+                  gap-2
+                "
               >
-                <Bell className="w-5 h-5 text-gray-600" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {showNotifications && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
-                  <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                    <p className="font-medium text-sm">Thông báo</p>
-                    <button onClick={handleMarkAllRead} className="text-xs text-blue-600 hover:underline">
-                      Đánh dấu đã đọc
-                    </button>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {notifications.length === 0 && (
-                      <p className="px-4 py-6 text-sm text-gray-500 text-center">Không có thông báo</p>
-                    )}
-                    {notifications.map((item) => (
-                      <div key={item.id} className="px-4 py-3 border-b last:border-b-0 border-gray-100">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{item.title}</p>
-                            <p className="text-xs text-gray-600 mt-1">{item.body}</p>
-                          </div>
-                          {item.isRead ? (
-                            <Check className="w-4 h-4 text-green-600 mt-0.5" />
-                          ) : (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 mt-1.5" />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="relative">
-              <button
-                onClick={() => setShowUserMenu((value) => !value)}
-                className="flex items-center gap-2 p-1 hover:bg-gray-100 rounded-lg"
-              >
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {(currentUser?.fullName || 'U').charAt(0).toUpperCase()}
+                <div
+                  className="
+                    w-8 h-8
+                    rounded-full
+                    bg-blue-600
+                    flex
+                    items-center
+                    justify-center
+                  "
+                >
+                  <span className="text-white">
+                    {(currentUser?.fullName || "T").charAt(0).toUpperCase()}
                   </span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-600" />
+
+                <ChevronDown className="w-4 h-4" />
               </button>
+
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900 truncate">{currentUser?.fullName || 'User'}</p>
-                    <p className="text-xs text-gray-500 truncate">{currentUser?.email || ''}</p>
+                <div
+                  className="
+                    absolute right-0 mt-2
+                    w-56
+                    bg-white
+                    border
+                    rounded-lg
+                    shadow-lg
+                  "
+                >
+                  <div className="p-3 border-b">
+                    <p className="text-sm font-medium">
+                      {currentUser?.fullName || "Teacher"}
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                      {currentUser?.email}
+                    </p>
                   </div>
-                  <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Hồ sơ
-                  </button>
-                  <hr className="my-2" />
+
                   <button
                     onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                    className="
+                      flex
+                      gap-2
+                      w-full
+                      px-4 py-2
+                      text-red-600
+                    "
                   >
                     <LogOut className="w-4 h-4" />
                     Đăng xuất
@@ -257,5 +393,3 @@ export default function AdminLayout() {
     </div>
   );
 }
-
-

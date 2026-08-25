@@ -1,36 +1,35 @@
 ﻿import { Outlet, Link, useLocation, useNavigate } from "react-router";
+
 import {
-  LayoutDashboard,
   Bell,
   ChevronDown,
   LogOut,
-  User,
   Check,
   BookOpen,
   FileText,
 } from "lucide-react";
+
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { authApi, getApiErrorMessage, notificationsApi, usersApi } from "@/api";
+import { authApi, getApiErrorMessage, usersApi } from "@/api";
 
-import type { NotificationItem, UserProfile } from "@/types";
+import type { UserProfile } from "@/types";
 
 import { clearAuthStorage, setCurrentUser } from "@/app/utils/client-storage";
+
+import { useNotifications } from "@/app/providers/NotificationProvider";
 
 export default function StudentLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
   const [showUserMenu, setShowUserMenu] = useState(false);
-
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-
   const [currentUser, setCurrentUserState] = useState<UserProfile | null>(null);
+
+  const { latestNotifications, unreadCount, markAllRead } = useNotifications();
 
   const menuItems = useMemo(
     () => [
@@ -48,22 +47,6 @@ export default function StudentLayout() {
     [],
   );
 
-  const refreshNotifications = async () => {
-    try {
-      const [countResult, notificationItems] = await Promise.all([
-        notificationsApi.getUnreadCount(),
-
-        notificationsApi.listMyNotifications({
-          limit: 5,
-        }),
-      ]);
-
-      setUnreadCount(countResult.unreadCount);
-
-      setNotifications(notificationItems);
-    } catch {}
-  };
-
   useEffect(() => {
     const bootstrap = async () => {
       try {
@@ -79,11 +62,7 @@ export default function StudentLayout() {
         navigate("/login", {
           replace: true,
         });
-
-        return;
       }
-
-      await refreshNotifications();
     };
 
     void bootstrap();
@@ -103,11 +82,9 @@ export default function StudentLayout() {
 
   const handleMarkAllRead = async () => {
     try {
-      await notificationsApi.markAllRead();
+      await markAllRead();
 
-      await refreshNotifications();
-
-      toast.success("Đã đánh dấu đã đọc tất cả thông báo");
+      toast.success("Đã đánh dấu tất cả thông báo");
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Không thể cập nhật thông báo"));
     }
@@ -115,8 +92,8 @@ export default function StudentLayout() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
+      <aside className="w-64 bg-white border-r flex flex-col">
+        <div className="p-4 border-b">
           <h1 className="text-xl font-bold text-blue-600">EnglishClass</h1>
         </div>
 
@@ -124,7 +101,7 @@ export default function StudentLayout() {
           {menuItems.map((item) => {
             const Icon = item.icon;
 
-            const isActive =
+            const active =
               location.pathname === item.path ||
               location.pathname.startsWith(`${item.path}/`);
 
@@ -134,19 +111,15 @@ export default function StudentLayout() {
                 to={item.path}
                 className={`
                   flex items-center gap-3
-                  px-3 py-2.5
-                  rounded-lg
-                  mb-1
-                  transition-colors
+                  px-3 py-2.5 rounded-lg mb-1
                   ${
-                    isActive
+                    active
                       ? "bg-blue-50 text-blue-600"
                       : "text-gray-700 hover:bg-gray-100"
                   }
                 `}
               >
                 <Icon className="w-5 h-5" />
-
                 <span className="text-sm font-medium">{item.label}</span>
               </Link>
             );
@@ -155,134 +128,181 @@ export default function StudentLayout() {
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Cổng học viên</h2>
+        <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Cổng học viên</h2>
 
           <div className="flex items-center gap-4">
+
             <div className="relative">
               <button
-                type="button"
                 onClick={() => {
-                  setShowNotifications((value) => !value);
+                  setShowNotifications((v) => !v);
 
                   setShowUserMenu(false);
-
-                  void refreshNotifications();
                 }}
-                className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="relative p-2 rounded-lg hover:bg-gray-100"
               >
-                <Bell className="w-5 h-5 text-gray-600" />
+                <Bell className="w-5 h-5" />
 
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
+                  <span
+                    className="
+                    absolute -top-1 -right-1
+                    rounded-full
+                    bg-red-500
+                    text-white
+                    text-xs
+                    px-1
+                  "
+                  >
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                    <p className="font-medium text-sm text-gray-900">
-                      Thông báo
-                    </p>
+                <div
+                  className="
+                  absolute right-0 mt-2
+                  w-96
+                  bg-white
+                  border
+                  rounded-lg
+                  shadow-lg
+                  z-20
+                "
+                >
+                  <div
+                    className="
+                    px-4 py-3
+                    border-b
+                    flex justify-between
+                  "
+                  >
+                    <span className="font-medium">Thông báo</span>
 
                     {unreadCount > 0 && (
                       <button
-                        type="button"
                         onClick={handleMarkAllRead}
-                        className="text-xs text-blue-600 hover:underline"
+                        className="
+                          text-xs
+                          text-blue-600
+                        "
                       >
-                        Đánh dấu đã đọc
+                        Đọc tất cả
                       </button>
                     )}
                   </div>
 
                   <div className="max-h-96 overflow-y-auto">
-                    {notifications.length === 0 && (
-                      <div className="px-4 py-8 text-center">
-                        <Bell className="w-8 h-8 text-gray-300 mx-auto" />
-
-                        <p className="text-sm text-gray-500 mt-2">
-                          Không có thông báo
-                        </p>
+                    {latestNotifications.length === 0 ? (
+                      <div className="p-5 text-center text-gray-500">
+                        Không có thông báo
                       </div>
-                    )}
+                    ) : (
+                      latestNotifications.map((item) => (
+                        <div key={item.id} className="px-4 py-3 border-b">
+                          <div className="flex justify-between">
+                            <div>
+                              <p className="text-sm font-medium">
+                                {item.title}
+                              </p>
 
-                    {notifications.map((item) => (
-                      <div
-                        key={item.id}
-                        className="px-4 py-3 border-b last:border-b-0 border-gray-100"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-900">
-                              {item.title}
-                            </p>
+                              <p className="text-xs text-gray-600">
+                                {item.body}
+                              </p>
+                            </div>
 
-                            <p className="text-xs text-gray-600 mt-1">
-                              {item.body}
-                            </p>
+                            {item.isRead ? (
+                              <Check className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <span
+                                className="
+                                    w-2 h-2
+                                    rounded-full
+                                    bg-blue-600
+                                    mt-1
+                                  "
+                              />
+                            )}
                           </div>
-
-                          {item.isRead ? (
-                            <Check className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                          ) : (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 shrink-0" />
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
+
+                  <Link
+                    to="/student/notifications"
+                    className="
+                      block
+                      text-center
+                      py-3
+                      text-sm
+                      text-blue-600
+                      border-t
+                    "
+                  >
+                    Xem tất cả thông báo
+                  </Link>
                 </div>
               )}
             </div>
 
             <div className="relative">
               <button
-                type="button"
                 onClick={() => {
-                  setShowUserMenu((value) => !value);
+                  setShowUserMenu((v) => !v);
 
                   setShowNotifications(false);
                 }}
-                className="flex items-center gap-2 p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-2"
               >
-                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
+                <div
+                  className="
+                  w-8 h-8
+                  rounded-full
+                  bg-green-600
+                  flex items-center justify-center
+                "
+                >
+                  <span className="text-white">
                     {(currentUser?.fullName || "S").charAt(0).toUpperCase()}
                   </span>
                 </div>
 
-                <ChevronDown className="w-4 h-4 text-gray-600" />
+                <ChevronDown className="w-4 h-4" />
               </button>
 
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                <div
+                  className="
+                  absolute right-0 mt-2
+                  w-56
+                  bg-white
+                  border
+                  rounded-lg
+                  shadow-lg
+                "
+                >
+                  <div className="p-3 border-b">
+                    <p className="text-sm font-medium">
                       {currentUser?.fullName || "Học viên"}
                     </p>
 
-                    <p className="text-xs text-gray-500 truncate mt-0.5">
-                      {currentUser?.email || ""}
+                    <p className="text-xs text-gray-500">
+                      {currentUser?.email}
                     </p>
                   </div>
 
-                  {/* <button
-                    type="button"
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
-                  >
-                    <User className="w-4 h-4" />
-                    Hồ sơ của tôi
-                  </button> */}
-
-                  {/* <hr className="my-2" /> */}
-
                   <button
-                    type="button"
                     onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                    className="
+                      w-full
+                      px-4 py-2
+                      text-left
+                      text-red-600
+                      flex gap-2
+                    "
                   >
                     <LogOut className="w-4 h-4" />
                     Đăng xuất

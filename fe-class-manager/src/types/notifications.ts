@@ -9,6 +9,12 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+export interface NotificationListResponse {
+  items: NotificationItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
 export interface NotificationUnreadCountResponse {
   unreadCount: number;
 }
@@ -20,4 +26,5 @@ export interface NotificationMarkAllReadResponse {
 export interface ListMyNotificationsQuery {
   unreadOnly?: boolean;
   limit?: number;
+  cursor?: string;
 }
