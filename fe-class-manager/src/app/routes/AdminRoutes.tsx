@@ -1,5 +1,5 @@
-import { Navigate, Route } from "react-router";
-
+import { Navigate } from "react-router";
+import type { RouteObject } from "react-router";
 import RequireRole from "@/app/routes/RequireRole";
 import AdminLayout from "@/app/layouts/AdminLayout";
 
@@ -18,50 +18,55 @@ import SubmissionsPage from "@/app/pages/admin/submissions/SubmissionsPage";
 import MaterialsPage from "@/app/pages/admin/materials/MaterialsPage";
 import BillingPage from "@/app/pages/admin/billings/BillingPage";
 import SettingsPage from "@/app/pages/admin/SettingsPage";
+import NotificationsPage from "../pages/notifications/NotificationsPage";
 
-export default function AdminRoutes() {
-  return (
-    <Route element={<RequireRole role="teacher" />}>
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+const adminRoutes: RouteObject[] = [
+  {
+    element: <RequireRole role="teacher" />,
+    children: [
+      {
+        path: "/admin",
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <Navigate to="/admin/dashboard" replace /> },
+          { path: "dashboard", element: <Dashboard /> },
 
-        <Route path="dashboard" element={<Dashboard />} />
+          { path: "students", element: <StudentsPage /> },
+          { path: "students/:studentId", element: <StudentDetailPage /> },
+          {
+            path: "notifications",
+            element: <NotificationsPage />,
+          },
 
-        <Route path="students" element={<StudentsPage />} />
-        <Route path="students/:studentId" element={<StudentDetailPage />} />
+          { path: "classes", element: <ClassesPage /> },
+          { path: "classes/:classId", element: <ClassDetailPage /> },
 
-        <Route path="classes" element={<ClassesPage />} />
+          { path: "sessions/:sessionId", element: <SessionDetailPage /> },
 
-        <Route path="classes/:classId" element={<ClassDetailPage />} />
+          {
+            path: "assignments/:assignmentId",
+            element: <AssignmentDetailPage />,
+          },
+          {
+            path: "assignments/:assignmentId/quiz",
+            element: <QuizManagementPage />,
+          },
+          {
+            path: "assignments/:assignmentId/quiz/attempts",
+            element: <QuizAttemptsPage />,
+          },
+          {
+            path: "assignments/:assignmentId/submissions",
+            element: <SubmissionsPage />,
+          },
 
-        <Route path="sessions/:sessionId" element={<SessionDetailPage />} />
+          { path: "materials", element: <MaterialsPage /> },
+          { path: "billing", element: <BillingPage /> },
+          { path: "settings", element: <SettingsPage /> },
+        ],
+      },
+    ],
+  },
+];
 
-        <Route
-          path="assignments/:assignmentId"
-          element={<AssignmentDetailPage />}
-        />
-
-        <Route
-          path="assignments/:assignmentId/quiz"
-          element={<QuizManagementPage />}
-        />
-
-        <Route
-          path="assignments/:assignmentId/quiz/attempts"
-          element={<QuizAttemptsPage />}
-        />
-
-        <Route
-          path="assignments/:assignmentId/submissions"
-          element={<SubmissionsPage />}
-        />
-
-        <Route path="materials" element={<MaterialsPage />} />
-
-        <Route path="billing" element={<BillingPage />} />
-
-        <Route path="settings" element={<SettingsPage />} />
-      </Route>
-    </Route>
-  );
-}
+export default adminRoutes;
