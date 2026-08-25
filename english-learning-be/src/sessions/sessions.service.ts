@@ -1,18 +1,18 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ClassEntity } from 'src/classes/entities/class.entity';
-import { CreateSessionDto } from './dto/create-session.dto';
-import { SessionCancelledEvent } from './events/session-cancelled.event';
-import { SessionCreatedEvent } from './events/session-created.event';
-import { SessionDeleteResponseDto } from './dto/session-delete-response.dto';
-import { SessionResponseDto } from './dto/session-response.dto';
-import { UpdateSessionDto } from './dto/update-session.dto';
-import { SessionEntity } from './entities/session.entity';
-import { SessionUpdatedEvent } from './events/session-updated.event';
-import { errorPayload } from 'src/common/utils/error-payload.util';
-import { resolveNextSequentialCode } from 'src/common/utils/sequential-code.util';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { ClassEntity } from "src/classes/entities/class.entity";
+import { CreateSessionDto } from "./dto/create-session.dto";
+import { SessionCancelledEvent } from "./events/session-cancelled.event";
+import { SessionCreatedEvent } from "./events/session-created.event";
+import { SessionDeleteResponseDto } from "./dto/session-delete-response.dto";
+import { SessionResponseDto } from "./dto/session-response.dto";
+import { UpdateSessionDto } from "./dto/update-session.dto";
+import { SessionEntity } from "./entities/session.entity";
+import { SessionUpdatedEvent } from "./events/session-updated.event";
+import { errorPayload } from "src/common/utils/error-payload.util";
+import { resolveNextSequentialCode } from "src/common/utils/sequential-code.util";
 
 @Injectable()
 export class SessionsService {
@@ -38,7 +38,7 @@ export class SessionsService {
     });
     if (!classEntity) {
       throw new BadRequestException(
-        errorPayload('Class not found', 'SESSION_CLASS_NOT_FOUND'),
+        errorPayload("Class not found", "SESSION_CLASS_NOT_FOUND"),
       );
     }
 
@@ -46,10 +46,23 @@ export class SessionsService {
       dto.timeStart,
       dto.timeEnd,
     );
+
+    const now = new Date();
+    now.setSeconds(0, 0);
+
+    if (timeStart < now) {
+      throw new BadRequestException(
+        errorPayload(
+          "Session can not start in the past",
+          "SESSION_TIME_START_IN_PAST",
+        ),
+      );
+    }
+
     const normalizedTopic = dto.topic.trim();
     if (!normalizedTopic) {
       throw new BadRequestException(
-        errorPayload('topic can not be empty', 'SESSION_TOPIC_REQUIRED'),
+        errorPayload("topic can not be empty", "SESSION_TOPIC_REQUIRED"),
       );
     }
 
@@ -79,7 +92,7 @@ export class SessionsService {
       timeEnd,
       topic: normalizedTopic,
       code: resolveNextSequentialCode(
-        'SES',
+        "SES",
         scopedSessions.map((existingSession) => existingSession.code),
       ),
     });
@@ -99,7 +112,7 @@ export class SessionsService {
     });
     if (!classEntity) {
       throw new BadRequestException(
-        errorPayload('Class not found', 'SESSION_CLASS_NOT_FOUND'),
+        errorPayload("Class not found", "SESSION_CLASS_NOT_FOUND"),
       );
     }
 
@@ -113,7 +126,7 @@ export class SessionsService {
         },
       },
       order: {
-        timeStart: 'ASC',
+        timeStart: "ASC",
       },
     });
 
@@ -131,7 +144,7 @@ export class SessionsService {
     });
     if (!session) {
       throw new BadRequestException(
-        errorPayload('Session not found', 'SESSION_NOT_FOUND'),
+        errorPayload("Session not found", "SESSION_NOT_FOUND"),
       );
     }
 
@@ -152,7 +165,7 @@ export class SessionsService {
     });
     if (!session) {
       throw new BadRequestException(
-        errorPayload('Session not found', 'SESSION_NOT_FOUND'),
+        errorPayload("Session not found", "SESSION_NOT_FOUND"),
       );
     }
 
@@ -171,7 +184,7 @@ export class SessionsService {
       dto.topic !== undefined ? dto.topic.trim() : session.topic;
     if (!nextTopic) {
       throw new BadRequestException(
-        errorPayload('topic can not be empty', 'SESSION_TOPIC_REQUIRED'),
+        errorPayload("topic can not be empty", "SESSION_TOPIC_REQUIRED"),
       );
     }
 
@@ -205,7 +218,7 @@ export class SessionsService {
 
     if (!session.code) {
       session.code = resolveNextSequentialCode(
-        'SES',
+        "SES",
         scopedSessions
           .filter((existingSession) => existingSession.id !== session.id)
           .map((existingSession) => existingSession.code),
@@ -257,7 +270,7 @@ export class SessionsService {
     });
     if (!session) {
       throw new BadRequestException(
-        errorPayload('Session not found', 'SESSION_NOT_FOUND'),
+        errorPayload("Session not found", "SESSION_NOT_FOUND"),
       );
     }
 
@@ -286,15 +299,15 @@ export class SessionsService {
 
     if (Number.isNaN(timeStart.getTime()) || Number.isNaN(timeEnd.getTime())) {
       throw new BadRequestException(
-        errorPayload('Session time is invalid', 'SESSION_TIME_INVALID'),
+        errorPayload("Session time is invalid", "SESSION_TIME_INVALID"),
       );
     }
 
     if (timeEnd <= timeStart) {
       throw new BadRequestException(
         errorPayload(
-          'timeEnd must be greater than timeStart',
-          'SESSION_TIME_END_BEFORE_START',
+          "timeEnd must be greater than timeStart",
+          "SESSION_TIME_END_BEFORE_START",
         ),
       );
     }
@@ -304,7 +317,7 @@ export class SessionsService {
 
   private ensureNoDuplicateSession(
     scopedSessions: Array<
-      Pick<SessionEntity, 'id' | 'topic' | 'timeStart' | 'timeEnd'>
+      Pick<SessionEntity, "id" | "topic" | "timeStart" | "timeEnd">
     >,
     topic: string,
     timeStart: Date,
@@ -326,8 +339,8 @@ export class SessionsService {
     if (duplicateSession) {
       throw new BadRequestException(
         errorPayload(
-          'A session with the same topic and time window already exists in this class',
-          'SESSION_DUPLICATE_IN_CLASS',
+          "A session with the same topic and time window already exists in this class",
+          "SESSION_DUPLICATE_IN_CLASS",
         ),
       );
     }

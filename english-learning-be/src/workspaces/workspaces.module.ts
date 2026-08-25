@@ -1,20 +1,25 @@
 // src/workspaces/workspaces.module.ts
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { WorkspacesService } from './workspaces.service';
-import { WorkspaceEntitlementModule } from './workspace-entitlement.module';
-import { WorkspacesController } from './workspaces.controller';
-import { Workspace } from './entities/workspace.entity';
-import { WorkspaceMember } from './entities/workspace-member.entity';
-import { WorkspaceSubscription } from './entities/workspace-subscription.entity';
-import { User } from 'src/users/entities/user.entity';
-import { Role } from 'src/rbac/entities/role.entity';
-import { RbacModule } from 'src/rbac/rbac.module';
-import { ClassEntity } from 'src/classes/entities/class.entity';
-import { ClassStudent } from 'src/classes/entities/class-student.entity';
-import { MailModule } from 'src/mail/mail.module';
-import { WorkspaceStudentsService } from './workspace-students.service';
-import { PlansModule } from 'src/plans/plans.module';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { WorkspacesService } from "./workspaces.service";
+import { WorkspaceEntitlementModule } from "./workspace-entitlement.module";
+import { WorkspacesController } from "./workspaces.controller";
+import { Workspace } from "./entities/workspace.entity";
+import { WorkspaceMember } from "./entities/workspace-member.entity";
+import { WorkspaceSubscription } from "./entities/workspace-subscription.entity";
+import { User } from "src/users/entities/user.entity";
+import { Role } from "src/rbac/entities/role.entity";
+import { RbacModule } from "src/rbac/rbac.module";
+import { ClassEntity } from "src/classes/entities/class.entity";
+import { ClassStudent } from "src/classes/entities/class-student.entity";
+import { MailModule } from "src/mail/mail.module";
+import { WorkspaceStudentsService } from "./workspace-students.service";
+import { PlansModule } from "src/plans/plans.module";
+import { AssignmentEntity } from "src/assignments/entities/assignment.entity";
+
+import { AssignmentQuizAttemptEntity } from "src/assignments/entities/assignment-quiz-attempt.entity";
+
+import { SubmissionEntity } from "src/submissions/entities/submission.entity";
 
 @Module({
   imports: [
@@ -30,6 +35,9 @@ import { PlansModule } from 'src/plans/plans.module';
       Role,
       ClassEntity,
       ClassStudent,
+      AssignmentEntity,
+      AssignmentQuizAttemptEntity,
+      SubmissionEntity,
     ]),
   ],
   controllers: [WorkspacesController],
