@@ -1,6 +1,5 @@
 import {
   NotificationEntity,
-  NotificationType,
 } from '../entities/notification.entity';
 
 export class NotificationResponseDto {

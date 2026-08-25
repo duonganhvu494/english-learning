@@ -26,7 +26,7 @@ export default function Dashboard() {
 
         setWorkspace(workspaceDetail);
         setClasses(classList);
-        setNotifications(inbox);
+        // setNotifications(inbox);
 
         if (classList.length > 0) {
           const classSessions = await sessionsApi.listClassSessions(classList[0].id);
@@ -66,7 +66,7 @@ export default function Dashboard() {
       {
         icon: CheckCircle,
         label: 'Thông báo chưa đọc',
-        value: String(notifications.filter((item) => !item.isRead).length),
+        // value: String(notifications.filter((item) => !item.isRead).length),
         change: '-',
         changeType: 'decrease',
       },
